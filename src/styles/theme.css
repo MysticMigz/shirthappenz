@@ -1,0 +1,317 @@
+/* Theme Colors */
+:root {
+  /* Primary Colors */
+  --color-primary: #FF69B4;
+  --color-primary-rgb: 255, 105, 180;
+  --color-primary-light: #FF8CC6;
+  --color-primary-dark: #FF469E;
+  --color-primary-50: rgba(255, 105, 180, 0.05);
+  --color-primary-100: rgba(255, 105, 180, 0.1);
+  --color-primary-200: rgba(255, 105, 180, 0.2);
+  
+  --color-secondary: #00BFFF;
+  --color-secondary-rgb: 0, 191, 255;
+  --color-secondary-light: #33CCFF;
+  --color-secondary-dark: #0099CC;
+  --color-secondary-50: rgba(0, 191, 255, 0.05);
+  --color-secondary-100: rgba(0, 191, 255, 0.1);
+  --color-secondary-200: rgba(0, 191, 255, 0.2);
+  
+  --color-accent: #FFD700;
+  --color-accent-rgb: 255, 215, 0;
+  --color-accent-light: #FFE033;
+  --color-accent-dark: #CCAC00;
+  --color-accent-50: rgba(255, 215, 0, 0.05);
+  --color-accent-100: rgba(255, 215, 0, 0.1);
+  --color-accent-200: rgba(255, 215, 0, 0.2);
+  
+  --color-navy: #000033;
+  --color-navy-rgb: 0, 0, 51;
+  --color-navy-light: #000066;
+  --color-navy-dark: #000020;
+  
+  /* Background Colors */
+  --color-background: #F8FAFC;
+  --color-background-alt: #F1F5F9;
+  --color-background-dark: #E2E8F0;
+  --color-surface: #FFFFFF;
+  --color-surface-alt: #FAFAFA;
+  
+  /* Text Colors */
+  --color-text-primary: #1E293B;
+  --color-text-secondary: #475569;
+  --color-text-tertiary: #64748B;
+  --color-text-light: #94A3B8;
+  --color-text-white: #FFFFFF;
+  
+  /* Border Colors */
+  --color-border: #E2E8F0;
+  --color-border-hover: #CBD5E0;
+  --color-border-focus: var(--color-primary);
+  
+  /* Shadow Colors */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-inner: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+  --shadow-focus: 0 0 0 3px var(--color-primary-100);
+  
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  --gradient-secondary: linear-gradient(135deg, var(--color-secondary), var(--color-accent));
+  --gradient-accent: linear-gradient(135deg, var(--color-accent), var(--color-primary));
+  --gradient-surface: linear-gradient(180deg, var(--color-surface), var(--color-surface-alt));
+  
+  /* Spacing */
+  --space-1: 0.25rem;  /* 4px */
+  --space-2: 0.5rem;   /* 8px */
+  --space-3: 0.75rem;  /* 12px */
+  --space-4: 1rem;     /* 16px */
+  --space-5: 1.25rem;  /* 20px */
+  --space-6: 1.5rem;   /* 24px */
+  --space-8: 2rem;     /* 32px */
+  --space-10: 2.5rem;  /* 40px */
+  --space-12: 3rem;    /* 48px */
+  --space-16: 4rem;    /* 64px */
+  --space-20: 5rem;    /* 80px */
+  --space-24: 6rem;    /* 96px */
+  
+  /* Border Radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
+  --radius-full: 9999px;
+  
+  /* Typography */
+  --font-size-xs: 0.75rem;    /* 12px */
+  --font-size-sm: 0.875rem;   /* 14px */
+  --font-size-base: 1rem;     /* 16px */
+  --font-size-lg: 1.125rem;   /* 18px */
+  --font-size-xl: 1.25rem;    /* 20px */
+  --font-size-2xl: 1.5rem;    /* 24px */
+  --font-size-3xl: 1.875rem;  /* 30px */
+  --font-size-4xl: 2.25rem;   /* 36px */
+  --font-size-5xl: 3rem;      /* 48px */
+  --font-size-6xl: 3.75rem;   /* 60px */
+  
+  /* Font Weights */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+  
+  /* Line Heights */
+  --line-height-none: 1;
+  --line-height-tight: 1.25;
+  --line-height-snug: 1.375;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.625;
+  --line-height-loose: 2;
+  
+  /* Letter Spacing */
+  --letter-spacing-tighter: -0.05em;
+  --letter-spacing-tight: -0.025em;
+  --letter-spacing-normal: 0em;
+  --letter-spacing-wide: 0.025em;
+  --letter-spacing-wider: 0.05em;
+  --letter-spacing-widest: 0.1em;
+  
+  /* Transitions */
+  --transition-fast: 150ms;
+  --transition-normal: 300ms;
+  --transition-slow: 500ms;
+  --transition-timing: cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* Z-index */
+  --z-negative: -1;
+  --z-elevate: 1;
+  --z-sticky: 100;
+  --z-drawer: 200;
+  --z-modal: 300;
+  --z-popover: 400;
+  --z-toast: 500;
+  
+  /* Container */
+  --container-padding: var(--space-4);
+  --container-max-width: 80rem;
+  
+  /* Components */
+  --header-height: 4rem;
+  --footer-padding: var(--space-16);
+  --section-spacing: var(--space-20);
+  --card-padding: var(--space-6);
+  --button-height: var(--space-12);
+}
+
+/* Typography */
+.heading-1 {
+  @apply text-4xl md:text-5xl font-bold tracking-tight;
+  color: var(--color-text-primary);
+}
+
+.heading-2 {
+  @apply text-3xl md:text-4xl font-bold;
+  color: var(--color-text-primary);
+}
+
+.heading-3 {
+  @apply text-2xl md:text-3xl font-semibold;
+  color: var(--color-text-primary);
+}
+
+/* Buttons */
+.btn {
+  @apply inline-flex items-center justify-center px-6 py-3 rounded-full font-semibold transition-all duration-200;
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: white;
+  @apply hover:opacity-90;
+}
+
+.btn-secondary {
+  background: var(--color-secondary);
+  color: white;
+  @apply hover:opacity-90;
+}
+
+.btn-outline {
+  border: 2px solid var(--color-primary);
+  color: var(--color-primary);
+  @apply hover:bg-primary hover:bg-opacity-10;
+}
+
+/* Cards */
+.card {
+  @apply bg-white rounded-lg overflow-hidden;
+  box-shadow: var(--shadow-md);
+}
+
+.card-hover {
+  @apply transition-transform duration-200 hover:-translate-y-1;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.5s ease-out;
+}
+
+/* Layout */
+.container-custom {
+  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+}
+
+/* Navigation */
+.nav-link {
+  @apply text-gray-600 hover:text-primary transition-colors duration-200;
+}
+
+.nav-link-active {
+  @apply text-primary font-medium;
+}
+
+/* Forms */
+.input-field {
+  @apply w-full px-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50;
+}
+
+.label {
+  @apply block text-sm font-medium text-gray-700 mb-1;
+}
+
+/* Custom Components */
+.feature-icon {
+  @apply w-12 h-12 rounded-full flex items-center justify-center text-white;
+  background: var(--color-primary);
+}
+
+.service-card {
+  @apply p-6 rounded-lg transition-all duration-200 hover:shadow-lg;
+  background: var(--color-background-alt);
+}
+
+/* Responsive Design */
+@media (max-width: 640px) {
+  .container-custom {
+    @apply px-4;
+  }
+  
+  .btn {
+    @apply px-4 py-2 text-sm;
+  }
+}
+
+/* Typography Utilities */
+.text-gradient {
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-shadow-sm {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.text-shadow-md {
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Animation Utilities */
+.transition-custom {
+  transition: all var(--transition-normal) var(--transition-timing);
+}
+
+.hover-scale {
+  @apply transition-transform duration-300 hover:scale-105;
+}
+
+.hover-lift {
+  @apply transition-transform duration-300 hover:-translate-y-1;
+}
+
+/* Layout Utilities */
+.section-padding {
+  @apply py-12 md:py-16 lg:py-20;
+}
+
+/* Glass Effect */
+.glass {
+  @apply backdrop-blur-md bg-white/80;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.glass-dark {
+  @apply backdrop-blur-md bg-black/80;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Patterns and Textures */
+.pattern-dots {
+  background-image: radial-gradient(var(--color-text-light) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.pattern-grid {
+  background-image: linear-gradient(var(--color-border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-border) 1px, transparent 1px);
+  background-size: 20px 20px;
+} 
