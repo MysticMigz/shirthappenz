@@ -51,15 +51,20 @@ const Header = () => {
               </div>
             </div>
 
-            {/* Cart and account */}
+            {/* Auth and Cart */}
             <div className="flex items-center space-x-4">
-              <Link href="/account" className="hidden md:flex items-center text-gray-700 hover:text-purple-600">
-                <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-                Account
+              <Link 
+                href="/auth/register" 
+                className="hidden md:inline-flex items-center px-4 py-2 border border-purple-600 text-purple-600 rounded-lg hover:bg-purple-50 transition-colors"
+              >
+                Register
               </Link>
-              
+              <Link 
+                href="/auth/login" 
+                className="hidden md:inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                Login
+              </Link>
               <Link href="/cart" className="flex items-center bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all">
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m1.6 8L5 3H3m4 10v6a1 1 0 001 1h8a1 1 0 001-1v-6M9 13h6" />
@@ -118,6 +123,8 @@ const Header = () => {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 />
               </div>
+              <Link href="/auth/register" className="block text-purple-600 hover:text-purple-700 font-medium">Register</Link>
+              <Link href="/auth/login" className="block text-purple-600 hover:text-purple-700 font-medium">Login</Link>
               <Link href="/" className="block text-gray-700 hover:text-purple-600 font-medium">Home</Link>
               <Link href="/design" className="block text-gray-700 hover:text-purple-600 font-medium">Design Online</Link>
               <Link href="/services" className="block text-gray-700 hover:text-purple-600 font-medium">Services</Link>
@@ -125,7 +132,6 @@ const Header = () => {
               <Link href="/help" className="block text-gray-700 hover:text-purple-600 font-medium">Help</Link>
               <Link href="/blog" className="block text-gray-700 hover:text-purple-600 font-medium">Blog</Link>
               <Link href="/contact" className="block text-gray-700 hover:text-purple-600 font-medium">Contact</Link>
-              <Link href="/account" className="block text-gray-700 hover:text-purple-600 font-medium">Account</Link>
             </div>
           </div>
         )}
