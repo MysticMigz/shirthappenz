@@ -1,27 +1,35 @@
 import type { Metadata } from "next";
-import { Poppins } from "next/font/google";
+import { Inter, Fredoka } from "next/font/google";
 import "./globals.css";
 
-const poppins = Poppins({
-  weight: ['400', '500', '600', '700'],
-  subsets: ['latin'],
-  variable: '--font-poppins',
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  weight: ["300", "400", "500", "600", "700", "800"]
+});
+
+const fredoka = Fredoka({
+  subsets: ["latin"],
+  variable: "--font-fredoka",
+  weight: ["300", "400", "500", "600", "700"]
 });
 
 export const metadata: Metadata = {
-  title: "ShirtHappenz - Custom Jersey & Shirt Printing",
-  description: "Create your perfect custom jersey or shirt with ShirtHappenz. Professional name and number printing services with unique designs.",
-  keywords: "custom jersey, shirt printing, custom designs, jersey printing, name printing, number printing",
+  title: "ShirtHappenZ - Custom T-Shirt Printing & Design Online",
+  description: "Design and order custom t-shirts, hoodies, and apparel online. Fast turnaround, no minimum order. DTG, screen printing, and embroidery services.",
+  keywords: "custom t-shirts, t-shirt printing, online design, custom apparel, DTG printing, screen printing, embroidery",
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: {
+  children: React.ReactNode
+}) {
   return (
     <html lang="en">
-      <body className={`${poppins.variable} font-sans antialiased bg-gray-50`}>
+      <body
+        className={`${inter.variable} ${fredoka.variable} font-sans antialiased bg-white`}
+      >
         {children}
       </body>
     </html>
