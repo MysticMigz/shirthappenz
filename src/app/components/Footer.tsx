@@ -9,17 +9,14 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Company info */}
           <div>
-            <div className="mb-6 inline-block">
-              <div className="relative overflow-hidden rounded-lg bg-white shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 p-4 border border-gray-200">
-                <Image
-                  src="/images/logo.jpg"
-                  alt="ShirtHappenZ Logo"
-                  width={280}
-                  height={100}
-                  className="h-18 w-auto md:h-20 lg:h-22 transition-all duration-300 hover:brightness-110"
-                />
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-blue-500/5 opacity-0 hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
-              </div>
+            <div className="mb-6">
+              <Image
+                src="/images/logo3.png"
+                alt="ShirtHappenZ Logo"
+                width={320}
+                height={120}
+                className="h-20 w-auto md:h-24 lg:h-26 brightness-110 transition-transform duration-300 ease-in-out hover:scale-110"
+              />
             </div>
             <p className="text-gray-300 mb-4">
               DTG & Embroidery services for brand owners, individuals, and businesses.

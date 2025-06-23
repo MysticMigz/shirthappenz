@@ -24,17 +24,15 @@ const Header = () => {
           <div className="flex items-center justify-between py-4">
             {/* Logo */}
             <Link href="/" className="flex items-center group">
-              <div className="relative overflow-hidden rounded-lg bg-white shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:scale-105 p-3 border border-gray-100">
-                <Image
-                  src="/images/logo2.jpg"
-                  alt="ShirtHappenZ Logo"
-                  width={500}
-                  height={200}
-                  className="h-24 w-auto md:h-26 lg:h-28 transition-all duration-300 group-hover:brightness-110"
-                  priority
-                />
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
-              </div>
+              <Image
+                src="/images/logo5.png"
+                alt="ShirtHappenZ Logo"
+                width={600}
+                height={240}
+                className="h-28 w-auto md:h-32 lg:h-36 brightness-110 transition-transform duration-300 ease-in-out group-hover:scale-110"
+                style={{ border: 'none', outline: 'none', boxShadow: 'none', background: 'transparent' }}
+                priority
+              />
             </Link>
 
             {/* Search bar - hidden on mobile */}
