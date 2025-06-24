@@ -4,7 +4,28 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { connectToDatabase } from '@/lib/mongodb';
 import Order from '@/backend/models/Order';
 import User from '@/backend/models/User';
+import Product from '@/backend/models/Product';
 import mongoose from 'mongoose';
+
+interface OrderItem {
+  productId: string;
+  name: string;
+  price: number;
+  quantity: number;
+  size: string;
+  color?: string;
+  image?: string;
+}
+
+interface OrderDocument extends mongoose.Document {
+  reference: string;
+  userId: string;
+  items: OrderItem[];
+  status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled' | 'payment_failed';
+  total: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 // Helper function to check admin status
 async function verifyAdmin(email: string) {
@@ -13,6 +34,42 @@ async function verifyAdmin(email: string) {
     throw new Error('Admin access required');
   }
   return user;
+}
+
+// Helper function to update stock levels
+async function updateProductStock(productId: string, size: string, quantity: number): Promise<boolean> {
+  try {
+    // Convert string ID to ObjectId if needed
+    const _id = typeof productId === 'string' ? new mongoose.Types.ObjectId(productId) : productId;
+
+    // Use $inc for atomic update
+    const updateQuery = {
+      $inc: {
+        [`stock.${size}`]: quantity
+      }
+    };
+
+    const options = {
+      new: true,
+      runValidators: true
+    };
+
+    const product = await Product.findOneAndUpdate(
+      { _id },
+      updateQuery,
+      options
+    );
+
+    if (!product) {
+      console.error(`Failed to update stock for product ${productId}, size ${size}`);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error(`Error updating stock for product ${productId}:`, error);
+    return false;
+  }
 }
 
 export async function GET(
@@ -95,7 +152,7 @@ export async function PATCH(
     const { status } = body;
 
     // Validate status
-    const validStatuses = ['pending', 'paid', 'shipped', 'delivered', 'cancelled', 'payment_failed'];
+    const validStatuses = ['pending', 'paid', 'shipped', 'delivered', 'cancelled', 'payment_failed'] as const;
     if (!status || !validStatuses.includes(status)) {
       return NextResponse.json(
         { error: 'Invalid status' },
@@ -103,13 +160,31 @@ export async function PATCH(
       );
     }
 
-    // Update order
-    const order = await Order.findById(params.id);
+    // Get the order
+    const order = await Order.findById(params.id) as OrderDocument | null;
     if (!order) {
       return NextResponse.json(
         { error: 'Order not found' },
         { status: 404 }
       );
+    }
+
+    // If the order is being cancelled and wasn't cancelled before
+    if (status === 'cancelled' && order.status !== 'cancelled') {
+      // Restore stock for all items
+      const stockUpdates = await Promise.all(
+        order.items.map((item: OrderItem) =>
+          updateProductStock(item.productId, item.size, item.quantity)
+        )
+      );
+
+      // If any stock update failed, return error
+      if (stockUpdates.includes(false)) {
+        return NextResponse.json(
+          { error: 'Failed to restore stock levels' },
+          { status: 500 }
+        );
+      }
     }
 
     // Update status and save
