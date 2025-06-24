@@ -21,8 +21,11 @@ export interface CheckoutForm {
   firstName: string;
   lastName: string;
   address: string;
+  addressLine2: string;
   city: string;
+  county: string;
   postcode: string;
+  country: string;
   phone: string;
 }
 
@@ -36,8 +39,11 @@ export default function CheckoutPage() {
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',
     address: '',
+    addressLine2: '',
     city: '',
+    county: '',
     postcode: '',
+    country: 'United Kingdom',
     phone: ''
   });
 
@@ -48,7 +54,7 @@ export default function CheckoutPage() {
     }
   }, [items, router, isProcessing]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -155,7 +161,7 @@ export default function CheckoutPage() {
 
                 <div>
                   <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                    Phone
+                    Phone Number
                   </label>
                   <input
                     type="tel"
@@ -170,7 +176,7 @@ export default function CheckoutPage() {
 
                 <div>
                   <label htmlFor="address" className="block text-sm font-medium text-gray-700">
-                    Address
+                    Address Line 1
                   </label>
                   <input
                     type="text"
@@ -179,6 +185,20 @@ export default function CheckoutPage() {
                     value={formData.address}
                     onChange={handleInputChange}
                     required
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="addressLine2" className="block text-sm font-medium text-gray-700">
+                    Address Line 2 (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    id="addressLine2"
+                    name="addressLine2"
+                    value={formData.addressLine2}
+                    onChange={handleInputChange}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
                   />
                 </div>
@@ -199,6 +219,23 @@ export default function CheckoutPage() {
                     />
                   </div>
                   <div>
+                    <label htmlFor="county" className="block text-sm font-medium text-gray-700">
+                      County
+                    </label>
+                    <input
+                      type="text"
+                      id="county"
+                      name="county"
+                      value={formData.county}
+                      onChange={handleInputChange}
+                      required
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
                     <label htmlFor="postcode" className="block text-sm font-medium text-gray-700">
                       Postcode
                     </label>
@@ -211,6 +248,33 @@ export default function CheckoutPage() {
                       required
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
                     />
+                  </div>
+                  <div>
+                    <label htmlFor="country" className="block text-sm font-medium text-gray-700">
+                      Country
+                    </label>
+                    <select
+                      id="country"
+                      name="country"
+                      value={formData.country}
+                      onChange={handleInputChange}
+                      required
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                    >
+                      <option value="United Kingdom">United Kingdom</option>
+                      <option value="Ireland">Ireland</option>
+                      <option value="France">France</option>
+                      <option value="Germany">Germany</option>
+                      <option value="Spain">Spain</option>
+                      <option value="Italy">Italy</option>
+                      <option value="Netherlands">Netherlands</option>
+                      <option value="Belgium">Belgium</option>
+                      <option value="Portugal">Portugal</option>
+                      <option value="Sweden">Sweden</option>
+                      <option value="Denmark">Denmark</option>
+                      <option value="Norway">Norway</option>
+                      <option value="Finland">Finland</option>
+                    </select>
                   </div>
                 </div>
 
