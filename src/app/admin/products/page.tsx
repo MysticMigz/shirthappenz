@@ -133,6 +133,7 @@ export default function AdminProducts() {
               <option value="t-shirts">T-Shirts</option>
               <option value="hoodies">Hoodies</option>
               <option value="sweatshirts">Sweatshirts</option>
+              <option value="jerseys">Jerseys</option>
               <option value="accessories">Accessories</option>
             </select>
           </div>

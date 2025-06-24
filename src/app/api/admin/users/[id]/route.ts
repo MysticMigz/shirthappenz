@@ -101,10 +101,10 @@ export async function PUT(
     Object.assign(user, {
       ...data,
       // Don't update password through this endpoint
-      password: undefined
+      password: user.password // Keep the existing password
     });
 
-    await user.save();
+    await user.save({ validateModifiedOnly: true });
 
     // Return updated user (excluding password)
     const userData = await User.findById(user._id).select('-password');

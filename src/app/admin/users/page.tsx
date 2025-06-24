@@ -35,6 +35,7 @@ interface EditUserFormData {
     country: string;
   };
   isAdmin: boolean;
+  password?: string;
 }
 
 export default function AdminUsers() {
@@ -64,6 +65,22 @@ export default function AdminUsers() {
     isAdmin: false
   });
   const [newPassword, setNewPassword] = useState('');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createFormData, setCreateFormData] = useState<EditUserFormData>({
+    email: '',
+    firstName: '',
+    lastName: '',
+    phoneNumber: '',
+    address: {
+      street: '',
+      city: '',
+      county: '',
+      postcode: '',
+      country: 'United Kingdom'
+    },
+    isAdmin: false,
+    password: ''
+  });
 
   // Redirect if not admin
   useEffect(() => {
@@ -189,6 +206,46 @@ export default function AdminUsers() {
     }
   };
 
+  const handleCreateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      const response = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(createFormData)
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to create user');
+      }
+
+      const newUser = await response.json();
+      setUsers([newUser, ...users]);
+      setShowCreateModal(false);
+      setCreateFormData({
+        email: '',
+        firstName: '',
+        lastName: '',
+        phoneNumber: '',
+        address: {
+          street: '',
+          city: '',
+          county: '',
+          postcode: '',
+          country: 'United Kingdom'
+        },
+        isAdmin: false,
+        password: ''
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create user');
+    }
+  };
+
   if (status === 'loading' || loading) {
     return (
       <div className="min-h-screen bg-gray-100 p-8">
@@ -211,6 +268,12 @@ export default function AdminUsers() {
         <div className="bg-white rounded-lg shadow-sm p-6">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+            >
+              Create User
+            </button>
           </div>
 
           {/* Search */}
@@ -472,6 +535,147 @@ export default function AdminUsers() {
                   className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
                 >
                   Update Password
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Create User Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full p-6">
+            <h2 className="text-xl font-semibold mb-4">Create New User</h2>
+            <form onSubmit={handleCreateSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Email</label>
+                  <input
+                    type="email"
+                    required
+                    value={createFormData.email}
+                    onChange={(e) => setCreateFormData({ ...createFormData, email: e.target.value })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Password</label>
+                  <input
+                    type="password"
+                    required
+                    value={createFormData.password}
+                    onChange={(e) => setCreateFormData({ ...createFormData, password: e.target.value })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">First Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={createFormData.firstName}
+                    onChange={(e) => setCreateFormData({ ...createFormData, firstName: e.target.value })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Last Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={createFormData.lastName}
+                    onChange={(e) => setCreateFormData({ ...createFormData, lastName: e.target.value })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Phone Number</label>
+                  <input
+                    type="tel"
+                    required
+                    value={createFormData.phoneNumber}
+                    onChange={(e) => setCreateFormData({ ...createFormData, phoneNumber: e.target.value })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Street Address</label>
+                  <input
+                    type="text"
+                    required
+                    value={createFormData.address.street}
+                    onChange={(e) => setCreateFormData({
+                      ...createFormData,
+                      address: { ...createFormData.address, street: e.target.value }
+                    })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">City</label>
+                  <input
+                    type="text"
+                    required
+                    value={createFormData.address.city}
+                    onChange={(e) => setCreateFormData({
+                      ...createFormData,
+                      address: { ...createFormData.address, city: e.target.value }
+                    })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">County</label>
+                  <input
+                    type="text"
+                    required
+                    value={createFormData.address.county}
+                    onChange={(e) => setCreateFormData({
+                      ...createFormData,
+                      address: { ...createFormData.address, county: e.target.value }
+                    })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Postcode</label>
+                  <input
+                    type="text"
+                    required
+                    value={createFormData.address.postcode}
+                    onChange={(e) => setCreateFormData({
+                      ...createFormData,
+                      address: { ...createFormData.address, postcode: e.target.value }
+                    })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Admin Status</label>
+                  <select
+                    value={createFormData.isAdmin ? "true" : "false"}
+                    onChange={(e) => setCreateFormData({ ...createFormData, isAdmin: e.target.value === "true" })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                  >
+                    <option value="false">Regular User</option>
+                    <option value="true">Admin</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+                >
+                  Create User
                 </button>
               </div>
             </form>

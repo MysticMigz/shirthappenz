@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { FaUpload, FaTrash } from 'react-icons/fa';
 
 interface ProductFormData {
   name: string;
@@ -16,6 +17,17 @@ interface ProductFormData {
   featured: boolean;
   customizable: boolean;
   basePrice: number;
+  stock: { [size: string]: number };
+}
+
+interface FormErrors {
+  name?: string;
+  description?: string;
+  price?: string;
+  basePrice?: string;
+  category?: string;
+  sizes?: string;
+  images?: string;
 }
 
 export default function NewProduct() {
@@ -23,6 +35,9 @@ export default function NewProduct() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<FormErrors>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadedImages, setUploadedImages] = useState<Array<{ file: File; preview: string }>>([]);
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
     description: '',
@@ -33,7 +48,8 @@ export default function NewProduct() {
     colors: [],
     featured: false,
     customizable: true,
-    basePrice: 0
+    basePrice: 0,
+    stock: {}
   });
 
   // Redirect if not admin
@@ -43,12 +59,29 @@ export default function NewProduct() {
     }
   }, [session, status, router]);
 
+  // Cleanup previews on unmount
+  useEffect(() => {
+    return () => {
+      uploadedImages.forEach(image => URL.revokeObjectURL(image.preview));
+    };
+  }, [uploadedImages]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'number' ? parseFloat(value) : value
-    }));
+    
+    if (type === 'number') {
+      // Convert to number and ensure it's not NaN
+      const numValue = parseFloat(value);
+      setFormData(prev => ({
+        ...prev,
+        [name]: isNaN(numValue) ? 0 : numValue
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -83,42 +116,173 @@ export default function NewProduct() {
   };
 
   const handleSizeChange = (size: string) => {
+    setFormData(prev => {
+      const newSizes = prev.sizes.includes(size)
+        ? prev.sizes.filter(s => s !== size)
+        : [...prev.sizes, size].sort();
+
+      // Initialize or remove stock for the size
+      const newStock = { ...prev.stock };
+      if (newSizes.includes(size) && !newStock[size]) {
+        newStock[size] = 0;
+      } else if (!newSizes.includes(size)) {
+        delete newStock[size];
+      }
+
+      return {
+        ...prev,
+        sizes: newSizes,
+        stock: newStock
+      };
+    });
+  };
+
+  const handleStockChange = (size: string, value: string) => {
+    // Convert to number and handle invalid input
+    const quantity = Math.max(0, parseInt(value) || 0);
+    
     setFormData(prev => ({
       ...prev,
-      sizes: prev.sizes.includes(size)
-        ? prev.sizes.filter(s => s !== size)
-        : [...prev.sizes, size]
+      stock: {
+        ...prev.stock,
+        [size]: quantity
+      }
     }));
+  };
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const newImages = Array.from(e.target.files).map(file => ({
+        file,
+        preview: URL.createObjectURL(file)
+      }));
+      setUploadedImages(prev => [...prev, ...newImages]);
+    }
+  };
+
+  const handleImageRemove = (index: number) => {
+    setUploadedImages(prev => {
+      URL.revokeObjectURL(prev[index].preview);
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+
+  const validateForm = (): boolean => {
+    const errors: FormErrors = {};
+    let isValid = true;
+
+    if (!formData.name.trim()) {
+      errors.name = 'Product name is required';
+      isValid = false;
+    }
+
+    if (!formData.description.trim()) {
+      errors.description = 'Product description is required';
+      isValid = false;
+    }
+
+    if (!formData.price || formData.price <= 0) {
+      errors.price = 'Valid price is required';
+      isValid = false;
+    }
+
+    if (!formData.basePrice || formData.basePrice <= 0) {
+      errors.basePrice = 'Valid base price is required';
+      isValid = false;
+    }
+
+    if (!formData.category) {
+      errors.category = 'Please select a category';
+      isValid = false;
+    }
+
+    if (formData.sizes.length === 0) {
+      errors.sizes = 'Please select at least one size';
+      isValid = false;
+    }
+
+    if (uploadedImages.length === 0) {
+      errors.images = 'Please upload at least one image';
+      isValid = false;
+    }
+
+    setFieldErrors(errors);
+    return isValid;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    
+    setFieldErrors({});
+
+    if (!validateForm()) {
+      setLoading(false);
+      return;
+    }
+
     try {
+      // First, upload all images
+      const uploadedImageUrls = await Promise.all(
+        uploadedImages.map(async (image) => {
+          const formData = new FormData();
+          formData.append('file', image.file);
+
+          try {
+            const response = await fetch('/api/upload', {
+              method: 'POST',
+              body: formData,
+            });
+
+            if (!response.ok) {
+              const errorData = await response.json();
+              throw new Error(errorData.error || `Failed to upload ${image.file.name}`);
+            }
+
+            const data = await response.json();
+            return {
+              url: data.url,
+              alt: data.alt || image.file.name
+            };
+          } catch (error) {
+            throw new Error(`Failed to upload ${image.file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          }
+        })
+      );
+
+      // Then create the product with the image URLs and required fields
+      const productData = {
+        ...formData,
+        images: uploadedImageUrls,
+        stock: formData.stock, // Use the stock object directly
+        price: Number(formData.price),
+        basePrice: Number(formData.basePrice),
+        category: formData.category.toLowerCase() // Ensure category is lowercase
+      };
+
       const response = await fetch('/api/admin/products', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(productData)
       });
 
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.error || 'Failed to create product');
       }
-      
+
       router.push('/admin/products');
     } catch (err) {
+      console.error('Error:', err);
       setError(err instanceof Error ? err.message : 'Failed to create product');
     } finally {
       setLoading(false);
     }
   };
 
-  if (status === 'loading') {
+  if (status === 'loading' || loading) {
     return (
       <div className="min-h-screen bg-gray-100 p-8">
         <div className="max-w-7xl mx-auto">
@@ -155,10 +319,62 @@ export default function NewProduct() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Image Upload Section */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700 required-field">
+                Product Images
+              </label>
+              <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 ${
+                fieldErrors.images ? 'border border-red-300 rounded-lg p-4' : ''
+              }`}>
+                {uploadedImages.map((image, index) => (
+                  <div key={index} className="relative group">
+                    <div className="aspect-square relative rounded-lg overflow-hidden border border-gray-200">
+                      <Image
+                        src={image.preview}
+                        alt={`Preview ${index + 1}`}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleImageRemove(index)}
+                      className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <FaTrash size={12} />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="aspect-square flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg hover:border-purple-500 transition-colors"
+                >
+                  <div className="text-center">
+                    <FaUpload className="mx-auto h-8 w-8 text-gray-400" />
+                    <span className="mt-2 block text-sm font-medium text-gray-600">Add Image</span>
+                  </div>
+                </button>
+              </div>
+              {fieldErrors.images && (
+                <p className="mt-1 text-sm text-red-600">{fieldErrors.images}</p>
+              )}
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImageSelect}
+                accept="image/*"
+                multiple
+                className="hidden"
+              />
+              <p className="text-xs text-gray-500">Upload product images (PNG, JPG up to 5MB)</p>
+            </div>
+
             {/* Basic Information */}
             <div className="grid grid-cols-1 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 required-field">
                   Product Name
                 </label>
                 <input
@@ -166,13 +382,19 @@ export default function NewProduct() {
                   name="name"
                   value={formData.name}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  required
+                  className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${
+                    fieldErrors.name 
+                      ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
+                      : 'border-gray-300 focus:border-purple-500 focus:ring-purple-500'
+                  }`}
                 />
+                {fieldErrors.name && (
+                  <p className="mt-1 text-sm text-red-600">{fieldErrors.name}</p>
+                )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 required-field">
                   Description
                 </label>
                 <textarea
@@ -180,111 +402,174 @@ export default function NewProduct() {
                   value={formData.description}
                   onChange={handleInputChange}
                   rows={4}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  required
+                  className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${
+                    fieldErrors.description 
+                      ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
+                      : 'border-gray-300 focus:border-purple-500 focus:ring-purple-500'
+                  }`}
                 />
+                {fieldErrors.description && (
+                  <p className="mt-1 text-sm text-red-600">{fieldErrors.description}</p>
+                )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Price (£)
+                  <label className="block text-sm font-medium text-gray-700 required-field">
+                    Price
                   </label>
-                  <input
-                    type="number"
-                    name="price"
-                    value={formData.price}
-                    onChange={handleInputChange}
-                    step="0.01"
-                    min="0"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    required
-                  />
+                  <div className="mt-1 relative rounded-md shadow-sm">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <span className="text-gray-500 sm:text-sm">£</span>
+                    </div>
+                    <input
+                      type="number"
+                      name="price"
+                      value={formData.price}
+                      onChange={handleInputChange}
+                      min="0"
+                      step="0.01"
+                      className={`block w-full pl-7 rounded-md sm:text-sm ${
+                        fieldErrors.price 
+                          ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
+                          : 'border-gray-300 focus:border-purple-500 focus:ring-purple-500'
+                      }`}
+                    />
+                  </div>
+                  {fieldErrors.price && (
+                    <p className="mt-1 text-sm text-red-600">{fieldErrors.price}</p>
+                  )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Base Price for Customization (£)
+                  <label className="block text-sm font-medium text-gray-700 required-field">
+                    Base Price
                   </label>
-                  <input
-                    type="number"
-                    name="basePrice"
-                    value={formData.basePrice}
-                    onChange={handleInputChange}
-                    step="0.01"
-                    min="0"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    required
-                  />
+                  <div className="mt-1 relative rounded-md shadow-sm">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <span className="text-gray-500 sm:text-sm">£</span>
+                    </div>
+                    <input
+                      type="number"
+                      name="basePrice"
+                      value={formData.basePrice}
+                      onChange={handleInputChange}
+                      min="0"
+                      step="0.01"
+                      className={`block w-full pl-7 rounded-md sm:text-sm ${
+                        fieldErrors.basePrice 
+                          ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
+                          : 'border-gray-300 focus:border-purple-500 focus:ring-purple-500'
+                      }`}
+                    />
+                  </div>
+                  {fieldErrors.basePrice && (
+                    <p className="mt-1 text-sm text-red-600">{fieldErrors.basePrice}</p>
+                  )}
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 required-field">
                   Category
                 </label>
                 <select
                   name="category"
                   value={formData.category}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  required
+                  className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${
+                    fieldErrors.category 
+                      ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
+                      : 'border-gray-300 focus:border-purple-500 focus:ring-purple-500'
+                  }`}
                 >
                   <option value="">Select a category</option>
-                  <option value="t-shirts">T-Shirts</option>
+                  <option value="t-shirts">T-shirts</option>
                   <option value="hoodies">Hoodies</option>
                   <option value="sweatshirts">Sweatshirts</option>
+                  <option value="jerseys">Jerseys</option>
                   <option value="accessories">Accessories</option>
                 </select>
+                {fieldErrors.category && (
+                  <p className="mt-1 text-sm text-red-600">{fieldErrors.category}</p>
+                )}
               </div>
-            </div>
 
-            {/* Options */}
-            <div className="space-y-4">
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  name="featured"
-                  checked={formData.featured}
-                  onChange={handleCheckboxChange}
-                  className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
-                />
-                <label className="ml-2 text-sm text-gray-700">
-                  Featured Product
+              {/* Sizes and Stock */}
+              <div className="space-y-4">
+                <label className={`block text-sm font-medium text-gray-700 mb-4 required-field`}>
+                  Sizes and Stock
                 </label>
+                <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 ${
+                  fieldErrors.sizes ? 'border border-red-300 rounded-lg p-4' : ''
+                }`}>
+                  {['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'].map((size) => (
+                    <div 
+                      key={size} 
+                      className={`p-4 rounded-lg border ${
+                        formData.sizes.includes(size) 
+                          ? 'border-purple-300 bg-purple-50' 
+                          : 'border-gray-200'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <label className="inline-flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={formData.sizes.includes(size)}
+                            onChange={() => handleSizeChange(size)}
+                            className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                          />
+                          <span className="ml-2 font-medium">{size}</span>
+                        </label>
+                      </div>
+                      {formData.sizes.includes(size) && (
+                        <div className="mt-2">
+                          <div className="flex items-center">
+                            <input
+                              type="number"
+                              value={formData.stock[size]}
+                              onChange={(e) => handleStockChange(size, e.target.value)}
+                              min="0"
+                              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm"
+                              placeholder="Quantity"
+                            />
+                            <span className="ml-2 text-sm text-gray-500 whitespace-nowrap">in stock</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {fieldErrors.sizes && (
+                  <p className="mt-1 text-sm text-red-600">{fieldErrors.sizes}</p>
+                )}
               </div>
 
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  name="customizable"
-                  checked={formData.customizable}
-                  onChange={handleCheckboxChange}
-                  className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
-                />
-                <label className="ml-2 text-sm text-gray-700">
-                  Customizable Product
-                </label>
-              </div>
-            </div>
-
-            {/* Sizes */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Available Sizes
-              </label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                {['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'].map((size) => (
-                  <label key={size} className="flex items-center p-2 border rounded-lg cursor-pointer hover:bg-gray-50">
+              {/* Featured and Customizable */}
+              <div className="space-y-4">
+                <div className="flex flex-col space-y-4 sm:flex-row sm:space-y-0 sm:space-x-6">
+                  <label className="inline-flex items-center">
                     <input
                       type="checkbox"
-                      checked={formData.sizes.includes(size)}
-                      onChange={() => handleSizeChange(size)}
-                      className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                      name="featured"
+                      checked={formData.featured}
+                      onChange={handleCheckboxChange}
+                      className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                     />
-                    <span className="ml-2 text-sm text-gray-700">{size}</span>
+                    <span className="ml-2 text-sm text-gray-700">Featured Product</span>
                   </label>
-                ))}
+                  <label className="inline-flex items-center">
+                    <input
+                      type="checkbox"
+                      name="customizable"
+                      checked={formData.customizable}
+                      onChange={handleCheckboxChange}
+                      className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">Customizable Product</span>
+                  </label>
+                </div>
               </div>
             </div>
 
@@ -327,55 +612,6 @@ export default function NewProduct() {
                     </button>
                   </div>
                 ))}
-              </div>
-            </div>
-
-            {/* Images */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Product Images
-              </label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {formData.images.map((image, index) => (
-                  <div key={index} className="relative aspect-square">
-                    <Image
-                      src={image.url}
-                      alt={image.alt}
-                      width={200}
-                      height={200}
-                      className="w-full h-48 object-cover rounded"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFormData(prev => ({
-                          ...prev,
-                          images: prev.images.filter((_, i) => i !== index)
-                        }));
-                      }}
-                      className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 hover:bg-red-700"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => {
-                    // TODO: Implement image upload
-                    setFormData(prev => ({
-                      ...prev,
-                      images: [...prev.images, { url: '/placeholder.jpg', alt: 'New product image' }]
-                    }));
-                  }}
-                  className="aspect-square border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center hover:border-gray-400"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                </button>
               </div>
             </div>
 

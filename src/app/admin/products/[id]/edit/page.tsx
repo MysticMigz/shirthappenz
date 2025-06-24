@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { FaUpload, FaTrash } from 'react-icons/fa';
 
 interface ProductFormData {
   name: string;
@@ -16,13 +17,16 @@ interface ProductFormData {
   featured: boolean;
   customizable: boolean;
   basePrice: number;
+  stock: { [size: string]: number };
 }
 
 export default function EditProduct({ params }: { params: { id: string } }) {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadedImages, setUploadedImages] = useState<Array<{ file: File; preview: string }>>([]);
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
     description: '',
@@ -33,8 +37,16 @@ export default function EditProduct({ params }: { params: { id: string } }) {
     colors: [],
     featured: false,
     customizable: true,
-    basePrice: 0
+    basePrice: 0,
+    stock: {}
   });
+
+  // Cleanup previews on unmount
+  useEffect(() => {
+    return () => {
+      uploadedImages.forEach(image => URL.revokeObjectURL(image.preview));
+    };
+  }, [uploadedImages]);
 
   // Redirect if not admin
   useEffect(() => {
@@ -104,31 +116,121 @@ export default function EditProduct({ params }: { params: { id: string } }) {
   };
 
   const handleSizeChange = (size: string) => {
+    setFormData(prev => {
+      const newSizes = prev.sizes.includes(size)
+        ? prev.sizes.filter(s => s !== size)
+        : [...prev.sizes, size].sort();
+
+      // Initialize or remove stock for the size
+      const newStock = { ...prev.stock };
+      if (newSizes.includes(size) && !newStock[size]) {
+        newStock[size] = 0;
+      } else if (!newSizes.includes(size)) {
+        delete newStock[size];
+      }
+
+      return {
+        ...prev,
+        sizes: newSizes,
+        stock: newStock
+      };
+    });
+  };
+
+  const handleStockChange = (size: string, value: string) => {
+    // Convert to number and handle invalid input
+    const quantity = Math.max(0, parseInt(value) || 0);
+    
     setFormData(prev => ({
       ...prev,
-      sizes: prev.sizes.includes(size)
-        ? prev.sizes.filter(s => s !== size)
-        : [...prev.sizes, size]
+      stock: {
+        ...prev.stock,
+        [size]: quantity
+      }
     }));
+  };
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const newImages = Array.from(e.target.files).map(file => ({
+        file,
+        preview: URL.createObjectURL(file)
+      }));
+      setUploadedImages(prev => [...prev, ...newImages]);
+    }
+  };
+
+  const handleImageRemove = (index: number, isExisting: boolean = false) => {
+    if (isExisting) {
+      setFormData(prev => ({
+        ...prev,
+        images: prev.images.filter((_, i) => i !== index)
+      }));
+    } else {
+      setUploadedImages(prev => {
+        URL.revokeObjectURL(prev[index].preview);
+        return prev.filter((_, i) => i !== index);
+      });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    setLoading(true);
+    setError('');
+
     try {
+      // First, upload all new images
+      const uploadedImageUrls = await Promise.all(
+        uploadedImages.map(async (image) => {
+          const formData = new FormData();
+          formData.append('file', image.file);
+
+          const response = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData,
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to upload image');
+          }
+
+          const data = await response.json();
+          return {
+            url: data.url,
+            alt: image.file.name
+          };
+        })
+      );
+
+      // Combine existing and new images
+      const productData = {
+        ...formData,
+        images: [...formData.images, ...uploadedImageUrls],
+        stock: formData.stock,
+        price: Number(formData.price),
+        basePrice: Number(formData.basePrice),
+        category: formData.category.toLowerCase()
+      };
+
       const response = await fetch(`/api/admin/products/${params.id}`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(productData)
       });
 
-      if (!response.ok) throw new Error('Failed to update product');
-      
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to update product');
+      }
+
       router.push('/admin/products');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update product');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -248,6 +350,7 @@ export default function EditProduct({ params }: { params: { id: string } }) {
                   <option value="t-shirts">T-Shirts</option>
                   <option value="hoodies">Hoodies</option>
                   <option value="sweatshirts">Sweatshirts</option>
+                  <option value="jerseys">Jerseys</option>
                   <option value="accessories">Accessories</option>
                 </select>
               </div>
@@ -282,22 +385,48 @@ export default function EditProduct({ params }: { params: { id: string } }) {
               </div>
             </div>
 
-            {/* Sizes */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Available Sizes
+            {/* Sizes and Stock */}
+            <div className="space-y-4">
+              <label className="block text-sm font-medium text-gray-700 required-field">
+                Sizes and Stock
               </label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'].map((size) => (
-                  <label key={size} className="flex items-center p-2 border rounded-lg cursor-pointer hover:bg-gray-50">
-                    <input
-                      type="checkbox"
-                      checked={formData.sizes.includes(size)}
-                      onChange={() => handleSizeChange(size)}
-                      className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
-                    />
-                    <span className="ml-2 text-sm text-gray-700">{size}</span>
-                  </label>
+                  <div 
+                    key={size} 
+                    className={`p-4 rounded-lg border ${
+                      formData.sizes.includes(size) 
+                        ? 'border-purple-300 bg-purple-50' 
+                        : 'border-gray-200'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="inline-flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={formData.sizes.includes(size)}
+                          onChange={() => handleSizeChange(size)}
+                          className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                        />
+                        <span className="ml-2 font-medium">{size}</span>
+                      </label>
+                    </div>
+                    {formData.sizes.includes(size) && (
+                      <div className="mt-2">
+                        <div className="flex items-center">
+                          <input
+                            type="number"
+                            value={formData.stock[size] || 0}
+                            onChange={(e) => handleStockChange(size, e.target.value)}
+                            min="0"
+                            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm"
+                            placeholder="Quantity"
+                          />
+                          <span className="ml-2 text-sm text-gray-500 whitespace-nowrap">in stock</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>
@@ -344,52 +473,73 @@ export default function EditProduct({ params }: { params: { id: string } }) {
               </div>
             </div>
 
-            {/* Images */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Product Images
-              </label>
+            {/* Image Upload Section */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Product Images</label>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {/* Existing Images */}
                 {formData.images.map((image, index) => (
-                  <div key={index} className="relative aspect-square">
-                    <Image
-                      src={image.url}
-                      alt={image.alt}
-                      fill
-                      className="rounded-lg object-cover"
-                    />
+                  <div key={`existing-${index}`} className="relative group">
+                    <div className="aspect-square relative rounded-lg overflow-hidden border border-gray-200">
+                      <Image
+                        src={image.url}
+                        alt={image.alt}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
                     <button
                       type="button"
-                      onClick={() => {
-                        setFormData(prev => ({
-                          ...prev,
-                          images: prev.images.filter((_, i) => i !== index)
-                        }));
-                      }}
-                      className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-1 hover:bg-red-700"
+                      onClick={() => handleImageRemove(index, true)}
+                      className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                      </svg>
+                      <FaTrash size={12} />
                     </button>
                   </div>
                 ))}
+                
+                {/* New Images */}
+                {uploadedImages.map((image, index) => (
+                  <div key={`new-${index}`} className="relative group">
+                    <div className="aspect-square relative rounded-lg overflow-hidden border border-gray-200">
+                      <Image
+                        src={image.preview}
+                        alt={`Preview ${index + 1}`}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleImageRemove(index)}
+                      className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <FaTrash size={12} />
+                    </button>
+                  </div>
+                ))}
+
+                {/* Upload Button */}
                 <button
                   type="button"
-                  onClick={() => {
-                    // TODO: Implement image upload
-                    setFormData(prev => ({
-                      ...prev,
-                      images: [...prev.images, { url: '/placeholder.jpg', alt: 'New product image' }]
-                    }));
-                  }}
-                  className="aspect-square border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center hover:border-gray-400"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="aspect-square flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg hover:border-purple-500 transition-colors"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
+                  <div className="text-center">
+                    <FaUpload className="mx-auto h-8 w-8 text-gray-400" />
+                    <span className="mt-2 block text-sm font-medium text-gray-600">Add Image</span>
+                  </div>
                 </button>
               </div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImageSelect}
+                accept="image/*"
+                multiple
+                className="hidden"
+              />
+              <p className="text-xs text-gray-500">Upload product images (PNG, JPG up to 5MB)</p>
             </div>
 
             <div className="flex justify-end space-x-4 pt-6 border-t">

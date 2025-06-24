@@ -22,7 +22,10 @@ const productSchema = new mongoose.Schema({
   category: {
     type: String,
     required: [true, 'Product category is required'],
-    enum: ['t-shirts', 'hoodies', 'sweatshirts', 'accessories']
+    enum: {
+      values: ['t-shirts', 'hoodies', 'sweatshirts', 'jerseys', 'accessories'],
+      message: '{VALUE} is not a valid category'
+    }
   },
   sizes: [{
     type: String,
@@ -33,12 +36,19 @@ const productSchema = new mongoose.Schema({
     hexCode: String
   }],
   stock: {
-    type: Map,
-    of: {
-      type: Map,
-      of: Number // stock[color][size] = quantity
-    },
-    default: new Map()
+    type: Object,
+    default: {},
+    validate: {
+      validator: function(value: any) {
+        if (typeof value !== 'object' || value === null) {
+          return false;
+        }
+        return Object.values(value).every(qty => 
+          typeof qty === 'number' && qty >= 0 && Number.isInteger(qty)
+        );
+      },
+      message: 'Stock quantities must be non-negative integers'
+    }
   },
   featured: {
     type: Boolean,
@@ -68,18 +78,15 @@ const productSchema = new mongoose.Schema({
 productSchema.index({ name: 'text', description: 'text' });
 
 // Method to check stock availability
-productSchema.methods.checkStock = function(color: string, size: string, quantity: number) {
-  const available = this.stock.get(color)?.get(size) || 0;
+productSchema.methods.checkStock = function(size: string, quantity: number) {
+  const available = this.stock[size] || 0;
   return available >= quantity;
 };
 
 // Method to update stock
-productSchema.methods.updateStock = function(color: string, size: string, quantity: number) {
-  if (!this.stock.has(color)) {
-    this.stock.set(color, new Map());
-  }
-  const currentStock = this.stock.get(color).get(size) || 0;
-  this.stock.get(color).set(size, currentStock + quantity);
+productSchema.methods.updateStock = function(size: string, quantity: number) {
+  const currentStock = this.stock[size] || 0;
+  this.stock[size] = currentStock + quantity;
   return this.save();
 };
 

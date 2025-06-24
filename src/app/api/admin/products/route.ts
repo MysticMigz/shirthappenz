@@ -5,6 +5,20 @@ import { connectToDatabase } from '@/backend/utils/database';
 import Product from '@/backend/models/Product';
 import User from '@/backend/models/User';
 
+interface ProductData {
+  name: string;
+  description: string;
+  price: number;
+  basePrice: number;
+  category: string;
+  sizes: string[];
+  colors: Array<{ name: string; hexCode: string }>;
+  images: Array<{ url: string; alt: string }>;
+  stock: { [key: string]: number };
+  featured?: boolean;
+  customizable?: boolean;
+}
+
 // Get all products
 export async function GET(request: NextRequest) {
   try {
@@ -93,14 +107,56 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const data = await request.json();
-    const product = await Product.create(data);
+    const data = await request.json() as ProductData;
+
+    // Validate required fields
+    if (!data.name || !data.description || !data.price || !data.category || !data.basePrice) {
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
+
+    // Validate stock data
+    if (typeof data.stock !== 'object' || data.stock === null) {
+      return NextResponse.json(
+        { error: 'Invalid stock data format' },
+        { status: 400 }
+      );
+    }
+
+    // Ensure all stock quantities are non-negative integers
+    for (const [size, quantity] of Object.entries(data.stock)) {
+      if (!Number.isInteger(quantity) || quantity < 0) {
+        return NextResponse.json(
+          { error: `Invalid stock quantity for size ${size}. Must be a non-negative integer.` },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Create product with properly formatted data
+    const productData = {
+      name: data.name.trim(),
+      description: data.description.trim(),
+      price: Number(data.price),
+      basePrice: Number(data.basePrice),
+      category: data.category,
+      sizes: Array.isArray(data.sizes) ? data.sizes : [],
+      colors: Array.isArray(data.colors) ? data.colors : [],
+      images: Array.isArray(data.images) ? data.images : [],
+      stock: data.stock,
+      featured: Boolean(data.featured),
+      customizable: data.customizable ?? true
+    };
+
+    const product = await Product.create(productData);
     
     return NextResponse.json(product, { status: 201 });
   } catch (error) {
     console.error('Error creating product:', error);
     return NextResponse.json(
-      { error: 'Failed to create product' },
+      { error: error instanceof Error ? error.message : 'Failed to create product' },
       { status: 500 }
     );
   }

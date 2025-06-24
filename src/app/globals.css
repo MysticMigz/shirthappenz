@@ -14,3 +14,10 @@ body {
   font-family: var(--font-fredoka);
   font-weight: 600;
 }
+
+/* Required field indicator */
+.required-field::after {
+  content: "*";
+  color: #EF4444;
+  margin-left: 4px;
+}
