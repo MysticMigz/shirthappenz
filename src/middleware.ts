@@ -1,19 +1,20 @@
 import { NextResponse } from 'next/server';
+import { getToken } from 'next-auth/jwt';
 import type { NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest) {
-  // Get the pathname of the request (e.g. /admin, /admin/products)
-  const path = request.nextUrl.pathname;
-
-  // If it's an admin route but not the login page
-  if (path.startsWith('/admin') && path !== '/admin/login') {
-    const token = request.cookies.get('adminToken');
-
-    // Redirect to login if there is no token
+export async function middleware(request: NextRequest) {
+  const token = await getToken({ req: request });
+  
+  // Check if the path starts with /admin
+  if (request.nextUrl.pathname.startsWith('/admin')) {
     if (!token) {
-      const url = new URL('/admin/login', request.url);
-      url.searchParams.set('from', path);
-      return NextResponse.redirect(url);
+      // Not logged in, redirect to login page
+      return NextResponse.redirect(new URL('/auth/login', request.url));
+    }
+    
+    if (!token.isAdmin) {
+      // Logged in but not admin, redirect to home
+      return NextResponse.redirect(new URL('/', request.url));
     }
   }
 

@@ -46,10 +46,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               Orders
             </Link>
             <Link 
-              href="/admin/customers"
+              href="/admin/users"
               className="block px-4 py-2 text-gray-700 hover:bg-purple-50 hover:text-purple-700 rounded-lg"
             >
-              Customers
+              Users
             </Link>
           </nav>
         </aside>
