@@ -6,11 +6,13 @@ import Image from 'next/image';
 import { useUser } from '@/context/UserContext';
 import { useRouter } from 'next/navigation';
 import { signOut } from 'next-auth/react';
+import { useCart } from '@/context/CartContext';
 
 const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const { user, setUser } = useUser();
+  const { getTotal, getItemCount } = useCart();
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -132,11 +134,23 @@ const Header = () => {
                 </>
               )}
               
-              <Link href="/cart" className="flex items-center bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all">
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m1.6 8L5 3H3m4 10v6a1 1 0 001 1h8a1 1 0 001-1v-6M9 13h6" />
-                </svg>
-                £0.00 (0)
+              <Link 
+                href="/cart" 
+                className="group flex items-center bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all"
+              >
+                <div className="relative">
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m1.6 8L5 3H3m4 10v6a1 1 0 001 1h8a1 1 0 001-1v-6M9 13h6" />
+                  </svg>
+                  {getItemCount() > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                      {getItemCount()}
+                    </span>
+                  )}
+                </div>
+                <span className="group-hover:translate-x-1 transition-transform duration-200">
+                  £{getTotal().toFixed(2)} ({getItemCount()})
+                </span>
               </Link>
 
               {/* Mobile menu button */}

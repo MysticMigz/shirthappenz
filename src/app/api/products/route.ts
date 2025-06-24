@@ -1,14 +1,40 @@
-import { NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/mongodb';
+import { NextRequest, NextResponse } from 'next/server';
+import { connectToDatabase } from '@/backend/utils/database';
 import Product from '@/backend/models/Product';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     await connectToDatabase();
-    const products = await Product.find({}).sort({ createdAt: -1 });
-    return NextResponse.json(products);
+    
+    // Get query parameters
+    const { searchParams } = new URL(request.url);
+    const category = searchParams.get('category');
+    const featured = searchParams.get('featured') === 'true';
+    const search = searchParams.get('search');
+    
+    // Build query
+    const query: any = {};
+    if (category) {
+      query.category = category;
+    }
+    if (featured) {
+      query.featured = true;
+    }
+    if (search) {
+      query.$text = { $search: search };
+    }
+    
+    // Fetch products
+    const products = await Product.find(query)
+      .sort({ createdAt: -1 });
+    
+    return NextResponse.json({ products });
   } catch (error) {
-    return NextResponse.json({ error: 'Failed to fetch products' }, { status: 500 });
+    console.error('Error fetching products:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch products' },
+      { status: 500 }
+    );
   }
 }
 
