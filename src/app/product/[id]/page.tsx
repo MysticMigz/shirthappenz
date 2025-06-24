@@ -76,9 +76,9 @@ export default function ProductPage({ params }: { params: { id: string } }) {
 
   const getStockLevel = (size: string) => {
     const stock = product?.stock[size] || 0;
-    if (stock === 0) return 'Out of stock';
-    if (stock <= 5) return `Low stock: ${stock} left`;
-    return 'In stock';
+    if (stock === 0) return { message: 'Out of stock', type: 'error' };
+    if (stock <= 5) return { message: `Low stock: only ${stock} left`, type: 'warning' };
+    return { message: 'In stock', type: 'success' };
   };
 
   const addToCart = async () => {
@@ -202,29 +202,73 @@ export default function ProductPage({ params }: { params: { id: string } }) {
               <div className="mb-6">
                 <h3 className="text-sm font-medium text-gray-900 mb-2">Select Size</h3>
                 <div className="grid grid-cols-3 gap-2">
-                  {product.sizes.map((size) => (
-                    <button
-                      key={size}
-                      onClick={() => setSelectedSize(size)}
-                      disabled={isOutOfStock(size)}
-                      className={`
-                        py-2 px-4 text-sm font-medium rounded-md border
-                        ${selectedSize === size
-                          ? 'border-purple-600 bg-purple-50 text-purple-600'
-                          : isOutOfStock(size)
-                            ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
-                            : 'border-gray-200 hover:border-purple-600 text-gray-900'
-                        }
-                      `}
-                    >
-                      {size}
-                    </button>
-                  ))}
+                  {product.sizes.map((size) => {
+                    const stockStatus = getStockLevel(size);
+                    return (
+                      <div key={size} className="flex flex-col">
+                        <button
+                          onClick={() => setSelectedSize(size)}
+                          disabled={isOutOfStock(size)}
+                          className={`
+                            py-2 px-4 text-sm font-medium rounded-md border
+                            ${selectedSize === size
+                              ? 'border-purple-600 bg-purple-50 text-purple-600'
+                              : isOutOfStock(size)
+                                ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
+                                : 'border-gray-200 hover:border-purple-600 text-gray-900'
+                            }
+                          `}
+                        >
+                          {size}
+                        </button>
+                        {stockStatus.type !== 'success' && (
+                          <span className={`
+                            text-xs mt-1 text-center
+                            ${stockStatus.type === 'error' ? 'text-red-600' : 'text-orange-500'}
+                          `}>
+                            {stockStatus.message}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
                 {selectedSize && (
-                  <p className="mt-2 text-sm text-gray-500">
-                    {getStockLevel(selectedSize)}
-                  </p>
+                  <div className="mt-3">
+                    {(() => {
+                      const stockStatus = getStockLevel(selectedSize);
+                      return (
+                        <div className={`
+                          inline-flex items-center px-3 py-1 rounded-full text-sm
+                          ${stockStatus.type === 'error' 
+                            ? 'bg-red-100 text-red-800' 
+                            : stockStatus.type === 'warning'
+                              ? 'bg-orange-100 text-orange-800'
+                              : 'bg-green-100 text-green-800'
+                          }
+                        `}>
+                          <span className="mr-2">
+                            {stockStatus.type === 'error' && (
+                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                            {stockStatus.type === 'warning' && (
+                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                            {stockStatus.type === 'success' && (
+                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </span>
+                          {stockStatus.message}
+                        </div>
+                      );
+                    })()}
+                  </div>
                 )}
               </div>
 

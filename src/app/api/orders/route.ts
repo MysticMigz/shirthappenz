@@ -5,6 +5,7 @@ import { connectToDatabase } from '@/lib/mongodb';
 import Order from '@/backend/models/Order';
 import User from '@/backend/models/User';
 import Product from '@/backend/models/Product';
+import mongoose from 'mongoose';
 
 interface ProductImage {
   url: string;
@@ -32,6 +33,75 @@ interface OrderItem extends BaseOrderItem {
 interface TransformedOrderItem extends BaseOrderItem {
   productId: string;
   image: string | null;
+}
+
+interface OrderItemWithStock extends OrderItem {
+  currentStock?: number;
+}
+
+interface OrderItemDB {
+  productId: string;
+  name: string;
+  price: number;
+  quantity: number;
+  size: string;
+  color?: string;
+  image?: string;
+}
+
+// Helper function to update stock levels
+async function updateProductStock(productId: string, size: string, quantity: number): Promise<boolean> {
+  try {
+    // Convert string ID to ObjectId if needed
+    const _id = typeof productId === 'string' ? new mongoose.Types.ObjectId(productId) : productId;
+
+    // For decreasing stock (quantity is negative), check if we have enough
+    if (quantity < 0) {
+      const product = await Product.findById(_id);
+      if (!product) {
+        console.error(`Product not found: ${productId}`);
+        return false;
+      }
+
+      const available = product.stock[size] || 0;
+      if (available < Math.abs(quantity)) {
+        console.error(`Insufficient stock for product ${productId}, size ${size}`);
+        return false;
+      }
+    }
+
+    // Use $inc for atomic update
+    const updateQuery = {
+      $inc: {
+        [`stock.${size}`]: quantity
+      }
+    };
+
+    // Add a condition to prevent stock from going below 0
+    const options = {
+      new: true,
+      runValidators: true
+    };
+
+    const product = await Product.findOneAndUpdate(
+      {
+        _id,
+        [`stock.${size}`]: { $gte: Math.abs(quantity) }
+      },
+      updateQuery,
+      options
+    );
+
+    if (!product) {
+      console.error(`Failed to update stock for product ${productId}, size ${size}`);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error(`Error updating stock for product ${productId}:`, error);
+    return false;
+  }
 }
 
 export async function GET() {
@@ -124,18 +194,28 @@ export async function POST(request: Request) {
     }
 
     // Connect to database
-    try {
-      await connectToDatabase();
-    } catch (error) {
-      console.error('Database connection error:', error);
-      return NextResponse.json(
-        { error: 'Database connection failed' },
-        { status: 500 }
-      );
-    }
+    await connectToDatabase();
 
-    // Fetch product images for each item
-    const itemsWithImages = await Promise.all(items.map(async (item: any) => {
+    // Fetch products and validate stock before proceeding
+    const stockValidation = await Promise.all(items.map(async (item: any) => {
+      const product = await Product.findById(item.productId);
+      if (!product) {
+        throw new Error(`Product not found: ${item.productId}`);
+      }
+      
+      const available = product.stock[item.size] || 0;
+      if (available < item.quantity) {
+        throw new Error(`Insufficient stock for ${product.name} (${item.size}): requested ${item.quantity}, available ${available}`);
+      }
+      
+      return {
+        ...item,
+        currentStock: available
+      };
+    }));
+
+    // Fetch product images
+    const itemsWithImages = await Promise.all(stockValidation.map(async (item: any) => {
       try {
         const product = await Product.findById(item.productId).select('images');
         return {
@@ -186,17 +266,16 @@ export async function POST(request: Request) {
 
     while (attempts < maxAttempts) {
       try {
-        // Generate reference based on attempt number
         const reference = attempts === 0 ? 
           await generateReference() : 
           generateRandomReference();
 
-        // Create a new order instance
+        // Create the order first
         order = new Order({
           userId: session.user.email,
           reference,
           items: itemsWithImages.map((item: any) => ({
-            productId: item.productId,
+            productId: new mongoose.Types.ObjectId(item.productId),  // Ensure ObjectId
             name: item.name,
             price: item.price,
             quantity: item.quantity,
@@ -221,10 +300,22 @@ export async function POST(request: Request) {
           createdAt: new Date(),
         });
 
-        // Save the order and wait for it to complete
+        // Save the order
         await order.save();
 
-        // If we get here, the save was successful
+        // Update stock levels for all items
+        const stockUpdates = await Promise.all(
+          order.items.map((item: OrderItemDB) =>
+            updateProductStock(item.productId.toString(), item.size, -item.quantity)
+          )
+        );
+
+        // If any stock update failed, throw error to trigger rollback
+        if (stockUpdates.includes(false)) {
+          await Order.findByIdAndDelete(order._id); // Rollback the order
+          throw new Error('Failed to update stock levels');
+        }
+
         break;
       } catch (error) {
         if (error instanceof Error && 
@@ -274,10 +365,70 @@ export async function POST(request: Request) {
       reference: order.reference
     });
   } catch (error) {
-    // Log the full error for debugging
-    console.error('Unexpected error in order creation:', error);
+    console.error('Order creation error:', error);
     return NextResponse.json(
-      { error: 'An unexpected error occurred' },
+      { error: error instanceof Error ? error.message : 'Failed to create order' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    // ... existing authentication and admin validation ...
+
+    const data = await request.json();
+    
+    // If the order is being cancelled, we need to restore stock
+    if (data.status === 'cancelled') {
+      const existingOrder = await Order.findById(params.id);
+      if (!existingOrder) {
+        return NextResponse.json(
+          { error: 'Order not found' },
+          { status: 404 }
+        );
+      }
+
+      // Only restore stock if the order was not already cancelled
+      if (existingOrder.status !== 'cancelled') {
+        // Restore stock for all items
+        const stockUpdates = await Promise.all(
+          existingOrder.items.map((item: OrderItemDB) =>
+            updateProductStock(item.productId, item.size, item.quantity)
+          )
+        );
+
+        // If any stock update failed, return error
+        if (stockUpdates.includes(false)) {
+          return NextResponse.json(
+            { error: 'Failed to restore stock levels' },
+            { status: 500 }
+          );
+        }
+      }
+    }
+
+    const order = await Order.findByIdAndUpdate(
+      params.id,
+      { $set: data },
+      { new: true }
+    ).populate('items.product');
+
+    if (!order) {
+      return NextResponse.json(
+        { error: 'Order not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(order);
+  } catch (error) {
+    console.error('Update order error:', error);
+    return NextResponse.json(
+      { error: 'Failed to update order' },
       { status: 500 }
     );
   }
