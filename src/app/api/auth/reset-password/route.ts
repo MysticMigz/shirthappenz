@@ -1,9 +1,19 @@
 import { NextResponse } from 'next/server';
+// Temporarily disabled reset password functionality
+/*
 import { connectToDatabase } from '@/lib/mongodb';
 import User from '@/backend/models/User';
 import bcrypt from 'bcryptjs';
+*/
 
 export async function POST(req: Request) {
+  // Return a message indicating the feature is temporarily disabled
+  return NextResponse.json(
+    { message: 'Password reset functionality is temporarily disabled. Please contact an administrator for assistance.' },
+    { status: 503 }
+  );
+
+  /* Temporarily disabled reset password functionality
   try {
     const { token, password } = await req.json();
 
@@ -48,4 +58,5 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
+  */
 } 

@@ -1,10 +1,20 @@
 import { NextResponse } from 'next/server';
+// Temporarily disabled forgot password functionality
+/*
 import { connectToDatabase } from '@/lib/mongodb';
 import User from '@/backend/models/User';
 import crypto from 'crypto';
 import { sendEmail } from '@/lib/email';
+*/
 
 export async function POST(req: Request) {
+  // Return a message indicating the feature is temporarily disabled
+  return NextResponse.json(
+    { message: 'Password reset functionality is temporarily disabled. Please contact an administrator for assistance.' },
+    { status: 503 }
+  );
+
+  /* Temporarily disabled forgot password functionality
   try {
     const { email } = await req.json();
 
@@ -60,4 +70,5 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
+  */
 } 

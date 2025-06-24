@@ -1,25 +1,19 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '../[...nextauth]/route';
 import { connectToDatabase } from '@/lib/mongodb';
 import User from '@/backend/models/User';
-import { verifyToken } from '@/backend/utils/auth';
-import { cookies } from 'next/headers';
 
 export async function GET() {
   try {
-    const cookieStore = cookies();
-    const token = cookieStore.get('auth_token')?.value;
+    const session = await getServerSession(authOptions);
 
-    if (!token) {
-      return NextResponse.json({ user: null });
-    }
-
-    const decoded = verifyToken(token);
-    if (!decoded || typeof decoded === 'string') {
+    if (!session?.user?.email) {
       return NextResponse.json({ user: null });
     }
 
     await connectToDatabase();
-    const user = await User.findById(decoded.userId);
+    const user = await User.findOne({ email: session.user.email });
 
     if (!user) {
       return NextResponse.json({ user: null });
@@ -31,7 +25,8 @@ export async function GET() {
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
-      role: user.role
+      role: user.role,
+      isAdmin: user.isAdmin
     };
 
     return NextResponse.json({ user: userData });

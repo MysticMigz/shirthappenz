@@ -68,7 +68,15 @@ export default function RegisterPage() {
           firstName: formData.firstName,
           lastName: formData.lastName,
           email: formData.email,
-          password: formData.password
+          password: formData.password,
+          phoneNumber: formData.phoneNumber,
+          address: {
+            street: formData.address.street,
+            city: formData.address.city,
+            county: formData.address.county,
+            postcode: formData.address.postcode,
+            country: formData.address.country
+          }
         }),
       });
 

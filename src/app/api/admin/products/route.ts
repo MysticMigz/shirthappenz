@@ -1,16 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { connectToDatabase } from '@/backend/utils/database';
-import { requireAdmin } from '@/backend/utils/auth';
 import Product from '@/backend/models/Product';
+import User from '@/backend/models/User';
 
 // Get all products
 export async function GET(request: NextRequest) {
   try {
-    // Check admin authorization
-    const admin = await requireAdmin(request);
-    if (admin instanceof NextResponse) return admin;
+    // Check authentication and admin status
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
 
     await connectToDatabase();
+    
+    // Verify admin status
+    const user = await User.findOne({ email: session.user.email });
+    if (!user?.isAdmin) {
+      return NextResponse.json(
+        { error: 'Admin access required' },
+        { status: 403 }
+      );
+    }
     
     // Get query parameters
     const { searchParams } = new URL(request.url);
@@ -57,28 +73,28 @@ export async function GET(request: NextRequest) {
 // Create new product
 export async function POST(request: NextRequest) {
   try {
-    // Check admin authorization
-    const admin = await requireAdmin(request);
-    if (admin instanceof NextResponse) return admin;
+    // Check authentication and admin status
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
 
     await connectToDatabase();
     
-    const data = await request.json();
-    
-    // Validate required fields
-    const requiredFields = ['name', 'description', 'price', 'category', 'basePrice'];
-    const missingFields = requiredFields.filter(field => !data[field]);
-    
-    if (missingFields.length > 0) {
+    // Verify admin status
+    const user = await User.findOne({ email: session.user.email });
+    if (!user?.isAdmin) {
       return NextResponse.json(
-        { error: `Missing required fields: ${missingFields.join(', ')}` },
-        { status: 400 }
+        { error: 'Admin access required' },
+        { status: 403 }
       );
     }
-    
-    // Create new product
-    const product = new Product(data);
-    await product.save();
+
+    const data = await request.json();
+    const product = await Product.create(data);
     
     return NextResponse.json(product, { status: 201 });
   } catch (error) {

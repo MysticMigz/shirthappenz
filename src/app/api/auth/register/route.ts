@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import User from '@/backend/models/User';
-import { generateToken, setAuthCookie } from '@/backend/utils/auth';
 
 export async function POST(request: Request) {
   try {
@@ -29,7 +28,7 @@ export async function POST(request: Request) {
     // Create new user
     const user = await User.create({
       email: data.email,
-      password: data.password,
+      password: data.password, // Will be hashed by the User model pre-save hook
       firstName: data.firstName,
       lastName: data.lastName,
       phoneNumber: data.phoneNumber,
@@ -42,12 +41,6 @@ export async function POST(request: Request) {
       },
       isAdmin: false // Default value for new registrations
     });
-
-    // Generate token
-    const token = generateToken(user);
-    
-    // Set auth cookie
-    setAuthCookie(token);
 
     // Return user data (excluding password)
     const userData = {

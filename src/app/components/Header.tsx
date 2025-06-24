@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useUser } from '@/context/UserContext';
 import { useRouter } from 'next/navigation';
+import { signOut } from 'next-auth/react';
 
 const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -14,14 +15,9 @@ const Header = () => {
 
   const handleLogout = async () => {
     try {
-      const response = await fetch('/api/auth/logout', {
-        method: 'POST',
-      });
-
-      if (response.ok) {
-        setUser(null);
-        router.push('/');
-      }
+      await signOut({ redirect: false });
+      setUser(null);
+      router.push('/');
     } catch (error) {
       console.error('Logout failed:', error);
     }
@@ -102,9 +98,9 @@ const Header = () => {
                       >
                         My Orders
                       </Link>
-                      {user.role === 'admin' && (
+                      {user.isAdmin && (
                         <Link
-                          href="/admin"
+                          href="/admin/dashboard"
                           className="block px-4 py-2 text-gray-700 hover:bg-purple-50 hover:text-purple-600"
                         >
                           Admin Dashboard
@@ -199,8 +195,8 @@ const Header = () => {
                   <div className="text-purple-600 font-medium">Welcome, {user.firstName}!</div>
                   <Link href="/profile" className="block text-gray-700 hover:text-purple-600 font-medium">My Profile</Link>
                   <Link href="/orders" className="block text-gray-700 hover:text-purple-600 font-medium">My Orders</Link>
-                  {user.role === 'admin' && (
-                    <Link href="/admin" className="block text-gray-700 hover:text-purple-600 font-medium">Admin Dashboard</Link>
+                  {user.isAdmin && (
+                    <Link href="/admin/dashboard" className="block text-gray-700 hover:text-purple-600 font-medium">Admin Dashboard</Link>
                   )}
                   <button
                     onClick={handleLogout}
