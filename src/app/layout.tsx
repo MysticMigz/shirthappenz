@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Fredoka } from "next/font/google";
+import { UserProvider } from "@/context/UserContext";
 import "./globals.css";
 
 const inter = Inter({
@@ -16,8 +17,8 @@ const fredoka = Fredoka({
 
 export const metadata: Metadata = {
   title: "ShirtHappenZ - Custom T-Shirt Printing & Design Online",
-  description: "Design and order custom t-shirts, hoodies, and apparel online. Fast turnaround, no minimum order. DTG, screen printing, and embroidery services.",
-  keywords: "custom t-shirts, t-shirt printing, online design, custom apparel, DTG printing, screen printing, embroidery",
+  description: "Design and order custom t-shirts, hoodies, and apparel online. Fast turnaround, no minimum order. Featuring DTF and sublimation printing services.",
+  keywords: "custom t-shirts, t-shirt printing, online design, custom apparel, DTF printing, sublimation printing, digital printing",
 };
 
 export default function RootLayout({
@@ -30,7 +31,9 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${fredoka.variable} font-sans antialiased bg-white`}
       >
-        {children}
+        <UserProvider>
+          {children}
+        </UserProvider>
       </body>
     </html>
   );

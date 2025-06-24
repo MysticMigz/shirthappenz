@@ -1,15 +1,15 @@
 import { NextResponse } from 'next/server';
-import dbConnect from '@/lib/mongodb';
+import { connectToDatabase } from '@/lib/mongodb';
 import User from '@/backend/models/User';
 import { generateToken, setAuthCookie } from '@/backend/utils/auth';
 
 export async function POST(request: Request) {
   try {
-    await dbConnect();
+    await connectToDatabase();
     const { email, password } = await request.json();
 
     // Find user
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).select('+password');
     if (!user) {
       return NextResponse.json(
         { error: 'Invalid credentials' },

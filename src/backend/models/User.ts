@@ -8,6 +8,8 @@ export interface IUser {
   firstName: string;
   lastName: string;
   role: 'user' | 'admin';
+  resetPasswordToken?: string;
+  resetPasswordExpiry?: Date;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -26,7 +28,8 @@ const userSchema = new mongoose.Schema<IUser>(
     password: {
       type: String,
       required: [true, 'Please provide a password'],
-      minlength: [8, 'Password must be at least 8 characters long']
+      minlength: [8, 'Password must be at least 8 characters long'],
+      select: false
     },
     firstName: {
       type: String,
@@ -42,7 +45,9 @@ const userSchema = new mongoose.Schema<IUser>(
       type: String,
       enum: ['user', 'admin'],
       default: 'user'
-    }
+    },
+    resetPasswordToken: String,
+    resetPasswordExpiry: Date
   },
   {
     timestamps: true

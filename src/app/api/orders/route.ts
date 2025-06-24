@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import dbConnect from '@/lib/mongodb';
+import { connectToDatabase } from '@/lib/mongodb';
 import Order from '@/backend/models/Order';
 import { requireAuth } from '@/backend/utils/auth';
 
@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
     const user = await requireAuth(request);
     if (user instanceof NextResponse) return user;
 
-    await dbConnect();
+    await connectToDatabase();
     const data = await request.json();
 
     // Create order with user ID
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     const user = await requireAuth(request);
     if (user instanceof NextResponse) return user;
 
-    await dbConnect();
+    await connectToDatabase();
 
     // Get user's orders
     const orders = await Order.find({ user: user.id })

@@ -128,20 +128,6 @@ const FeaturesSection = () => {
                   vibrant, durable prints at great bulk pricing.
                 </p>
               </div>
-              <div className="border border-gray-200 rounded-lg p-4 hover:border-purple-300 transition-colors">
-                <h4 className="text-lg font-semibold text-purple-600 mb-2">3D Puff Print</h4>
-                <p className="text-gray-600">
-                  Create bold, raised designs with our 3D puff printing technology. 
-                  Available in metallic finishes and various colors.
-                </p>
-              </div>
-              <div className="border border-gray-200 rounded-lg p-4 hover:border-purple-300 transition-colors">
-                <h4 className="text-lg font-semibold text-purple-600 mb-2">Embroidery</h4>
-                <p className="text-gray-600">
-                  Professional embroidery services for a premium, lasting finish on 
-                  your custom apparel and accessories.
-                </p>
-              </div>
             </div>
           </div>
         </div>
@@ -165,6 +151,41 @@ const FeaturesSection = () => {
             >
               Browse Products
             </Link>
+          </div>
+        </div>
+
+        <div className="text-center mb-8">
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">
+            Our Services
+          </h2>
+          <p className="text-gray-600">DTF & Sublimation printing for all your custom apparel needs</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8">
+          {/* DTF Printing */}
+          <div className="bg-white p-6 rounded-lg shadow-lg hover:shadow-xl transition-shadow">
+            <div className="flex items-center justify-center w-12 h-12 bg-purple-100 rounded-lg mb-4">
+              <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              </svg>
+            </div>
+            <h4 className="text-lg font-semibold text-purple-600 mb-2">DTF Printing</h4>
+            <p className="text-gray-600">
+              Direct-to-Film printing technology for vibrant, durable, and high-quality transfers that work on various fabrics and colors.
+            </p>
+          </div>
+
+          {/* Sublimation Printing */}
+          <div className="bg-white p-6 rounded-lg shadow-lg hover:shadow-xl transition-shadow">
+            <div className="flex items-center justify-center w-12 h-12 bg-purple-100 rounded-lg mb-4">
+              <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+              </svg>
+            </div>
+            <h4 className="text-lg font-semibold text-purple-600 mb-2">Sublimation</h4>
+            <p className="text-gray-600">
+              Full-color, edge-to-edge printing that becomes part of the fabric, perfect for all-over prints and vibrant designs on light-colored polyester garments.
+            </p>
           </div>
         </div>
       </div>

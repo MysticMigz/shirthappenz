@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { IProduct } from '@/models/Product';
+import { IProduct } from '@/backend/models/Product';
 
 export default function ProductsPage() {
   const [showAddForm, setShowAddForm] = useState(false);

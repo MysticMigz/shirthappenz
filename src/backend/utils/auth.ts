@@ -6,80 +6,82 @@ import { IUser } from '../models/User';
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 const JWT_EXPIRES_IN = '7d';
 
-export function generateToken(user: IUser) {
+interface JwtPayload {
+  userId: string;
+  email: string;
+  role: string;
+}
+
+export function generateToken(user: IUser): string {
   return jwt.sign(
-    { 
-      id: user._id,
-      email: user.email,
-      role: user.role 
-    },
+    { userId: user._id, email: user.email, role: user.role },
     JWT_SECRET,
-    { expiresIn: JWT_EXPIRES_IN }
+    { expiresIn: '7d' }
   );
 }
 
-export function setAuthCookie(token: string) {
-  cookies().set('auth-token', token, {
+export function verifyToken(token: string): JwtPayload | string {
+  try {
+    return jwt.verify(token, JWT_SECRET) as JwtPayload;
+  } catch (error) {
+    return 'Invalid token';
+  }
+}
+
+export function setAuthCookie(token: string): void {
+  cookies().set('auth_token', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: 'lax',
     maxAge: 7 * 24 * 60 * 60, // 7 days
-    path: '/'
+    path: '/',
   });
 }
 
+export function clearAuthCookie(): void {
+  cookies().delete('auth_token');
+}
+
 export function getAuthToken(request: NextRequest) {
-  return request.cookies.get('auth-token')?.value;
+  return request.cookies.get('auth_token')?.value;
 }
 
 export async function verifyAuth(request: NextRequest) {
-  try {
-    const token = getAuthToken(request);
-    if (!token) {
-      return null;
-    }
+  const cookieStore = cookies();
+  const token = cookieStore.get('auth_token')?.value;
 
-    const decoded = jwt.verify(token, JWT_SECRET) as {
-      id: string;
-      email: string;
-      role: string;
-    };
-
-    return decoded;
-  } catch (error) {
+  if (!token) {
     return null;
   }
+
+  const decoded = verifyToken(token);
+  if (!decoded || typeof decoded === 'string') {
+    return null;
+  }
+
+  return decoded;
 }
 
 export async function requireAuth(request: NextRequest) {
-  const user = await verifyAuth(request);
+  const decoded = await verifyAuth(request);
   
-  if (!user) {
-    return NextResponse.json(
-      { error: 'Authentication required' },
-      { status: 401 }
-    );
+  if (!decoded) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  return user;
+  return decoded;
 }
 
 export async function requireAdmin(request: NextRequest) {
-  const user = await verifyAuth(request);
+  const decoded = await requireAuth(request);
   
-  if (!user) {
-    return NextResponse.json(
-      { error: 'Authentication required' },
-      { status: 401 }
-    );
+  if (decoded instanceof NextResponse) {
+    return decoded;
   }
 
-  if (user.role !== 'admin') {
-    return NextResponse.json(
-      { error: 'Admin access required' },
-      { status: 403 }
-    );
+  if (decoded.role !== 'admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  return user;
+  return decoded;
 } 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import dbConnect from '@/lib/mongodb';
+import { connectToDatabase } from '@/lib/mongodb';
 import Order from '@/backend/models/Order';
 import { requireAuth, requireAdmin } from '@/backend/utils/auth';
 
@@ -11,7 +11,7 @@ export async function GET(
     const user = await requireAuth(request);
     if (user instanceof NextResponse) return user;
 
-    await dbConnect();
+    await connectToDatabase();
 
     const order = await Order.findById(params.id).populate('items.product');
     
@@ -48,7 +48,7 @@ export async function PUT(
     const admin = await requireAdmin(request);
     if (admin instanceof NextResponse) return admin;
 
-    await dbConnect();
+    await connectToDatabase();
     const data = await request.json();
 
     const order = await Order.findByIdAndUpdate(
@@ -82,7 +82,7 @@ export async function DELETE(
     const admin = await requireAdmin(request);
     if (admin instanceof NextResponse) return admin;
 
-    await dbConnect();
+    await connectToDatabase();
 
     const order = await Order.findByIdAndDelete(params.id);
     

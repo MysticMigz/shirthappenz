@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import dbConnect from '@/lib/mongodb';
-import Product from '@/models/Product';
+import { connectToDatabase } from '@/lib/mongodb';
+import Product from '@/backend/models/Product';
 
 export async function GET() {
   try {
-    await dbConnect();
+    await connectToDatabase();
     const products = await Product.find({}).sort({ createdAt: -1 });
     return NextResponse.json(products);
   } catch (error) {
@@ -14,7 +14,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    await dbConnect();
+    await connectToDatabase();
     const data = await request.json();
     const product = await Product.create(data);
     return NextResponse.json(product, { status: 201 });
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    await dbConnect();
+    await connectToDatabase();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     

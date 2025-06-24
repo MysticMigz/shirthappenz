@@ -1,12 +1,10 @@
 import mongoose from 'mongoose';
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/shirthappenz';
-
-if (!MONGODB_URI) {
-  throw new Error(
-    'Please define the MONGODB_URI environment variable inside .env.local'
-  );
+if (!process.env.MONGODB_URI) {
+  throw new Error('Please add your MongoDB URI to .env.local');
 }
+
+const MONGODB_URI = process.env.MONGODB_URI;
 
 interface MongooseCache {
   conn: typeof mongoose | null;
@@ -14,16 +12,16 @@ interface MongooseCache {
 }
 
 declare global {
-  var mongoose: { conn: null | typeof mongoose; promise: null | Promise<typeof mongoose> };
+  var mongoose: MongooseCache | undefined;
 }
 
-let cached: MongooseCache = global.mongoose || { conn: null, promise: null };
+let cached = global.mongoose || { conn: null, promise: null };
 
-if (!global.mongoose) {
-  global.mongoose = { conn: null, promise: null };
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null };
 }
 
-async function dbConnect() {
+export async function connectToDatabase() {
   if (cached.conn) {
     return cached.conn;
   }
@@ -46,6 +44,4 @@ async function dbConnect() {
   }
 
   return cached.conn;
-}
-
-export default dbConnect; 
+} 

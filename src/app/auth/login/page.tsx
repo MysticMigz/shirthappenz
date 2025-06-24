@@ -4,9 +4,11 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useUser } from '@/context/UserContext';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { setUser } = useUser();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -42,7 +44,10 @@ export default function LoginPage() {
         throw new Error(data.error || 'Login failed');
       }
 
-      // Redirect to home page or dashboard
+      // Set user in context
+      setUser(data);
+      
+      // Redirect to home page
       router.push('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');

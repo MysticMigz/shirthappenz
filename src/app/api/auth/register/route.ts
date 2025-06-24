@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import dbConnect from '@/lib/mongodb';
+import { connectToDatabase } from '@/lib/mongodb';
 import User from '@/backend/models/User';
 import { generateToken, setAuthCookie } from '@/backend/utils/auth';
 
 export async function POST(request: Request) {
   try {
-    await dbConnect();
+    await connectToDatabase();
     const data = await request.json();
 
     // Check if user already exists

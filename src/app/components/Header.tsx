@@ -3,9 +3,29 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useUser } from '@/context/UserContext';
+import { useRouter } from 'next/navigation';
 
 const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const { user, setUser } = useUser();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    try {
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+      });
+
+      if (response.ok) {
+        setUser(null);
+        router.push('/');
+      }
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
 
   return (
     <>
@@ -53,18 +73,69 @@ const Header = () => {
 
             {/* Auth and Cart */}
             <div className="flex items-center space-x-4">
-              <Link 
-                href="/auth/register" 
-                className="hidden md:inline-flex items-center px-4 py-2 border border-purple-600 text-purple-600 rounded-lg hover:bg-purple-50 transition-colors"
-              >
-                Register
-              </Link>
-              <Link 
-                href="/auth/login" 
-                className="hidden md:inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-              >
-                Login
-              </Link>
+              {user ? (
+                <div className="relative">
+                  <button
+                    onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                    className="flex items-center space-x-2 text-gray-700 hover:text-purple-600"
+                  >
+                    <span className="hidden md:inline-block font-medium">
+                      Welcome, {user.firstName}
+                    </span>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  {/* User dropdown menu */}
+                  {isUserMenuOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-50">
+                      <Link
+                        href="/profile"
+                        className="block px-4 py-2 text-gray-700 hover:bg-purple-50 hover:text-purple-600"
+                      >
+                        My Profile
+                      </Link>
+                      <Link
+                        href="/orders"
+                        className="block px-4 py-2 text-gray-700 hover:bg-purple-50 hover:text-purple-600"
+                      >
+                        My Orders
+                      </Link>
+                      {user.role === 'admin' && (
+                        <Link
+                          href="/admin"
+                          className="block px-4 py-2 text-gray-700 hover:bg-purple-50 hover:text-purple-600"
+                        >
+                          Admin Dashboard
+                        </Link>
+                      )}
+                      <button
+                        onClick={handleLogout}
+                        className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-purple-50 hover:text-purple-600"
+                      >
+                        Logout
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <Link 
+                    href="/auth/register" 
+                    className="hidden md:inline-flex items-center px-4 py-2 border border-purple-600 text-purple-600 rounded-lg hover:bg-purple-50 transition-colors"
+                  >
+                    Register
+                  </Link>
+                  <Link 
+                    href="/auth/login" 
+                    className="hidden md:inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                  >
+                    Login
+                  </Link>
+                </>
+              )}
+              
               <Link href="/cart" className="flex items-center bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all">
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m1.6 8L5 3H3m4 10v6a1 1 0 001 1h8a1 1 0 001-1v-6M9 13h6" />
@@ -84,7 +155,7 @@ const Header = () => {
             </div>
           </div>
 
-          {/* Simple Navigation menu */}
+          {/* Navigation menu */}
           <nav className="hidden md:block border-t border-gray-200">
             <div className="flex items-center space-x-8 py-4">
               <Link href="/" className="text-gray-700 hover:text-purple-600 font-medium">
@@ -123,8 +194,27 @@ const Header = () => {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 />
               </div>
-              <Link href="/auth/register" className="block text-purple-600 hover:text-purple-700 font-medium">Register</Link>
-              <Link href="/auth/login" className="block text-purple-600 hover:text-purple-700 font-medium">Login</Link>
+              {user ? (
+                <>
+                  <div className="text-purple-600 font-medium">Welcome, {user.firstName}!</div>
+                  <Link href="/profile" className="block text-gray-700 hover:text-purple-600 font-medium">My Profile</Link>
+                  <Link href="/orders" className="block text-gray-700 hover:text-purple-600 font-medium">My Orders</Link>
+                  {user.role === 'admin' && (
+                    <Link href="/admin" className="block text-gray-700 hover:text-purple-600 font-medium">Admin Dashboard</Link>
+                  )}
+                  <button
+                    onClick={handleLogout}
+                    className="block text-gray-700 hover:text-purple-600 font-medium"
+                  >
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link href="/auth/register" className="block text-purple-600 hover:text-purple-700 font-medium">Register</Link>
+                  <Link href="/auth/login" className="block text-purple-600 hover:text-purple-700 font-medium">Login</Link>
+                </>
+              )}
               <Link href="/" className="block text-gray-700 hover:text-purple-600 font-medium">Home</Link>
               <Link href="/design" className="block text-gray-700 hover:text-purple-600 font-medium">Design Online</Link>
               <Link href="/services" className="block text-gray-700 hover:text-purple-600 font-medium">Services</Link>
