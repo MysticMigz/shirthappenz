@@ -9,6 +9,16 @@ const HeroSection = () => {
   const slides = [
     {
       id: 1,
+      title: "Jersey Lettering & Numbers",
+      subtitle: "from £5 per item",
+      description: "Professional Sports Kit Printing - Perfect for Teams!",
+      buttonText: "ORDER NOW",
+      buttonLink: "/design/jersey",
+      bgGradient: "from-blue-500 to-indigo-600",
+      textColor: "text-white"
+    },
+    {
+      id: 2,
       title: "T-shirt with Full Colour Print",
       subtitle: "for only £12",
       description: "Design Today - Receive it This Week!",
@@ -18,7 +28,7 @@ const HeroSection = () => {
       textColor: "text-white"
     },
     {
-      id: 2,
+      id: 3,
       title: "Custom Hoodies",
       subtitle: "Starting at £20",
       description: "Perfect for any season - Design yours today!",
@@ -28,7 +38,7 @@ const HeroSection = () => {
       textColor: "text-white"
     },
     {
-      id: 3,
+      id: 4,
       title: "New - Oversized T-shirts",
       subtitle: "Trendy & Comfortable",
       description: "Available in all sizes and colors",
@@ -38,7 +48,7 @@ const HeroSection = () => {
       textColor: "text-white"
     },
     {
-      id: 4,
+      id: 5,
       title: "Workwear Bundle",
       subtitle: "All This for only £125",
       description: "Add Work Trousers and Safety Items",
@@ -139,4 +149,4 @@ const HeroSection = () => {
   );
 };
 
-export default HeroSection; 
+export default HeroSection;
