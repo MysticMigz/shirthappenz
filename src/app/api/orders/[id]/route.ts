@@ -49,6 +49,13 @@ export async function GET(
         firstName: order.shippingDetails.firstName,
         lastName: order.shippingDetails.lastName,
         email: order.shippingDetails.email,
+        phone: order.shippingDetails.phone,
+        address: order.shippingDetails.address,
+        addressLine2: order.shippingDetails.addressLine2,
+        city: order.shippingDetails.city,
+        county: order.shippingDetails.county,
+        postcode: order.shippingDetails.postcode,
+        country: order.shippingDetails.country
       },
       createdAt: order.createdAt,
     });

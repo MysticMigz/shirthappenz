@@ -4,29 +4,66 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { connectToDatabase } from '@/lib/mongodb';
 import Order from '@/backend/models/Order';
 import User from '@/backend/models/User';
+import Product from '@/backend/models/Product';
 
-export async function GET(request: NextRequest) {
+interface ProductImage {
+  url: string;
+  alt: string;
+}
+
+interface PopulatedProduct {
+  _id: string;
+  images?: ProductImage[];
+}
+
+interface BaseOrderItem {
+  name: string;
+  price: number;
+  quantity: number;
+  size: string;
+  color?: string;
+}
+
+interface OrderItem extends BaseOrderItem {
+  productId: string | PopulatedProduct;
+  image?: string;
+}
+
+interface TransformedOrderItem extends BaseOrderItem {
+  productId: string;
+  image: string | null;
+}
+
+export async function GET() {
   try {
-    // Check authentication
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession();
+
     if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user from database
     await connectToDatabase();
-    const user = await User.findOne({ email: session.user.email });
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
-    }
 
-    const orders = await Order.find({ userId: session.user.email }).sort({ createdAt: -1 });
+    const orders = await Order.find({ userId: session.user.email })
+      .populate({
+        path: 'items.productId',
+        model: 'Product',
+        select: 'images'
+      })
+      .sort({ createdAt: -1 })
+      .lean()
+      .then(orders => {
+        // Transform the populated data to include image URLs
+        return orders.map(order => ({
+          ...order,
+          items: order.items.map((item: OrderItem): TransformedOrderItem => ({
+            ...item,
+            image: (item.productId as PopulatedProduct)?.images?.[0]?.url || null,
+            productId: (item.productId as PopulatedProduct)?._id || (item.productId as string)
+          }))
+        }));
+      });
+
     return NextResponse.json(orders);
   } catch (error) {
     console.error('Error fetching orders:', error);
@@ -97,6 +134,20 @@ export async function POST(request: Request) {
       );
     }
 
+    // Fetch product images for each item
+    const itemsWithImages = await Promise.all(items.map(async (item: any) => {
+      try {
+        const product = await Product.findById(item.productId).select('images');
+        return {
+          ...item,
+          image: product?.images?.[0]?.url || item.image || null
+        };
+      } catch (error) {
+        console.error(`Failed to fetch product ${item.productId}:`, error);
+        return item;
+      }
+    }));
+
     // Generate initial reference number
     const generateReference = async () => {
       const date = new Date();
@@ -144,13 +195,14 @@ export async function POST(request: Request) {
         order = new Order({
           userId: session.user.email,
           reference,
-          items: items.map((item: any) => ({
+          items: itemsWithImages.map((item: any) => ({
             productId: item.productId,
             name: item.name,
             price: item.price,
             quantity: item.quantity,
             size: item.size,
             color: item.color,
+            image: item.image
           })),
           shippingDetails: {
             firstName: shippingDetails.firstName,
@@ -158,8 +210,11 @@ export async function POST(request: Request) {
             email: shippingDetails.email,
             phone: shippingDetails.phone,
             address: shippingDetails.address,
+            addressLine2: shippingDetails.addressLine2 || '',
             city: shippingDetails.city,
+            county: shippingDetails.county || '',
             postcode: shippingDetails.postcode,
+            country: shippingDetails.country || 'United Kingdom'
           },
           total,
           status: 'pending',
