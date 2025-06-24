@@ -50,7 +50,7 @@ const ThankYouPage = () => {
             <div className="border-b border-gray-200 pb-6 mb-6">
               <h2 className="text-2xl font-semibold text-gray-900 mb-2">Order Confirmation</h2>
               <p className="text-gray-600">
-                We've sent a confirmation email with your order details
+                We&apos;ll send you an email confirmation shortly.
               </p>
             </div>
 
@@ -75,7 +75,7 @@ const ThankYouPage = () => {
                   </div>
                   <div className="ml-4">
                     <p className="font-medium text-gray-900">Order Received</p>
-                    <p className="text-sm text-gray-600">We've received your order and payment</p>
+                    <p className="text-sm text-gray-600">We&apos;ve received your order and payment</p>
                   </div>
                 </div>
                 <div className="flex items-start">
@@ -113,7 +113,7 @@ const ThankYouPage = () => {
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
             <h3 className="font-semibold text-blue-900 mb-2">Important Information</h3>
             <div className="text-sm text-blue-800 space-y-2">
-              <p>• You'll receive email updates at each stage of production</p>
+              <p>• You&apos;ll receive email updates at each stage of production</p>
               <p>• Track your order status in your account dashboard</p>
               <p>• Contact us if you need to make any changes within 2 hours</p>
               <p>• Quality check is performed before dispatch</p>

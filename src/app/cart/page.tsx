@@ -204,54 +204,66 @@ const CartPage = () => {
                                     <div className="flex space-x-3">
                     {/* Visa */}
                     <div className="w-16 h-10 bg-white border border-gray-200 rounded flex items-center justify-center">
-                      <img 
+                      <Image
                         src="https://img.icons8.com/color/48/visa.png" 
                         alt="Visa" 
+                        width={48}
+                        height={48}
                         className="w-12 h-8 object-contain"
                       />
                     </div>
                     
                     {/* Mastercard */}
                     <div className="w-16 h-10 bg-white border border-gray-200 rounded flex items-center justify-center">
-                      <img 
+                      <Image
                         src="https://img.icons8.com/color/48/mastercard.png" 
                         alt="Mastercard" 
+                        width={48}
+                        height={48}
                         className="w-12 h-8 object-contain"
                       />
                     </div>
                      
                     {/* American Express */}
                     <div className="w-16 h-10 bg-white border border-gray-200 rounded flex items-center justify-center">
-                      <img 
+                      <Image
                         src="https://img.icons8.com/color/48/amex.png" 
                         alt="American Express" 
+                        width={48}
+                        height={48}
                         className="w-12 h-8 object-contain"
                       />
                     </div>
                      
                     {/* PayPal */}
                     <div className="w-16 h-10 bg-white border border-gray-200 rounded flex items-center justify-center">
-                      <img 
+                      <Image
                         src="https://img.icons8.com/color/48/paypal.png" 
                         alt="PayPal" 
+                        width={48}
+                        height={48}
                         className="w-12 h-8 object-contain"
                       />
                     </div>
                      
                     {/* Apple Pay */}
                     <div className="w-16 h-10 bg-white border border-gray-200 rounded flex items-center justify-center">
-                      <img 
+                      <Image
                         src="https://img.icons8.com/color/48/apple-pay.png" 
                         alt="Apple Pay" 
+                        width={48}
+                        height={48}
                         className="w-12 h-8 object-contain"
                       />
                     </div>
                      
                     {/* Google Pay */}
                     <div className="w-16 h-10 bg-white border border-gray-200 rounded flex items-center justify-center">
-                      <img 
+                      <Image
                         src="https://img.icons8.com/color/48/google-pay.png" 
                         alt="Google Pay" 
+                        width={48}
+                        height={48}
                         className="w-12 h-8 object-contain"
                       />
                     </div>

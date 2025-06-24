@@ -12,17 +12,38 @@ export default function RegisterPage() {
     lastName: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    phoneNumber: '',
+    address: {
+      street: '',
+      city: '',
+      county: '',
+      postcode: '',
+      country: 'United Kingdom'
+    }
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    
+    // Handle nested address fields
+    if (name.startsWith('address.')) {
+      const field = name.split('.')[1];
+      setFormData(prev => ({
+        ...prev,
+        address: {
+          ...prev.address,
+          [field]: value
+        }
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -155,6 +176,22 @@ export default function RegisterPage() {
               </div>
 
               <div>
+                <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700">
+                  Phone Number
+                </label>
+                <input
+                  id="phoneNumber"
+                  name="phoneNumber"
+                  type="tel"
+                  required
+                  value={formData.phoneNumber}
+                  onChange={handleChange}
+                  className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                  placeholder="+44 7123 456789"
+                />
+              </div>
+
+              <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                   Password
                 </label>
@@ -184,6 +221,88 @@ export default function RegisterPage() {
                   onChange={handleChange}
                   className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
                 />
+              </div>
+
+              <div className="border-t border-gray-200 pt-4 mt-4">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Address Information</h3>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="street" className="block text-sm font-medium text-gray-700">
+                      Street Address
+                    </label>
+                    <input
+                      id="street"
+                      name="address.street"
+                      type="text"
+                      required
+                      value={formData.address.street}
+                      onChange={handleChange}
+                      className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="city" className="block text-sm font-medium text-gray-700">
+                      City
+                    </label>
+                    <input
+                      id="city"
+                      name="address.city"
+                      type="text"
+                      required
+                      value={formData.address.city}
+                      onChange={handleChange}
+                      className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="county" className="block text-sm font-medium text-gray-700">
+                      County
+                    </label>
+                    <input
+                      id="county"
+                      name="address.county"
+                      type="text"
+                      required
+                      value={formData.address.county}
+                      onChange={handleChange}
+                      className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="postcode" className="block text-sm font-medium text-gray-700">
+                      Postcode
+                    </label>
+                    <input
+                      id="postcode"
+                      name="address.postcode"
+                      type="text"
+                      required
+                      value={formData.address.postcode}
+                      onChange={handleChange}
+                      className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="country" className="block text-sm font-medium text-gray-700">
+                      Country
+                    </label>
+                    <select
+                      id="country"
+                      name="address.country"
+                      value={formData.address.country}
+                      onChange={handleChange}
+                      className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                    >
+                      <option value="United Kingdom">United Kingdom</option>
+                      <option value="Ireland">Ireland</option>
+                    </select>
+                  </div>
+                </div>
               </div>
             </div>
 

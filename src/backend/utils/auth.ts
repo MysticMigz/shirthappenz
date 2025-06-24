@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 import { IUser } from '../models/User';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import User from '../models/User';
+import { connectToDatabase } from './database';
+import type { NextAuthOptions } from 'next-auth';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 const JWT_EXPIRES_IN = '7d';
@@ -9,12 +14,12 @@ const JWT_EXPIRES_IN = '7d';
 interface JwtPayload {
   userId: string;
   email: string;
-  role: string;
+  isAdmin: boolean;
 }
 
 export function generateToken(user: IUser): string {
   return jwt.sign(
-    { userId: user._id, email: user.email, role: user.role },
+    { userId: user._id, email: user.email, isAdmin: user.isAdmin },
     JWT_SECRET,
     { expiresIn: '7d' }
   );
@@ -63,25 +68,41 @@ export async function verifyAuth(request: NextRequest) {
 }
 
 export async function requireAuth(request: NextRequest) {
-  const decoded = await verifyAuth(request);
+  const session = await getServerSession(authOptions as NextAuthOptions);
   
-  if (!decoded) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!session?.user?.email) {
+    return NextResponse.json(
+      { error: 'Authentication required' },
+      { status: 401 }
+    );
   }
 
-  return decoded;
+  await connectToDatabase();
+  const user = await User.findOne({ email: session.user.email });
+  
+  if (!user) {
+    return NextResponse.json(
+      { error: 'User not found' },
+      { status: 404 }
+    );
+  }
+
+  return user;
 }
 
 export async function requireAdmin(request: NextRequest) {
-  const decoded = await requireAuth(request);
+  const user = await requireAuth(request);
   
-  if (decoded instanceof NextResponse) {
-    return decoded;
+  if (user instanceof NextResponse) {
+    return user;
   }
 
-  if (decoded.role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (!user.isAdmin) {
+    return NextResponse.json(
+      { error: 'Admin access required' },
+      { status: 403 }
+    );
   }
 
-  return decoded;
+  return user;
 } 

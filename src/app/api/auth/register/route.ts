@@ -8,6 +8,15 @@ export async function POST(request: Request) {
     await connectToDatabase();
     const data = await request.json();
 
+    // Basic validation
+    if (!data.email || !data.password || !data.firstName || !data.lastName || !data.phoneNumber ||
+        !data.address?.street || !data.address?.city || !data.address?.county || !data.address?.postcode) {
+      return NextResponse.json(
+        { error: 'All required fields must be provided' },
+        { status: 400 }
+      );
+    }
+
     // Check if user already exists
     const existingUser = await User.findOne({ email: data.email });
     if (existingUser) {
@@ -22,7 +31,16 @@ export async function POST(request: Request) {
       email: data.email,
       password: data.password,
       firstName: data.firstName,
-      lastName: data.lastName
+      lastName: data.lastName,
+      phoneNumber: data.phoneNumber,
+      address: {
+        street: data.address.street,
+        city: data.address.city,
+        county: data.address.county,
+        postcode: data.address.postcode,
+        country: data.address.country || 'United Kingdom'
+      },
+      isAdmin: false // Default value for new registrations
     });
 
     // Generate token
@@ -37,7 +55,9 @@ export async function POST(request: Request) {
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
-      role: user.role
+      phoneNumber: user.phoneNumber,
+      address: user.address,
+      isAdmin: user.isAdmin
     };
 
     return NextResponse.json(userData, { status: 201 });

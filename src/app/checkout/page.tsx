@@ -273,9 +273,9 @@ const CheckoutPage = () => {
               <Image
                 src="/images/logo5.png"
                 alt="ShirtHappenZ Logo"
-                width={180}
-                height={60}
-                className="h-12 w-auto brightness-110"
+                width={500}
+                height={167}
+                className="h-32 w-auto brightness-110"
               />
             </Link>
           </div>
@@ -515,7 +515,7 @@ const CheckoutPage = () => {
                           <div className="space-y-4">
                             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
                               <p className="text-yellow-800">
-                                Payment processing is temporarily unavailable. We're working on bringing you secure payment options including Credit/Debit Cards, Apple Pay, and PayPal. Please check back later.
+                                Payment processing is temporarily unavailable. We&apos;re working on bringing you secure payment options including Credit/Debit Cards, Apple Pay, and PayPal. Please check back later.
                               </p>
                             </div>
                             <label className="flex items-center p-4 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
@@ -528,9 +528,36 @@ const CheckoutPage = () => {
                                 disabled
                                 className="text-purple-600 focus:ring-purple-500"
                               />
-                              <div className="ml-3">
-                                <p className="font-medium text-gray-900">Credit / Debit Card</p>
-                                <p className="text-sm text-gray-500">Visa, Mastercard, American Express</p>
+                              <div className="ml-3 flex-1">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="font-medium text-gray-900">Credit / Debit Card</p>
+                                    <p className="text-sm text-gray-500">Visa, Mastercard, American Express</p>
+                                  </div>
+                                  <div className="flex space-x-2">
+                                    <Image
+                                      src="https://img.icons8.com/color/48/visa.png"
+                                      alt="Visa"
+                                      width={48}
+                                      height={48}
+                                      className="h-8 w-auto object-contain"
+                                    />
+                                    <Image
+                                      src="https://img.icons8.com/color/48/mastercard.png"
+                                      alt="Mastercard"
+                                      width={48}
+                                      height={48}
+                                      className="h-8 w-auto object-contain"
+                                    />
+                                    <Image
+                                      src="https://img.icons8.com/color/48/amex.png"
+                                      alt="American Express"
+                                      width={48}
+                                      height={48}
+                                      className="h-8 w-auto object-contain"
+                                    />
+                                  </div>
+                                </div>
                               </div>
                             </label>
 
@@ -550,9 +577,11 @@ const CheckoutPage = () => {
                                     <p className="font-medium text-gray-900">Apple Pay</p>
                                     <p className="text-sm text-gray-500">Quick and secure payment with Apple Pay</p>
                                   </div>
-                                  <img 
-                                    src="https://img.icons8.com/ios-filled/100/apple-pay.png" 
-                                    alt="Apple Pay" 
+                                  <Image
+                                    src="https://img.icons8.com/ios-filled/100/apple-pay.png"
+                                    alt="Apple Pay"
+                                    width={100}
+                                    height={100}
                                     className="w-32 h-12 object-contain"
                                   />
                                 </div>
@@ -575,9 +604,11 @@ const CheckoutPage = () => {
                                     <p className="font-medium text-gray-900">PayPal</p>
                                     <p className="text-sm text-gray-500">Pay with your PayPal account</p>
                                   </div>
-                                  <img 
-                                    src="https://img.icons8.com/color/96/paypal.png" 
-                                    alt="PayPal" 
+                                  <Image
+                                    src="https://img.icons8.com/color/96/paypal.png"
+                                    alt="PayPal"
+                                    width={96}
+                                    height={96}
                                     className="w-32 h-12 object-contain"
                                   />
                                 </div>
@@ -720,6 +751,13 @@ const CheckoutPage = () => {
                             <span className="font-medium text-gray-900">£{(item.price * item.quantity).toFixed(2)}</span>
                           </div>
                         </div>
+                        <Image
+                          src={item.image}
+                          alt={item.name}
+                          width={80}
+                          height={80}
+                          className="w-20 h-20 object-cover rounded"
+                        />
                       </div>
                     ))}
                   </div>

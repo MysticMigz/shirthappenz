@@ -12,7 +12,7 @@ const FeaturesSection = () => {
           <div className="max-w-4xl mx-auto">
             <p className="text-lg text-gray-600 mb-6">
               If you would like a personalised t-shirt or hoodie created online and have it arrive within 
-              a couple of days, you've found the right company. We use DTF and DTG printing processes to 
+              a couple of days, you&apos;ve found the right company. We use DTF and DTG printing processes to 
               achieve this. Our printed t shirts are created and dispatched within just a few days.
             </p>
             <p className="text-lg text-gray-600">
@@ -64,7 +64,7 @@ const FeaturesSection = () => {
           <div className="text-center">
             <div className="bg-gradient-to-r from-orange-500 to-red-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
               <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
               </svg>
             </div>
             <h4 className="text-lg font-semibold text-gray-900 mb-2">Latest Technology</h4>
@@ -97,8 +97,8 @@ const FeaturesSection = () => {
               <div>
                 <h4 className="text-lg font-semibold text-purple-600 mb-2">Online Excellence</h4>
                 <p className="text-gray-600">
-                  We've created an online platform that makes designing and ordering custom apparel 
-                  simple and enjoyable. Our constantly evolving website listens to our clients' needs.
+                  We&apos;ve created an online platform that makes designing and ordering custom apparel 
+                  simple and enjoyable. Our constantly evolving website listens to our clients&apos; needs.
                 </p>
               </div>
               <div>
