@@ -551,7 +551,7 @@ const CheckoutPage = () => {
                                     <p className="text-sm text-gray-500">Quick and secure payment with Apple Pay</p>
                                   </div>
                                   <img 
-                                    src="/images/apple-pay.svg" 
+                                    src="https://img.icons8.com/ios-filled/100/apple-pay.png" 
                                     alt="Apple Pay" 
                                     className="w-32 h-12 object-contain"
                                   />
