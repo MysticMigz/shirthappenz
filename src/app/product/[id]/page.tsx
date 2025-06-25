@@ -23,6 +23,31 @@ interface Product {
   customizable: boolean;
 }
 
+// Size order mapping for correct sorting
+const SIZE_ORDER: { [key: string]: number } = {
+  'XXS': 0,
+  'XS': 1,
+  'S': 2,
+  'M': 3,
+  'L': 4,
+  'XL': 5,
+  'XXL': 6,
+  '2XL': 6, // Alternative notation
+  'XXXL': 7,
+  '3XL': 7, // Alternative notation
+  '4XL': 8,
+  '5XL': 9,
+};
+
+// Helper function to sort sizes
+const sortSizes = (sizes: string[]): string[] => {
+  return [...sizes].sort((a, b) => {
+    const aOrder = SIZE_ORDER[a.toUpperCase()] ?? 999;
+    const bOrder = SIZE_ORDER[b.toUpperCase()] ?? 999;
+    return aOrder - bOrder;
+  });
+};
+
 export default function ProductPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [product, setProduct] = useState<Product | null>(null);
@@ -41,9 +66,10 @@ export default function ProductPage({ params }: { params: { id: string } }) {
         if (!response.ok) throw new Error('Failed to fetch product');
         const data = await response.json();
         setProduct(data.product);
-        // Set first available size as default
+        // Set first available size as default (using sorted sizes)
         if (data.product.sizes.length > 0) {
-          setSelectedSize(data.product.sizes[0]);
+          const sortedSizes = sortSizes(data.product.sizes);
+          setSelectedSize(sortedSizes[0]);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch product');
@@ -202,7 +228,7 @@ export default function ProductPage({ params }: { params: { id: string } }) {
               <div className="mb-6">
                 <h3 className="text-sm font-medium text-gray-900 mb-2">Select Size</h3>
                 <div className="grid grid-cols-3 gap-2">
-                  {product.sizes.map((size) => {
+                  {product && sortSizes(product.sizes).map((size) => {
                     const stockStatus = getStockLevel(size);
                     return (
                       <div key={size} className="flex flex-col">

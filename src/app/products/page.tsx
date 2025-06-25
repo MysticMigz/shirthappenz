@@ -35,20 +35,56 @@ export default function ProductsPage() {
   const [sortBy, setSortBy] = useState<'price-asc' | 'price-desc' | 'name-asc' | 'name-desc'>('name-asc');
   const [showFilters, setShowFilters] = useState(false);
 
+  const categories = [
+    'T-Shirts',
+    'Hoodies',
+    'Sweatshirts',
+    'Polo Shirts',
+    'Sports Wear',
+    'Workwear',
+    'Accessories'
+  ];
+
   useEffect(() => {
     fetchProducts();
-  }, []);
+  }, [searchQuery, selectedCategory, priceRange, sortBy]);
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch('/api/products');
+      let url = '/api/products?';
+      const params = new URLSearchParams();
+      
+      if (searchQuery) params.append('search', searchQuery);
+      if (selectedCategory) params.append('category', selectedCategory);
+      if (priceRange.min) params.append('minPrice', priceRange.min.toString());
+      if (priceRange.max) params.append('maxPrice', priceRange.max.toString());
+      if (sortBy) params.append('sortBy', sortBy);
+
+      const response = await fetch(url + params.toString());
       if (!response.ok) throw new Error('Failed to fetch products');
+      
       const data = await response.json();
-      setProducts(data.products);
+      setProducts(data);
+      setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch products');
+      setError('Failed to load products');
+      console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFilterChange = (key: string, value: string) => {
+    if (key === 'search') {
+      setSearchQuery(value);
+    } else if (key === 'category') {
+      setSelectedCategory(value);
+    } else if (key === 'minPrice') {
+      setPriceRange(prev => ({ ...prev, min: Number(value) }));
+    } else if (key === 'maxPrice') {
+      setPriceRange(prev => ({ ...prev, max: value ? Number(value) : null }));
+    } else if (key === 'sortBy') {
+      setSortBy(value as typeof sortBy);
     }
   };
 
@@ -79,8 +115,6 @@ export default function ProductsPage() {
           return 0;
       }
     });
-
-  const categories = ['t-shirts', 'hoodies', 'sweatshirts', 'jerseys', 'accessories'];
 
   if (loading) {
     return (
@@ -115,7 +149,7 @@ export default function ProductsPage() {
                 type="text"
                 placeholder="Search products..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => handleFilterChange('search', e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               />
               <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -129,14 +163,16 @@ export default function ProductsPage() {
                 Filters
               </button>
               <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                value={selectedCategory}
+                onChange={(e) => handleFilterChange('category', e.target.value)}
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               >
-                <option value="name-asc">Name (A-Z)</option>
-                <option value="name-desc">Name (Z-A)</option>
-                <option value="price-asc">Price (Low to High)</option>
-                <option value="price-desc">Price (High to Low)</option>
+                <option value="">All Categories</option>
+                {categories.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -147,30 +183,13 @@ export default function ProductsPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Category
-                  </label>
-                  <select
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  >
-                    <option value="">All Categories</option>
-                    {categories.map(category => (
-                      <option key={category} value={category}>
-                        {category.charAt(0).toUpperCase() + category.slice(1)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Min Price
                   </label>
                   <input
                     type="number"
                     min="0"
-                    value={priceRange.min}
-                    onChange={(e) => setPriceRange(prev => ({ ...prev, min: Number(e.target.value) }))}
+                    value={priceRange.min.toString()}
+                    onChange={(e) => handleFilterChange('minPrice', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   />
                 </div>
@@ -181,8 +200,8 @@ export default function ProductsPage() {
                   <input
                     type="number"
                     min="0"
-                    value={priceRange.max || ''}
-                    onChange={(e) => setPriceRange(prev => ({ ...prev, max: e.target.value ? Number(e.target.value) : null }))}
+                    value={priceRange.max?.toString() || ''}
+                    onChange={(e) => handleFilterChange('maxPrice', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   />
                 </div>
