@@ -64,11 +64,12 @@ export default function ProductsPage() {
       if (!response.ok) throw new Error('Failed to fetch products');
       
       const data = await response.json();
-      setProducts(data);
+      setProducts(data.products || []);
       setError(null);
     } catch (err) {
       setError('Failed to load products');
       console.error(err);
+      setProducts([]);
     } finally {
       setLoading(false);
     }
