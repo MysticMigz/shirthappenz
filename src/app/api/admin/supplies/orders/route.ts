@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
       })
       .sort({ createdAt: -1 });
 
+    console.log('Fetched orders:', JSON.stringify(orders, null, 2));
     return NextResponse.json(orders);
   } catch (error) {
     console.error('Error fetching supply orders:', error);

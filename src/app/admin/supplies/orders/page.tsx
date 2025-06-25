@@ -191,11 +191,14 @@ export default function SupplyOrdersPage() {
 
   const exportToPDF = (order: SupplyOrder) => {
     try {
+      console.log('Starting PDF export for order:', order.reference);
       const doc = generateSupplyOrderPDF(order);
       doc.save(`supply-order-${order.reference}.pdf`);
+      // Show success message
+      setError(null);
     } catch (err) {
-      setError('Failed to generate PDF');
-      console.error(err);
+      console.error('Error exporting to PDF:', err);
+      setError(`Failed to generate PDF: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   };
 
