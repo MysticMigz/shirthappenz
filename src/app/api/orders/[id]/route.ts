@@ -6,6 +6,46 @@ import Order from '@/backend/models/Order';
 import User from '@/backend/models/User';
 import mongoose from 'mongoose';
 
+interface OrderDocument {
+  _id: mongoose.Types.ObjectId;
+  reference: string;
+  status: string;
+  total: number;
+  items: Array<{
+    productId: string;
+    name: string;
+    price: number;
+    quantity: number;
+    size: string;
+    color?: string;
+    image?: string;
+    customization?: {
+      name?: string;
+      number?: string;
+      isCustomized: boolean;
+      nameCharacters?: number;
+      numberCharacters?: number;
+      customizationCost?: number;
+    };
+  }>;
+  shippingDetails: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    address: string;
+    addressLine2?: string;
+    city: string;
+    county: string;
+    postcode: string;
+    country: string;
+    shippingMethod: string;
+    shippingCost: number;
+    estimatedDeliveryDays: string;
+  };
+  createdAt: Date;
+}
+
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
@@ -32,7 +72,7 @@ export async function GET(
     const order = await Order.findOne({
       _id: params.id,
       userId: session.user.email,
-    });
+    }).lean() as unknown as OrderDocument;
 
     if (!order) {
       return NextResponse.json(
@@ -42,9 +82,27 @@ export async function GET(
     }
 
     return NextResponse.json({
+      _id: order._id.toString(),
       reference: order.reference,
       status: order.status,
       total: order.total,
+      items: order.items.map(item => ({
+        productId: item.productId,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        size: item.size,
+        color: item.color,
+        image: item.image,
+        customization: item.customization ? {
+          name: item.customization.name,
+          number: item.customization.number,
+          isCustomized: item.customization.isCustomized,
+          nameCharacters: item.customization.nameCharacters,
+          numberCharacters: item.customization.numberCharacters,
+          customizationCost: item.customization.customizationCost
+        } : undefined
+      })),
       shippingDetails: {
         firstName: order.shippingDetails.firstName,
         lastName: order.shippingDetails.lastName,
@@ -55,7 +113,10 @@ export async function GET(
         city: order.shippingDetails.city,
         county: order.shippingDetails.county,
         postcode: order.shippingDetails.postcode,
-        country: order.shippingDetails.country
+        country: order.shippingDetails.country,
+        shippingMethod: order.shippingDetails.shippingMethod,
+        shippingCost: order.shippingDetails.shippingCost,
+        estimatedDeliveryDays: order.shippingDetails.estimatedDeliveryDays
       },
       createdAt: order.createdAt,
     });

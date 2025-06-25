@@ -36,6 +36,17 @@ const OrderSchema = new mongoose.Schema({
     },
     color: String,
     image: String,
+    customization: {
+      name: String,
+      number: String,
+      isCustomized: {
+        type: Boolean,
+        default: false
+      },
+      nameCharacters: Number,
+      numberCharacters: Number,
+      customizationCost: Number
+    }
   }],
   shippingDetails: {
     firstName: {
@@ -79,6 +90,16 @@ const OrderSchema = new mongoose.Schema({
       required: true,
       default: 'United Kingdom',
     },
+    shippingMethod: {
+      type: String,
+      required: true,
+      enum: ['Standard Delivery', 'Express Delivery', 'Next Day Delivery']
+    },
+    shippingCost: {
+      type: Number,
+      required: true
+    },
+    estimatedDeliveryDays: String
   },
   total: {
     type: Number,

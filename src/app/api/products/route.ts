@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectToDatabase } from '@/backend/utils/database';
+import { connectToDatabase } from '@/lib/mongodb';
 import Product from '@/backend/models/Product';
 
 export async function GET(request: NextRequest) {
@@ -9,26 +9,34 @@ export async function GET(request: NextRequest) {
     // Get query parameters
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
-    const featured = searchParams.get('featured') === 'true';
-    const search = searchParams.get('search');
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
     
     // Build query
     const query: any = {};
     if (category) {
       query.category = category;
     }
-    if (featured) {
-      query.featured = true;
-    }
-    if (search) {
-      query.$text = { $search: search };
-    }
+    
+    // Get total count for pagination
+    const total = await Product.countDocuments(query);
+    const totalPages = Math.ceil(total / limit);
     
     // Fetch products
     const products = await Product.find(query)
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit);
     
-    return NextResponse.json({ products });
+    return NextResponse.json({
+      products,
+      pagination: {
+        total,
+        pages: totalPages,
+        page,
+        limit
+      }
+    });
   } catch (error) {
     console.error('Error fetching products:', error);
     return NextResponse.json(

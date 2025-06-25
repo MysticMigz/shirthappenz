@@ -47,6 +47,14 @@ interface OrderItemDB {
   size: string;
   color?: string;
   image?: string;
+  customization?: {
+    name?: string;
+    number?: string;
+    isCustomized: boolean;
+    nameCharacters?: number;
+    numberCharacters?: number;
+    customizationCost?: number;
+  };
 }
 
 // Helper function to update stock levels
@@ -179,7 +187,7 @@ export async function POST(request: Request) {
 
     if (!shippingDetails?.firstName || !shippingDetails?.lastName || !shippingDetails?.email ||
         !shippingDetails?.phone || !shippingDetails?.address || !shippingDetails?.city ||
-        !shippingDetails?.postcode) {
+        !shippingDetails?.postcode || !shippingDetails?.shippingMethod || !shippingDetails?.shippingCost) {
       return NextResponse.json(
         { error: 'Missing shipping details' },
         { status: 400 }
@@ -193,42 +201,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // Connect to database
     await connectToDatabase();
 
-    // Fetch products and validate stock before proceeding
-    const stockValidation = await Promise.all(items.map(async (item: any) => {
-      const product = await Product.findById(item.productId);
-      if (!product) {
-        throw new Error(`Product not found: ${item.productId}`);
-      }
-      
-      const available = product.stock[item.size] || 0;
-      if (available < item.quantity) {
-        throw new Error(`Insufficient stock for ${product.name} (${item.size}): requested ${item.quantity}, available ${available}`);
-      }
-      
-      return {
-        ...item,
-        currentStock: available
-      };
-    }));
-
-    // Fetch product images
-    const itemsWithImages = await Promise.all(stockValidation.map(async (item: any) => {
-      try {
-        const product = await Product.findById(item.productId).select('images');
-        return {
-          ...item,
-          image: product?.images?.[0]?.url || item.image || null
-        };
-      } catch (error) {
-        console.error(`Failed to fetch product ${item.productId}:`, error);
-        return item;
-      }
-    }));
-
-    // Generate initial reference number
+    // Generate reference number functions
     const generateReference = async () => {
       const date = new Date();
       const year = date.getFullYear().toString().slice(-2);
@@ -249,7 +224,6 @@ export async function POST(request: Request) {
       return `SH-${year}${month}${day}-${sequence}`;
     };
 
-    // Generate random reference as fallback
     const generateRandomReference = () => {
       const date = new Date();
       const year = date.getFullYear().toString().slice(-2);
@@ -258,6 +232,74 @@ export async function POST(request: Request) {
       const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
       return `SH-${year}${month}${day}-${random}`;
     };
+
+    // Validate and process each item
+    const processedItems: OrderItemDB[] = [];
+    for (const item of items) {
+      // Validate customization if present
+      if (item.customization?.isCustomized) {
+        const nameLength = item.customization.name?.length || 0;
+        const numberLength = item.customization.number?.length || 0;
+        const expectedCost = (nameLength + numberLength) * 2;
+
+        if (item.customization.customizationCost !== expectedCost) {
+          return NextResponse.json(
+            { error: 'Invalid customization cost' },
+            { status: 400 }
+          );
+        }
+
+        // Validate name characters (letters, dots, apostrophes)
+        if (item.customization.name && !/^[A-ZÀ-ÿ.']+$/i.test(item.customization.name)) {
+          return NextResponse.json(
+            { error: 'Invalid characters in name customization' },
+            { status: 400 }
+          );
+        }
+
+        // Validate number (0-99)
+        if (item.customization.number && 
+            (!/^\d{1,2}$/.test(item.customization.number) || 
+             parseInt(item.customization.number) > 99)) {
+          return NextResponse.json(
+            { error: 'Invalid jersey number' },
+            { status: 400 }
+          );
+        }
+      }
+
+      // Check stock availability
+      const success = await updateProductStock(
+        item.productId.toString(),
+        item.size,
+        -item.quantity
+      );
+
+      if (!success) {
+        return NextResponse.json(
+          { error: 'Insufficient stock' },
+          { status: 400 }
+        );
+      }
+
+      processedItems.push({
+        productId: item.productId.toString(),
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        size: item.size,
+        color: item.color,
+        image: item.image,
+        customization: item.customization ? {
+          name: item.customization.name,
+          number: item.customization.number,
+          isCustomized: item.customization.isCustomized,
+          nameCharacters: item.customization.name?.length || 0,
+          numberCharacters: item.customization.number?.length || 0,
+          customizationCost: item.customization.customizationCost
+        } : undefined
+      });
+    }
 
     // Create and save order with retries
     let order;
@@ -270,52 +312,20 @@ export async function POST(request: Request) {
           await generateReference() : 
           generateRandomReference();
 
-        // Create the order first
+        // Create the order
         order = new Order({
           userId: session.user.email,
           reference,
-          items: itemsWithImages.map((item: any) => ({
-            productId: new mongoose.Types.ObjectId(item.productId),  // Ensure ObjectId
-            name: item.name,
-            price: item.price,
-            quantity: item.quantity,
-            size: item.size,
-            color: item.color,
-            image: item.image
-          })),
+          items: processedItems,
           shippingDetails: {
-            firstName: shippingDetails.firstName,
-            lastName: shippingDetails.lastName,
-            email: shippingDetails.email,
-            phone: shippingDetails.phone,
-            address: shippingDetails.address,
-            addressLine2: shippingDetails.addressLine2 || '',
-            city: shippingDetails.city,
-            county: shippingDetails.county || '',
-            postcode: shippingDetails.postcode,
+            ...shippingDetails,
             country: shippingDetails.country || 'United Kingdom'
           },
-          total,
-          status: 'pending',
-          createdAt: new Date(),
+          total: total,
+          status: 'pending'
         });
 
-        // Save the order
         await order.save();
-
-        // Update stock levels for all items
-        const stockUpdates = await Promise.all(
-          order.items.map((item: OrderItemDB) =>
-            updateProductStock(item.productId.toString(), item.size, -item.quantity)
-          )
-        );
-
-        // If any stock update failed, throw error to trigger rollback
-        if (stockUpdates.includes(false)) {
-          await Order.findByIdAndDelete(order._id); // Rollback the order
-          throw new Error('Failed to update stock levels');
-        }
-
         break;
       } catch (error) {
         if (error instanceof Error && 
@@ -326,48 +336,27 @@ export async function POST(request: Request) {
           attempts++;
           continue;
         }
-
-        console.error(`Order creation attempt ${attempts + 1} failed:`, error);
-        attempts++;
-        
-        if (attempts === maxAttempts) {
-          return NextResponse.json(
-            { error: 'Failed to create order after multiple attempts' },
-            { status: 500 }
-          );
-        }
-        
-        // Wait before retrying (exponential backoff)
-        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempts) * 100));
+        throw error;
       }
     }
 
-    // Final verification
-    if (!order?._id || !order?.reference) {
-      console.error('Order or reference missing after creation:', order);
+    if (!order) {
       return NextResponse.json(
-        { error: 'Order creation failed - missing data' },
+        { error: 'Failed to create order after multiple attempts' },
         { status: 500 }
       );
     }
 
-    // Log success
-    console.log('Order created successfully:', {
-      id: order._id,
-      reference: order.reference,
-      userId: order.userId,
-      total: order.total,
-      items: order.items.length
-    });
-
-    return NextResponse.json({ 
-      orderId: order._id,
+    // Return the order ID and reference
+    return NextResponse.json({
+      _id: order._id.toString(),
       reference: order.reference
     });
+
   } catch (error) {
-    console.error('Order creation error:', error);
+    console.error('Error creating order:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to create order' },
+      { error: 'Failed to create order' },
       { status: 500 }
     );
   }

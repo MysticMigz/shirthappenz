@@ -10,6 +10,14 @@ interface CartItem {
   price: number;
   image?: string;
   color?: string;
+  customization?: {
+    name?: string;
+    number?: string;
+    isCustomized: boolean;
+    nameCharacters?: number;
+    numberCharacters?: number;
+    customizationCost?: number;
+  };
 }
 
 interface CartContextType {
@@ -46,17 +54,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const addItem = (newItem: CartItem) => {
     setItems(currentItems => {
+      // If item has customization, treat it as unique
       const existingItemIndex = currentItems.findIndex(
-        item => item.productId === newItem.productId && item.size === newItem.size
+        item => item.productId === newItem.productId && 
+               item.size === newItem.size &&
+               (!item.customization?.isCustomized || 
+                (item.customization?.name === newItem.customization?.name &&
+                 item.customization?.number === newItem.customization?.number))
       );
 
-      if (existingItemIndex > -1) {
-        // Add to the existing quantity, but don't exceed 10
+      if (existingItemIndex > -1 && !newItem.customization?.isCustomized) {
+        // Only combine non-customized items
         const updatedItems = [...currentItems];
         const existingItem = updatedItems[existingItemIndex];
         const newQuantity = Math.min(10, existingItem.quantity + newItem.quantity);
         
-        // If adding would exceed 10, don't add
         if (existingItem.quantity >= 10) {
           return currentItems;
         }
@@ -68,8 +80,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         return updatedItems;
       }
 
-      // Add new item if it doesn't exist
-      return [...currentItems, { ...newItem, quantity: Math.min(10, newItem.quantity) }];
+      // For customized items or new items, add as new entry
+      return [...currentItems, {
+        ...newItem,
+        customization: newItem.customization ? {
+          ...newItem.customization,
+          nameCharacters: newItem.customization.name?.length || 0,
+          numberCharacters: newItem.customization.number?.length || 0,
+          customizationCost: ((newItem.customization.name?.length || 0) + 
+                            (newItem.customization.number?.length || 0)) * 2
+        } : undefined
+      }];
     });
   };
 

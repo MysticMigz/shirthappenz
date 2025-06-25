@@ -55,7 +55,7 @@ export default function CartPage() {
                   <ul className="divide-y divide-gray-200">
                     {items.map((item) => (
                       <li key={`${item.productId}-${item.size}`} className="p-6">
-                        <div className="flex items-center">
+                        <div className="flex items-center space-x-6">
                           {/* Product Image */}
                           <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-md border border-gray-200">
                             {item.image ? (
@@ -73,7 +73,7 @@ export default function CartPage() {
                           </div>
 
                           {/* Product Details */}
-                          <div className="ml-6 flex-1">
+                          <div className="flex-1">
                             <div className="flex items-start justify-between">
                               <div>
                                 <h3 className="text-lg font-medium text-gray-900">
@@ -81,14 +81,48 @@ export default function CartPage() {
                                     {item.name}
                                   </Link>
                                 </h3>
-                                <p className="mt-1 text-sm text-gray-500">
-                                  Size: {item.size}
-                                  {item.color && ` • Color: ${item.color}`}
-                                </p>
-                                <p className="mt-1 text-sm font-medium text-gray-900">
-                                  £{item.price.toFixed(2)}
-                                </p>
+                                <div className="mt-1 space-y-1">
+                                  <p className="text-sm text-gray-500">
+                                    Size: {item.size}
+                                  </p>
+                                  
+                                  {/* Customization Details */}
+                                  {item.customization?.isCustomized && (
+                                    <div className="mt-2 space-y-1">
+                                      <p className="text-sm font-medium text-gray-900">Customization Details:</p>
+                                      {item.customization.name && (
+                                        <p className="text-sm text-gray-600">
+                                          Name: {item.customization.name}
+                                          <span className="text-xs text-gray-500 ml-2">
+                                            ({item.customization.name.length} characters × £2)
+                                          </span>
+                                        </p>
+                                      )}
+                                      {item.customization.number && (
+                                        <p className="text-sm text-gray-600">
+                                          Number: {item.customization.number}
+                                          <span className="text-xs text-gray-500 ml-2">
+                                            ({item.customization.number.length} digits × £2)
+                                          </span>
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
+                                  
+                                  {/* Price Breakdown */}
+                                  <div className="mt-2">
+                                    <p className="text-sm text-gray-900">
+                                      Price: £{item.price.toFixed(2)}
+                                      {item.customization?.isCustomized && (
+                                        <span className="text-xs text-gray-500 ml-2">
+                                          (includes customization)
+                                        </span>
+                                      )}
+                                    </p>
+                                  </div>
+                                </div>
                               </div>
+                              
                               <button
                                 onClick={() => removeItem(item.productId, item.size)}
                                 className="text-sm text-red-600 hover:text-red-800"
@@ -162,18 +196,11 @@ export default function CartPage() {
                           : 'bg-purple-600 hover:bg-purple-700'
                         }`}
                     >
-                      {isProcessing ? (
-                        <span className="flex items-center justify-center">
-                          <div className="w-5 h-5 border-t-2 border-b-2 border-white rounded-full animate-spin mr-2"></div>
-                          Processing...
-                        </span>
-                      ) : (
-                        'Proceed to Checkout'
-                      )}
+                      {isProcessing ? 'Processing...' : 'Proceed to Checkout'}
                     </button>
                     <button
                       onClick={clearCart}
-                      className="w-full py-3 px-4 rounded-md border border-gray-300 text-gray-700 font-medium hover:bg-gray-50"
+                      className="w-full mt-2 py-3 px-4 rounded-md border border-gray-300 text-gray-700 font-medium hover:bg-gray-50"
                     >
                       Clear Cart
                     </button>
