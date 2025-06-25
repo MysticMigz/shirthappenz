@@ -16,6 +16,14 @@ interface OrderItem {
   size: string;
   color?: string;
   image?: string;
+  customization?: {
+    name: string;
+    number: string;
+    isCustomized: boolean;
+    nameCharacters: number;
+    numberCharacters: number;
+    customizationCost: number;
+  };
 }
 
 interface Order {
@@ -33,6 +41,8 @@ interface Order {
     county: string;
     postcode: string;
     country: string;
+    shippingCost: number;
+    shippingMethod: string;
   };
   total: number;
   status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled' | 'payment_failed';
@@ -207,12 +217,25 @@ export default function OrdersPage() {
                             Size: {item.size}
                             {item.color && ` • ${item.color}`}
                           </p>
+                          {item.customization && item.customization.isCustomized && (
+                            <div className="mt-1 text-sm text-gray-500">
+                              <p>Customization:</p>
+                              <ul className="ml-2">
+                                <li>Name: {item.customization.name}</li>
+                                <li>Number: {item.customization.number}</li>
+                              </ul>
+                            </div>
+                          )}
                           <p className="mt-1 text-sm text-gray-500">
                             Quantity: {item.quantity}
                           </p>
                         </div>
-                        <div className="text-sm font-medium text-gray-900">
-                          £{(item.price * item.quantity).toFixed(2)}
+                        <div className="text-sm font-medium text-gray-900 text-right">
+                          <p>Base: £80.00</p>
+                          {item.customization?.isCustomized && (
+                            <p>Customization: £16.00</p>
+                          )}
+                          <p className="font-bold mt-1">Item Total: £{(item.price * item.quantity).toFixed(2)}</p>
                         </div>
                       </div>
                     ))}
@@ -237,9 +260,19 @@ export default function OrdersPage() {
                   </div>
 
                   <div className="mt-6 border-t border-gray-200 pt-6">
-                    <div className="flex justify-between text-base font-medium text-gray-900">
-                      <p>Total</p>
-                      <p>£{order.total.toFixed(2)}</p>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex justify-between text-sm text-gray-900">
+                        <p>Subtotal</p>
+                        <p>£{(order.total - order.shippingDetails.shippingCost).toFixed(2)}</p>
+                      </div>
+                      <div className="flex justify-between text-sm text-gray-900">
+                        <p>Shipping ({order.shippingDetails.shippingMethod})</p>
+                        <p>£{order.shippingDetails.shippingCost.toFixed(2)}</p>
+                      </div>
+                      <div className="flex justify-between text-base font-medium text-gray-900 pt-2 border-t">
+                        <p>Total</p>
+                        <p>£{order.total.toFixed(2)}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
