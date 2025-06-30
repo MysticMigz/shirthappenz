@@ -41,7 +41,7 @@ const STATUS_COLORS = {
   cancelled: 'bg-gray-100 text-gray-800',
 };
 
-const STATUS_ACTIONS = {
+const STATUS_ACTIONS: Record<Order['status'], Array<Order['status']>> = {
   payment_failed: ['pending', 'cancelled'],
   pending: ['paid', 'cancelled'],
   paid: ['shipped', 'cancelled'],
@@ -129,8 +129,8 @@ export default function AdminOrdersPage() {
 
   const sortedOrders = sortOrders(filteredOrders);
 
-  const getNextActions = (currentStatus: Order['status']) => {
-    return STATUS_ACTIONS[currentStatus];
+  const getNextActions = (currentStatus: Order['status']): Array<Order['status']> => {
+    return STATUS_ACTIONS[currentStatus] || [];
   };
 
   if (loading) {
