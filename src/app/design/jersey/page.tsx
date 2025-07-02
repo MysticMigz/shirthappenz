@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Header from '@/app/components/Header';
 import Footer from '@/app/components/Footer';
 import { useCart } from '@/context/CartContext';
+import JerseyPreview from '@/app/components/JerseyPreview';
 
 interface Product {
   _id: string;
@@ -31,6 +32,7 @@ export default function JerseyLetteringPage() {
   const [error, setError] = useState('');
   const [addingToCart, setAddingToCart] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showBackView, setShowBackView] = useState(false);
 
   // Customization options
   const [name, setName] = useState('');
@@ -236,7 +238,7 @@ export default function JerseyLetteringPage() {
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Jersey Selection */}
+            {/* Jersey Selection and Preview */}
             <div className="space-y-6">
               <div>
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">Select Jersey</h2>
@@ -250,167 +252,204 @@ export default function JerseyLetteringPage() {
                           setSelectedSize(jersey.sizes[0]);
                         }
                       }}
-                      className={`cursor-pointer rounded-lg border-2 p-4 ${
+                      className={`cursor-pointer rounded-lg border-2 p-2 ${
                         selectedJersey?._id === jersey._id
-                          ? 'border-purple-500 bg-purple-50'
-                          : 'border-gray-200 hover:border-purple-300'
+                          ? 'border-blue-500'
+                          : 'border-gray-200'
                       }`}
                     >
-                      <div className="relative aspect-square mb-2">
-                        {jersey.images[0] ? (
-                          <Image
-                            src={jersey.images[0].url}
-                            alt={jersey.images[0].alt || jersey.name}
-                            fill
-                            className="object-cover rounded-md"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-gray-100 rounded-md flex items-center justify-center">
-                            <span className="text-gray-400">No image</span>
-                          </div>
-                        )}
-                      </div>
-                      <h3 className="font-medium text-gray-900">{jersey.name}</h3>
+                      {jersey.images[0] && (
+                        <Image
+                          src={jersey.images[0].url}
+                          alt={jersey.images[0].alt}
+                          width={200}
+                          height={200}
+                          className="w-full h-auto object-cover rounded"
+                        />
+                      )}
+                      <p className="mt-2 text-sm font-medium text-gray-900">{jersey.name}</p>
                       <p className="text-sm text-gray-500">£{jersey.basePrice.toFixed(2)}</p>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Size Selection */}
-              {selectedJersey && (
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-900 mb-4">Select Size</h2>
-                  <div className="grid grid-cols-3 gap-2">
-                    {selectedJersey.sizes.map((size) => {
-                      const stockStatus = getStockLevel(size);
-                      return (
-                        <div key={size} className="flex flex-col">
-                          <button
-                            onClick={() => setSelectedSize(size)}
-                            disabled={isOutOfStock(size)}
-                            className={`
-                              py-2 px-4 text-sm font-medium rounded-md border
-                              ${selectedSize === size
-                                ? 'border-purple-600 bg-purple-50 text-purple-600'
-                                : isOutOfStock(size)
-                                  ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
-                                  : 'border-gray-200 hover:border-purple-600 text-gray-900'
-                              }
-                            `}
-                          >
-                            {size}
-                          </button>
-                          {stockStatus.type !== 'success' && (
-                            <span className={`
-                              text-xs mt-1 text-center
-                              ${stockStatus.type === 'error' ? 'text-red-600' : 'text-orange-500'}
-                            `}>
-                              {stockStatus.message}
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+              {/* Preview Toggle */}
+              <div className="flex justify-center space-x-4 my-6">
+                <button
+                  onClick={() => setShowBackView(false)}
+                  className={`px-4 py-2 rounded-lg ${
+                    !showBackView ? 'bg-blue-500 text-white' : 'bg-gray-200'
+                  }`}
+                >
+                  Front View
+                </button>
+                <button
+                  onClick={() => setShowBackView(true)}
+                  className={`px-4 py-2 rounded-lg ${
+                    showBackView ? 'bg-blue-500 text-white' : 'bg-gray-200'
+                  }`}
+                >
+                  Back View (Preview)
+                </button>
+              </div>
+
+              {/* Jersey Preview */}
+              <div className="w-full max-w-md mx-auto">
+                {showBackView ? (
+                  <JerseyPreview
+                    name={name}
+                    number={number}
+                    jerseyImage={selectedJersey?.images[0]?.url}
+                  />
+                ) : (
+                  selectedJersey?.images[0] && (
+                    <div className="relative w-full aspect-[3/4] bg-gray-100 rounded-lg overflow-hidden">
+                      <Image
+                        src={selectedJersey.images[0].url}
+                        alt={selectedJersey.images[0].alt}
+                        fill
+                        className="object-contain"
+                      />
+                    </div>
+                  )
+                )}
+              </div>
             </div>
 
-            {/* Customization Options */}
-            <div className="space-y-6">
+            {/* Customization Form */}
+            <div className="space-y-6 bg-white p-6 rounded-lg shadow-sm">
               <div>
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">Customize Your Jersey</h2>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Name on Jersey</label>
-                    <div className="mt-1">
-                      <input
-                        type="text"
-                        value={name}
-                        onChange={handleNameChange}
-                        maxLength={12}
-                        className={`block w-full rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm ${
-                          nameError ? 'border-red-300' : 'border-gray-300'
+                
+                {/* Name Input */}
+                <div className="mb-4">
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                    Name on Jersey (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    id="name"
+                    value={name}
+                    onChange={handleNameChange}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    maxLength={12}
+                  />
+                  {nameError && (
+                    <p className="mt-1 text-sm text-red-600">{nameError}</p>
+                  )}
+                </div>
+
+                {/* Number Input */}
+                <div className="mb-4">
+                  <label htmlFor="number" className="block text-sm font-medium text-gray-700">
+                    Number (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    id="number"
+                    value={number}
+                    onChange={(e) => setNumber(e.target.value.slice(0, 2))}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    maxLength={2}
+                  />
+                </div>
+
+                {/* Size Selection */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700">Size</label>
+                  <div className="grid grid-cols-4 gap-2 mt-1">
+                    {selectedJersey?.sizes.map((size) => (
+                      <button
+                        key={size}
+                        onClick={() => setSelectedSize(size)}
+                        disabled={isOutOfStock(size)}
+                        className={`py-2 text-sm font-medium rounded-md ${
+                          selectedSize === size
+                            ? 'bg-blue-500 text-white'
+                            : isOutOfStock(size)
+                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
                         }`}
-                        placeholder="Enter name (max 12 chars)"
-                      />
-                      <div className="mt-1 flex justify-between">
-                        <span className={`text-xs ${nameError ? 'text-red-600' : 'text-gray-500'}`}>
-                          {nameError || `${name.length}/12 characters`}
-                        </span>
-                        <span className="text-xs text-gray-500">
-                          Letters, dots (.), and apostrophes (') only
-                        </span>
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
+                  <p className={`mt-2 text-sm ${
+                    getStockLevel(selectedSize).type === 'error' ? 'text-red-600' :
+                    getStockLevel(selectedSize).type === 'warning' ? 'text-yellow-600' :
+                    'text-green-600'
+                  }`}>
+                    {getStockLevel(selectedSize).message}
+                  </p>
+                </div>
+
+                {/* Quantity Selection */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700">Quantity</label>
+                  <div className="flex items-center mt-1">
+                    <button
+                      onClick={() => handleQuantityChange(quantity - 1)}
+                      className="px-3 py-1 border rounded-l-md bg-gray-100"
+                    >
+                      -
+                    </button>
+                    <input
+                      type="number"
+                      value={quantity}
+                      onChange={(e) => handleQuantityChange(parseInt(e.target.value))}
+                      className="w-16 text-center border-t border-b"
+                      min="1"
+                      max="10"
+                    />
+                    <button
+                      onClick={() => handleQuantityChange(quantity + 1)}
+                      className="px-3 py-1 border rounded-r-md bg-gray-100"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                {/* Price Breakdown */}
+                <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                  <h3 className="text-lg font-medium text-gray-900">Price Breakdown</h3>
+                  <div className="mt-2 space-y-1">
+                    <div className="flex justify-between">
+                      <span>Base Price:</span>
+                      <span>£{selectedJersey?.basePrice.toFixed(2)}</span>
+                    </div>
+                    {calculateCustomizationCost() > 0 && (
+                      <div className="flex justify-between">
+                        <span>Customization:</span>
+                        <span>£{calculateCustomizationCost().toFixed(2)}</span>
                       </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span>Quantity:</span>
+                      <span>x{quantity}</span>
                     </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Number on Jersey (Optional)</label>
-                    <div className="mt-1">
-                      <input
-                        type="number"
-                        value={number}
-                        onChange={(e) => setNumber(e.target.value)}
-                        min="0"
-                        max="99"
-                        className="block w-full rounded-md border-gray-300 shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-                        placeholder="Enter number (0-99)"
-                      />
+                    <div className="flex justify-between font-semibold pt-2 border-t">
+                      <span>Total:</span>
+                      <span>£{calculateTotal().toFixed(2)}</span>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Quantity Selection */}
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">Quantity</h2>
-                <select
-                  value={quantity}
-                  onChange={(e) => setQuantity(Number(e.target.value))}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                {/* Add to Cart Button */}
+                <button
+                  onClick={addToCart}
+                  disabled={loading || addingToCart}
+                  className={`mt-6 w-full py-3 px-4 rounded-md text-white font-medium ${
+                    loading || addingToCart
+                      ? 'bg-gray-400 cursor-not-allowed'
+                      : 'bg-blue-500 hover:bg-blue-600'
+                  }`}
                 >
-                  {[...Array(10)].map((_, i) => (
-                    <option key={i + 1} value={i + 1}>
-                      {i + 1}
-                    </option>
-                  ))}
-                </select>
+                  {loading || addingToCart ? 'Adding to Cart...' : 'Add to Cart'}
+                </button>
               </div>
-
-              {/* Price breakdown */}
-              <div className="space-y-2">
-                <div className="text-sm text-gray-600">
-                  Base Price: £{selectedJersey?.basePrice.toFixed(2)}
-                </div>
-                {(name || number) && (
-                  <div className="text-sm text-gray-600">
-                    Customization Cost: £{calculateCustomizationCost().toFixed(2)}
-                    <div className="text-xs text-gray-500 ml-2">
-                      {name && `Name (${name.length} characters × £2)`}
-                      {name && number && <br />}
-                      {number && `Number (${number.length} digits × £2)`}
-                    </div>
-                  </div>
-                )}
-                <div className="text-xl font-bold text-purple-600 border-t pt-2 mt-2">
-                  Total: £{calculateTotal().toFixed(2)}
-                </div>
-              </div>
-
-              {error && (
-                <div className="text-red-600 text-sm">{error}</div>
-              )}
-
-              <button
-                onClick={addToCart}
-                disabled={loading || !selectedJersey || !selectedSize}
-                className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 ${
-                  loading || !selectedJersey || !selectedSize ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
-              >
-                {loading ? 'Adding to Cart...' : 'Add to Cart'}
-              </button>
             </div>
           </div>
         </div>
