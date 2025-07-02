@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { FaHome, FaBox, FaShoppingCart, FaUsers, FaTachometerAlt, FaBoxes, FaBell, FaTruck, FaClipboardList } from 'react-icons/fa';
+import { FaHome, FaBox, FaShoppingCart, FaUsers, FaTachometerAlt, FaBoxes, FaBell, FaTruck, FaClipboardList, FaChartLine } from 'react-icons/fa';
 
 export default function AdminSidebar() {
   const pathname = usePathname();
@@ -13,6 +13,11 @@ export default function AdminSidebar() {
       href: '/admin/dashboard',
       icon: FaTachometerAlt,
       text: 'Dashboard'
+    },
+    {
+      href: '/admin/analytics',
+      icon: FaChartLine,
+      text: 'Analytics'
     },
     {
       href: '/admin/products',
