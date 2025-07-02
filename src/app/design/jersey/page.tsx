@@ -32,12 +32,17 @@ export default function JerseyLetteringPage() {
   const [error, setError] = useState('');
   const [addingToCart, setAddingToCart] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [showBackView, setShowBackView] = useState(false);
 
   // Customization options
   const [name, setName] = useState('');
   const [number, setNumber] = useState('');
   const [nameError, setNameError] = useState('');
+
+  // Size sorting function
+  const sortSizes = (sizes: string[]) => {
+    const sizeOrder = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
+    return [...sizes].sort((a, b) => sizeOrder.indexOf(a) - sizeOrder.indexOf(b));
+  };
 
   useEffect(() => {
     const fetchJerseys = async () => {
@@ -62,7 +67,6 @@ export default function JerseyLetteringPage() {
     fetchJerseys();
   }, []);
 
-  // Hide success message after 3 seconds
   useEffect(() => {
     if (showSuccess) {
       const timer = setTimeout(() => {
@@ -89,7 +93,6 @@ export default function JerseyLetteringPage() {
   };
 
   const isValidNameChar = (char: string) => {
-    // Allow letters (including accented), dots, and apostrophes
     return /^[A-ZÀ-ÿ.']+$/i.test(char);
   };
 
@@ -104,7 +107,6 @@ export default function JerseyLetteringPage() {
 
     if (value !== validValue) {
       setNameError('Only letters, dots, and apostrophes allowed');
-      // Clear error after 3 seconds
       setTimeout(() => setNameError(''), 3000);
     } else if (value.length > 12) {
       setNameError('Maximum 12 characters allowed');
@@ -124,7 +126,6 @@ export default function JerseyLetteringPage() {
       setError('Number must be between 0 and 99');
       return false;
     }
-    // Additional name validation
     if (name && !name.split('').every(isValidNameChar)) {
       setError('Name contains invalid characters');
       return false;
@@ -132,21 +133,13 @@ export default function JerseyLetteringPage() {
     return true;
   };
 
-  // Calculate customization cost
   const calculateCustomizationCost = () => {
     let cost = 0;
-    // Add £2 for each letter in the name
-    if (name) {
-      cost += name.length * 2;
-    }
-    // Add £2 for each digit in the number
-    if (number) {
-      cost += number.length * 2;
-    }
+    if (name) cost += name.length * 2;
+    if (number) cost += number.length * 2;
     return cost;
   };
 
-  // Calculate total price
   const calculateTotal = () => {
     if (!selectedJersey) return 0;
     const basePrice = selectedJersey.basePrice;
@@ -166,13 +159,10 @@ export default function JerseyLetteringPage() {
 
     try {
       setLoading(true);
-
-      // Calculate the price including per-character customization
       const basePrice = selectedJersey.basePrice;
       const customizationCost = calculateCustomizationCost();
       const totalPrice = basePrice + customizationCost;
 
-      // Prepare customization details
       const customization = (name || number) ? {
         name: name.trim(),
         number: number.trim(),
@@ -206,7 +196,7 @@ export default function JerseyLetteringPage() {
       <div className="min-h-screen flex flex-col">
         <Header />
         <div className="flex-grow flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
         </div>
         <Footer />
       </div>
@@ -252,68 +242,42 @@ export default function JerseyLetteringPage() {
                           setSelectedSize(jersey.sizes[0]);
                         }
                       }}
-                      className={`cursor-pointer rounded-lg border-2 p-2 ${
+                      className={`cursor-pointer rounded-lg border-2 p-4 ${
                         selectedJersey?._id === jersey._id
                           ? 'border-blue-500'
                           : 'border-gray-200'
                       }`}
                     >
-                      {jersey.images[0] && (
-                        <Image
-                          src={jersey.images[0].url}
-                          alt={jersey.images[0].alt}
-                          width={200}
-                          height={200}
-                          className="w-full h-auto object-cover rounded"
-                        />
-                      )}
-                      <p className="mt-2 text-sm font-medium text-gray-900">{jersey.name}</p>
+                      <div className="relative aspect-square mb-2">
+                        {jersey.images[0] ? (
+                          <Image
+                            src={jersey.images[0].url}
+                            alt={jersey.images[0].alt || jersey.name}
+                            fill
+                            className="object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                            <div className="bg-gradient-to-r from-purple-600 via-blue-500 to-orange-400 text-white brand-text text-lg px-4 py-2 rounded-lg">
+                              ShirtHappenZ
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <h3 className="font-medium text-gray-900">{jersey.name}</h3>
                       <p className="text-sm text-gray-500">£{jersey.basePrice.toFixed(2)}</p>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Preview Toggle */}
-              <div className="flex justify-center space-x-4 my-6">
-                <button
-                  onClick={() => setShowBackView(false)}
-                  className={`px-4 py-2 rounded-lg ${
-                    !showBackView ? 'bg-blue-500 text-white' : 'bg-gray-200'
-                  }`}
-                >
-                  Front View
-                </button>
-                <button
-                  onClick={() => setShowBackView(true)}
-                  className={`px-4 py-2 rounded-lg ${
-                    showBackView ? 'bg-blue-500 text-white' : 'bg-gray-200'
-                  }`}
-                >
-                  Back View (Preview)
-                </button>
-              </div>
-
               {/* Jersey Preview */}
               <div className="w-full max-w-md mx-auto">
-                {showBackView ? (
-                  <JerseyPreview
-                    name={name}
-                    number={number}
-                    jerseyImage={selectedJersey?.images[0]?.url}
-                  />
-                ) : (
-                  selectedJersey?.images[0] && (
-                    <div className="relative w-full aspect-[3/4] bg-gray-100 rounded-lg overflow-hidden">
-                      <Image
-                        src={selectedJersey.images[0].url}
-                        alt={selectedJersey.images[0].alt}
-                        fill
-                        className="object-contain"
-                      />
-                    </div>
-                  )
-                )}
+                <JerseyPreview
+                  name={name}
+                  number={number}
+                  jerseyImage={selectedJersey?.images?.[0]?.url}
+                />
               </div>
             </div>
 
@@ -358,31 +322,38 @@ export default function JerseyLetteringPage() {
                 {/* Size Selection */}
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700">Size</label>
-                  <div className="grid grid-cols-4 gap-2 mt-1">
-                    {selectedJersey?.sizes.map((size) => (
-                      <button
-                        key={size}
-                        onClick={() => setSelectedSize(size)}
-                        disabled={isOutOfStock(size)}
-                        className={`py-2 text-sm font-medium rounded-md ${
-                          selectedSize === size
-                            ? 'bg-blue-500 text-white'
-                            : isOutOfStock(size)
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
-                        }`}
-                      >
-                        {size}
-                      </button>
-                    ))}
+                  <div className="grid grid-cols-4 gap-2 mt-2">
+                    {selectedJersey && sortSizes(selectedJersey.sizes).map((size) => {
+                      const stockLevel = getStockLevel(size);
+                      return (
+                        <button
+                          key={size}
+                          onClick={() => setSelectedSize(size)}
+                          disabled={isOutOfStock(size)}
+                          className={`
+                            py-2 px-4 text-sm font-medium rounded-md
+                            ${selectedSize === size
+                              ? 'bg-blue-600 text-white'
+                              : isOutOfStock(size)
+                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                              : 'bg-white text-gray-900 border border-gray-300 hover:bg-gray-50'
+                            }
+                          `}
+                        >
+                          {size}
+                        </button>
+                      );
+                    })}
                   </div>
-                  <p className={`mt-2 text-sm ${
-                    getStockLevel(selectedSize).type === 'error' ? 'text-red-600' :
-                    getStockLevel(selectedSize).type === 'warning' ? 'text-yellow-600' :
-                    'text-green-600'
-                  }`}>
-                    {getStockLevel(selectedSize).message}
-                  </p>
+                  {selectedSize && (
+                    <p className={`mt-2 text-sm ${
+                      getStockLevel(selectedSize).type === 'error' ? 'text-red-600' :
+                      getStockLevel(selectedSize).type === 'warning' ? 'text-yellow-600' :
+                      'text-green-600'
+                    }`}>
+                      {getStockLevel(selectedSize).message}
+                    </p>
+                  )}
                 </div>
 
                 {/* Quantity Selection */}
