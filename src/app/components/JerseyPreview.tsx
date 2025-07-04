@@ -8,31 +8,56 @@ interface JerseyPreviewProps {
 }
 
 const JerseyPreview: React.FC<JerseyPreviewProps> = ({ name, number, jerseyImage }) => {
-  // Calculate the radius and path for the curved text
-  const calculateCurvedTextPath = (text: string) => {
-    const radius = 150; // Increased radius for gentler curve
-    const startAngle = -25; // Adjusted for more even spread
-    const endAngle = 25; // Adjusted for more even spread
-    const angleSpread = endAngle - startAngle;
-    
-    // Calculate angle per character with fixed spacing
-    const fixedSpacing = 12; // Degrees between each character
-    const totalChars = text.length;
-    const totalSpacing = fixedSpacing * (totalChars - 1);
-    const startOffset = -totalSpacing / 2;
-    
-    return text.split('').map((char, i) => {
-      const angle = (startOffset + (i * fixedSpacing)) * (Math.PI / 180);
-      const x = radius * Math.sin(angle) + 190;
-      const y = -radius * Math.cos(angle) + 100;
-      const rotation = angle * (180 / Math.PI);
-      
+  const totalChars = name.length;
+
+  // Gentle, shallow arc for realistic football shirt look
+  const minArc = 50; // minimum arc sweep in degrees
+  const maxArc = 70; // maximum arc sweep in degrees
+  const minRadius = 120;
+  const maxRadius = 150;
+  const minFont = 18;
+  const maxFont = 38;
+
+  // Arc sweep: slightly wider for longer names
+  const arcSweep = Math.min(maxArc, minArc + (totalChars - 5) * 3);
+  const arcSweepClamped = Math.max(minArc, Math.min(maxArc, arcSweep));
+
+  // Radius: smaller for longer names
+  const radius = Math.max(minRadius, maxRadius - (totalChars - 7) * 3);
+  const radiusClamped = Math.max(minRadius, Math.min(maxRadius, radius));
+
+  // Font size: smaller for longer names
+  const fontSize = Math.max(minFont, maxFont - (totalChars - 7) * 1.5);
+  const fontSizeClamped = Math.max(minFont, Math.min(maxFont, fontSize));
+
+  // Arc angles (in degrees)
+  const arcCenter = 270; // top center
+  const arcStart = arcCenter - arcSweepClamped / 2;
+  const arcEnd = arcCenter + arcSweepClamped / 2;
+  // SVG center
+  const cx = 190;
+  // Move arc higher up (closer to the collar)
+  const cy = 70;
+
+  // Describe the arc path for <textPath>
+  const describeArc = (cx: number, cy: number, r: number, startAngle: number, endAngle: number) => {
+    const polarToCartesian = (centerX: number, centerY: number, radius: number, angleInDegrees: number) => {
+      const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
       return {
-        char,
-        transform: `translate(${x}px, ${y}px) rotate(${rotation}deg)`,
+        x: centerX + (radius * Math.cos(angleInRadians)),
+        y: centerY + (radius * Math.sin(angleInRadians))
       };
-    });
+    };
+    const start = polarToCartesian(cx, cy, r, endAngle);
+    const end = polarToCartesian(cx, cy, r, startAngle);
+    const arcSweep = endAngle - startAngle <= 180 ? "0" : "1";
+    return [
+      "M", start.x, start.y,
+      "A", r, r, 0, arcSweep, 0, end.x, end.y
+    ].join(" ");
   };
+
+  const arcPath = describeArc(cx, cy, radiusClamped, arcStart, arcEnd);
 
   return (
     <div className="relative w-full aspect-[3/4] bg-gray-100 rounded-lg overflow-hidden">
@@ -46,37 +71,37 @@ const JerseyPreview: React.FC<JerseyPreviewProps> = ({ name, number, jerseyImage
           priority
         />
       </div>
-      
       {/* Name and number overlay */}
       <div className="absolute inset-0">
-        {/* Curved name text */}
+        {/* Curved name text using SVG <textPath> */}
         {name && (
-          <div 
-            className="absolute top-[30%] left-[55%] w-full transform -translate-x-1/2"
-            style={{
-              perspective: '1000px',
-            }}
+          <svg
+            width={380}
+            height={160}
+            style={{ position: 'absolute', left: 0, top: 0, pointerEvents: 'none' }}
           >
-            <div className="relative">
-              {calculateCurvedTextPath(name).map((char, index) => (
-                <span
-                  key={index}
-                  className="absolute text-4xl font-bold uppercase"
-                  style={{
-                    transform: char.transform,
-                    transformOrigin: 'center bottom',
-                    fontFamily: 'Arial, sans-serif',
-                    letterSpacing: '0',
-                    color: '#000000',
-                  }}
-                >
-                  {char.char}
-                </span>
-              ))}
-            </div>
-          </div>
+            <defs>
+              <path id="jersey-arc" d={arcPath} />
+            </defs>
+            <text
+              fontFamily="Arial, sans-serif"
+              fontWeight="bold"
+              fontSize={fontSizeClamped}
+              fill="#000000"
+              textAnchor="middle"
+              letterSpacing="0.05em"
+            >
+              <textPath
+                href="#jersey-arc"
+                startOffset="50%"
+                alignmentBaseline="middle"
+                dominantBaseline="middle"
+              >
+                {name.toUpperCase()}
+              </textPath>
+            </text>
+          </svg>
         )}
-
         {/* Centered number */}
         {number && (
           <div 

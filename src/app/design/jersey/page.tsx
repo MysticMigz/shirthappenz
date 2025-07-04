@@ -6,7 +6,6 @@ import Image from 'next/image';
 import Header from '@/app/components/Header';
 import Footer from '@/app/components/Footer';
 import { useCart } from '@/context/CartContext';
-import JerseyPreview from '@/app/components/JerseyPreview';
 
 interface Product {
   _id: string;
@@ -272,13 +271,13 @@ export default function JerseyLetteringPage() {
               </div>
 
               {/* Jersey Preview */}
-              <div className="w-full max-w-md mx-auto">
+              {/* <div className="w-full max-w-md mx-auto">
                 <JerseyPreview
                   name={name}
                   number={number}
                   jerseyImage={selectedJersey?.images?.[0]?.url}
                 />
-              </div>
+              </div> */}
             </div>
 
             {/* Customization Form */}
