@@ -1,9 +1,13 @@
-import { useEffect, useState } from 'react';
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   PaymentElement,
   useStripe,
   useElements,
 } from '@stripe/react-stripe-js';
+import { useCart } from '@/context/CartContext';
 
 interface PaymentFormProps {
   orderId: string;
@@ -13,39 +17,10 @@ interface PaymentFormProps {
 export default function PaymentForm({ orderId, total }: PaymentFormProps) {
   const stripe = useStripe();
   const elements = useElements();
-  const [message, setMessage] = useState<string | null>(null);
+  const router = useRouter();
+  const { clearCart } = useCart();
   const [isProcessing, setIsProcessing] = useState(false);
-
-  useEffect(() => {
-    if (!stripe) {
-      return;
-    }
-
-    const clientSecret = new URLSearchParams(window.location.search).get(
-      "payment_intent_client_secret"
-    );
-
-    if (!clientSecret) {
-      return;
-    }
-
-    stripe.retrievePaymentIntent(clientSecret).then(({ paymentIntent }) => {
-      switch (paymentIntent?.status) {
-        case "succeeded":
-          setMessage("Payment succeeded!");
-          break;
-        case "processing":
-          setMessage("Your payment is processing.");
-          break;
-        case "requires_payment_method":
-          setMessage("Please provide your payment details.");
-          break;
-        default:
-          setMessage("Something went wrong.");
-          break;
-      }
-    });
-  }, [stripe]);
+  const [error, setError] = useState<string>();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,41 +30,43 @@ export default function PaymentForm({ orderId, total }: PaymentFormProps) {
     }
 
     setIsProcessing(true);
+    setError(undefined);
 
-    const { error, paymentIntent } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: `${window.location.origin}/thank-you?orderId=${orderId}`,
-      },
-    });
+    try {
+      const { error: submitError } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: `${window.location.origin}/thank-you?orderId=${orderId}`,
+        },
+        redirect: 'always',
+      });
 
-    if (error) {
-      setMessage(error.message ?? "An unexpected error occurred.");
+      if (submitError) {
+        setError(submitError.message);
+        return;
+      }
+    } catch (err: any) {
+      setError(err.message || 'Something went wrong');
+    } finally {
+      setIsProcessing(false);
     }
-
-    setIsProcessing(false);
   };
 
   return (
-    <form id="payment-form" onSubmit={handleSubmit} className="mt-8 space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6">
       <PaymentElement />
       
-      <div className="flex flex-col space-y-2">
-        <button
-          disabled={isProcessing || !stripe || !elements}
-          className={`w-full py-3 px-4 text-white font-medium rounded-md ${
-            isProcessing ? 'bg-gray-400' : 'bg-purple-600 hover:bg-purple-700'
-          }`}
-        >
-          {isProcessing ? "Processing..." : `Pay £${total.toFixed(2)}`}
-        </button>
-        
-        {message && (
-          <div className="text-center text-sm text-red-600">
-            {message}
-          </div>
-        )}
-      </div>
+      {error && (
+        <div className="text-red-600 text-sm">{error}</div>
+      )}
+
+      <button
+        type="submit"
+        disabled={!stripe || isProcessing}
+        className="w-full bg-indigo-600 text-white py-3 px-4 rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {isProcessing ? 'Processing...' : `Pay £${total.toFixed(2)}`}
+      </button>
     </form>
   );
 } 

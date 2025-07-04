@@ -273,6 +273,10 @@ export default function OrdersPage() {
                         <p>Total</p>
                         <p>£{order.total.toFixed(2)}</p>
                       </div>
+                      <div className="flex justify-between mt-2 text-xs text-gray-500 italic">
+                        <span>Includes VAT (20%)</span>
+                        <span>£{(order.total * 0.2 / 1.2).toFixed(2)}</span>
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -140,9 +140,16 @@ const ProductGrid = () => {
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <span className="text-lg font-bold text-purple-600">
-                      From £{product.basePrice.toFixed(2)}
-                    </span>
+                    {product.basePrice > product.price ? (
+                      <div className="flex flex-col items-start gap-1">
+                        <span className="text-xs text-red-600 line-through tracking-tight">RRP: £{product.basePrice.toFixed(2)}</span>
+                        <span className="text-xl font-bold text-green-700 leading-tight">£{product.price.toFixed(2)}</span>
+                      </div>
+                    ) : (
+                      <span className="text-lg font-bold text-purple-600">
+                        £{product.price.toFixed(2)}
+                      </span>
+                    )}
                     <span className="text-sm text-purple-600 group-hover:translate-x-1 transition-transform duration-200">
                       View Details →
                     </span>

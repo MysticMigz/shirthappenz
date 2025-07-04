@@ -1,62 +1,51 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { stripe } from '@/lib/stripe';
-import { connectToDatabase } from '@/lib/mongodb';
-import Order from '@/backend/models/Order';
-import Transaction from '@/backend/models/Transaction';
-import User from '@/backend/models/User';
-// import { createPaymentIntent } from '@/lib/stripe';
+import { NextResponse } from 'next/server';
+import { createPaymentIntent } from '@/lib/stripe';
 
 export async function POST(request: Request) {
+  if (typeof window !== 'undefined') {
+    return NextResponse.json(
+      { error: 'This endpoint can only be called from the server' },
+      { status: 400 }
+    );
+  }
+
   try {
+    // Debug request
+    console.log('Creating payment intent...');
+
     const { amount, orderId } = await request.json();
+    console.log('Payment intent request:', { amount, orderId });
 
     if (!amount || !orderId) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Amount and orderId are required' },
         { status: 400 }
       );
     }
 
-    // Connect to database
-    await connectToDatabase();
-
-    // Verify order exists and is in pending_payment status
-    const order = await Order.findById(orderId);
-    if (!order) {
+    if (!process.env.STRIPE_SECRET_KEY) {
       return NextResponse.json(
-        { error: 'Order not found' },
-        { status: 404 }
+        { error: 'Stripe is not properly configured' },
+        { status: 500 }
       );
     }
 
-    if (order.status !== 'pending_payment') {
-      return NextResponse.json(
-        { error: 'Invalid order status' },
-        { status: 400 }
-      );
-    }
-
-    // Create payment intent
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(amount * 100), // Convert to cents
-      currency: 'gbp',
-      metadata: {
-        orderId: orderId,
-      },
-      automatic_payment_methods: {
-        enabled: true,
-      },
+    const { clientSecret, paymentIntentId } = await createPaymentIntent({
+      amount,
+      orderId,
     });
 
-    return NextResponse.json({
-      clientSecret: paymentIntent.client_secret,
+    console.log('Payment intent created:', { paymentIntentId });
+
+    return NextResponse.json({ clientSecret, paymentIntentId });
+  } catch (error: any) {
+    console.error('Payment intent creation error:', {
+      message: error.message,
+      stack: error.stack,
     });
-  } catch (error) {
-    console.error('Error creating payment intent:', error);
+    
     return NextResponse.json(
-      { error: 'Failed to create payment intent' },
+      { error: error.message || 'Failed to create payment intent' },
       { status: 500 }
     );
   }

@@ -51,13 +51,8 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
+    const url = new URL(request.url);
+    const isPublic = url.searchParams.get('public') === '1';
 
     await connectToDatabase();
 
@@ -69,10 +64,24 @@ export async function GET(
       );
     }
 
-    const order = await Order.findOne({
-      _id: params.id,
-      userId: session.user.email,
-    }).lean() as unknown as OrderDocument;
+    let order: any = null;
+    if (isPublic) {
+      order = await Order.findOne({ _id: params.id }).lean();
+      order = order as any;
+    } else {
+      const session = await getServerSession(authOptions);
+      if (!session?.user?.email) {
+        return NextResponse.json(
+          { error: 'Authentication required' },
+          { status: 401 }
+        );
+      }
+      order = await Order.findOne({
+        _id: params.id,
+        userId: session.user.email,
+      }).lean();
+      order = order as any;
+    }
 
     if (!order) {
       return NextResponse.json(
@@ -86,7 +95,7 @@ export async function GET(
       reference: order.reference,
       status: order.status,
       total: order.total,
-      items: order.items.map(item => ({
+      items: order.items.map((item: any) => ({
         productId: item.productId,
         name: item.name,
         price: item.price,

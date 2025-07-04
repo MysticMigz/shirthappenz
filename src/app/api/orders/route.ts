@@ -6,6 +6,8 @@ import Order from '@/backend/models/Order';
 import User from '@/backend/models/User';
 import Product from '@/backend/models/Product';
 import mongoose from 'mongoose';
+import { updateProductStock } from '@/lib/utils';
+import { sendOrderConfirmationEmail } from '@/lib/email';
 
 interface ProductImage {
   url: string;
@@ -57,90 +59,22 @@ interface OrderItemDB {
   };
 }
 
-// Helper function to update stock levels
-async function updateProductStock(productId: string, size: string, quantity: number): Promise<boolean> {
+export async function GET(request: Request) {
   try {
-    // Convert string ID to ObjectId if needed
-    const _id = typeof productId === 'string' ? new mongoose.Types.ObjectId(productId) : productId;
-
-    // For decreasing stock (quantity is negative), check if we have enough
-    if (quantity < 0) {
-      const product = await Product.findById(_id);
-      if (!product) {
-        console.error(`Product not found: ${productId}`);
-        return false;
-      }
-
-      const available = product.stock[size] || 0;
-      if (available < Math.abs(quantity)) {
-        console.error(`Insufficient stock for product ${productId}, size ${size}`);
-        return false;
-      }
-    }
-
-    // Use $inc for atomic update
-    const updateQuery = {
-      $inc: {
-        [`stock.${size}`]: quantity
-      }
-    };
-
-    // Add a condition to prevent stock from going below 0
-    const options = {
-      new: true,
-      runValidators: true
-    };
-
-    const product = await Product.findOneAndUpdate(
-      {
-        _id,
-        [`stock.${size}`]: { $gte: Math.abs(quantity) }
-      },
-      updateQuery,
-      options
-    );
-
-    if (!product) {
-      console.error(`Failed to update stock for product ${productId}, size ${size}`);
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    console.error(`Error updating stock for product ${productId}:`, error);
-    return false;
-  }
-}
-
-export async function GET() {
-  try {
-    const session = await getServerSession();
-
+    // Check authentication
+    const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
     }
 
     await connectToDatabase();
 
+    // Get user's orders
     const orders = await Order.find({ userId: session.user.email })
-      .populate({
-        path: 'items.productId',
-        model: 'Product',
-        select: 'images'
-      })
-      .sort({ createdAt: -1 })
-      .lean()
-      .then(orders => {
-        // Transform the populated data to include image URLs
-        return orders.map(order => ({
-          ...order,
-          items: order.items.map((item: OrderItem): TransformedOrderItem => ({
-            ...item,
-            image: (item.productId as PopulatedProduct)?.images?.[0]?.url || null,
-            productId: (item.productId as PopulatedProduct)?._id || (item.productId as string)
-          }))
-        }));
-      });
+      .sort({ createdAt: -1 });
 
     return NextResponse.json(orders);
   } catch (error) {
@@ -235,6 +169,7 @@ export async function POST(request: Request) {
 
     // Validate and process each item
     const processedItems: OrderItemDB[] = [];
+
     for (const item of items) {
       // Validate customization if present
       if (item.customization?.isCustomized) {
@@ -301,6 +236,10 @@ export async function POST(request: Request) {
       });
     }
 
+    // Calculate backend total for safety
+    const subtotal = processedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const backendTotal = subtotal + shippingDetails.shippingCost;
+
     // Create and save order with retries
     let order;
     let attempts = 0;
@@ -321,7 +260,7 @@ export async function POST(request: Request) {
             ...shippingDetails,
             country: shippingDetails.country || 'United Kingdom'
           },
-          total: total,
+          total: backendTotal,
           status: 'pending'
         });
 
@@ -347,9 +286,22 @@ export async function POST(request: Request) {
       );
     }
 
+    // Send order confirmation email
+    try {
+      await sendOrderConfirmationEmail(
+        order.reference,
+        order.items,
+        order.shippingDetails,
+        order.total
+      );
+    } catch (error) {
+      console.error('Failed to send order confirmation email:', error);
+      // Don't fail the request if email fails
+    }
+
     // Return the order ID and reference
     return NextResponse.json({
-      _id: order._id.toString(),
+      orderId: order._id.toString(),
       reference: order.reference
     });
 

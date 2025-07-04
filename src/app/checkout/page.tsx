@@ -1,137 +1,52 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
-import Link from 'next/link';
-import Header from '@/app/components/Header';
-import Footer from '@/app/components/Footer';
 import { useCart } from '@/context/CartContext';
-import { useUser } from '@/context/UserContext';
-import { Elements } from '@stripe/react-stripe-js';
-import { loadStripe } from '@stripe/stripe-js';
+import StripeProvider from '../components/StripeProvider';
 import PaymentForm from './PaymentForm';
+import ShippingForm, { ShippingDetails } from './ShippingForm';
+import Header from '../components/Header';
+import Image from 'next/image';
 
-// Initialize Stripe
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
-
-export interface CheckoutForm {
-  email: string;
-  firstName: string;
-  lastName: string;
-  address: string;
-  addressLine2: string;
-  city: string;
-  county: string;
-  postcode: string;
-  country: string;
-  phone: string;
-  shippingMethod: string;
+interface CheckoutStep {
+  shippingDetails?: ShippingDetails & { shippingCost: number };
+  clientSecret?: string;
+  orderId?: string;
 }
 
-interface ShippingOption {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  estimatedDays: string;
-}
-
-const shippingOptions: ShippingOption[] = [
-  {
-    id: 'standard',
-    name: 'Standard Delivery',
-    description: 'Royal Mail 2nd Class',
-    price: 4.99,
-    estimatedDays: '3-5 working days'
-  },
-  {
-    id: 'express',
-    name: 'Express Delivery',
-    description: 'Royal Mail 1st Class',
-    price: 6.99,
-    estimatedDays: '1-2 working days'
-  },
-  {
-    id: 'next-day',
-    name: 'Next Day Delivery',
-    description: 'DPD Next Working Day',
-    price: 9.99,
-    estimatedDays: 'Next working day if ordered before 2pm'
-  }
-];
+const DEFAULT_SHIPPING_METHOD = 'Standard Delivery';
+const SHIPPING_COSTS = { 'Standard Delivery': 5.99, 'Express Delivery': 12.99 };
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { items, getTotal, clearCart } = useCart();
-  const { user } = useUser();
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [clientSecret, setClientSecret] = useState<string>();
-  const [orderId, setOrderId] = useState<string>();
-  const [formData, setFormData] = useState<CheckoutForm>({
-    email: user?.email || '',
-    firstName: user?.firstName || '',
-    lastName: user?.lastName || '',
-    address: '',
-    addressLine2: '',
-    city: '',
-    county: '',
-    postcode: '',
-    country: 'United Kingdom',
-    phone: '',
-    shippingMethod: 'standard'
-  });
+  const { items, getTotal } = useCart();
+  const [step, setStep] = useState<CheckoutStep>({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string>();
 
-  // Only redirect to cart if not processing and cart is empty
   useEffect(() => {
-    if (!isProcessing && items.length === 0) {
+    if (!items.length) {
       router.push('/cart');
     }
-  }, [items, router, isProcessing]);
+  }, [items, router]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsProcessing(true);
+  const handleShippingSubmit = async (shippingDetails: ShippingDetails & { shippingCost: number }) => {
+    setIsLoading(true);
+    setError(undefined);
 
     try {
-      // Get selected shipping option details
-      const selectedShipping = shippingOptions.find(option => option.id === formData.shippingMethod);
-      const orderTotal = getTotal() + (selectedShipping?.price || 4.99);
+      const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+      const total = subtotal + shippingDetails.shippingCost;
       
-      // Create order in database
+      // Create order first
       const orderResponse = await fetch('/api/orders', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          items: items.map(item => ({
-            ...item,
-            customization: item.customization ? {
-              name: item.customization.name,
-              number: item.customization.number,
-              isCustomized: true,
-              nameCharacters: item.customization.name?.length || 0,
-              numberCharacters: item.customization.number?.length || 0,
-              customizationCost: ((item.customization.name?.length || 0) + (item.customization.number?.length || 0)) * 2
-            } : undefined
-          })),
-          shippingDetails: {
-            ...formData,
-            shippingMethod: selectedShipping?.name || 'Standard Delivery',
-            shippingCost: selectedShipping?.price || 4.99,
-            estimatedDeliveryDays: selectedShipping?.estimatedDays || '3-5 working days'
-          },
-          total: orderTotal,
-          status: 'pending_payment'
+          items,
+          total,
+          shippingDetails
         }),
       });
 
@@ -141,22 +56,14 @@ export default function CheckoutPage() {
       }
 
       const orderData = await orderResponse.json();
-      
-      if (!orderData._id) {
-        throw new Error('No order ID received');
-      }
 
-      setOrderId(orderData._id);
-
-      // Create payment intent
+      // Then create payment intent
       const paymentResponse = await fetch('/api/payment/create-payment-intent', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: orderTotal,
-          orderId: orderData._id,
+          amount: total,
+          orderId: orderData.orderId,
         }),
       });
 
@@ -165,358 +72,144 @@ export default function CheckoutPage() {
       }
 
       const { clientSecret } = await paymentResponse.json();
-      setClientSecret(clientSecret);
-
-    } catch (error) {
-      console.error('Checkout error:', error);
-      setIsProcessing(false);
-      alert(error instanceof Error ? error.message : 'There was an error processing your order. Please try again.');
+      
+      setStep({
+        shippingDetails,
+        clientSecret,
+        orderId: orderData.orderId
+      });
+    } catch (err: any) {
+      console.error('Checkout error:', err);
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const selectedShipping = shippingOptions.find(option => option.id === formData.shippingMethod);
-  const shippingCost = selectedShipping?.price || 4.99;
-  const subtotal = getTotal();
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 flex flex-col items-center justify-center p-4">
+        <div className="bg-white p-8 rounded-xl shadow-lg max-w-md w-full border border-red-100">
+          <div className="flex items-center space-x-3 mb-4">
+            <svg className="h-8 w-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <h2 className="text-red-600 text-xl font-semibold">Error Occurred</h2>
+          </div>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <button
+            onClick={() => router.push('/cart')}
+            className="w-full bg-red-600 text-white py-3 px-4 rounded-lg hover:bg-red-700 transition-all duration-200 flex items-center justify-center space-x-2"
+          >
+            <span>Return to Cart</span>
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!items.length) {
+    return null;
+  }
+
+  // Calculate subtotal, VAT (included), and total for display
+  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const shippingCost = step.shippingDetails ? step.shippingDetails.shippingCost : SHIPPING_COSTS[DEFAULT_SHIPPING_METHOD];
+  const shippingMethod = step.shippingDetails ? step.shippingDetails.shippingMethod : DEFAULT_SHIPPING_METHOD;
+  const vatRate = 0.2;
   const total = subtotal + shippingCost;
+  const vatIncluded = total * vatRate / (1 + vatRate);
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 py-12 px-4">
       <Header />
-      <main className="flex-grow bg-gray-50 py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Checkout Form */}
-            <div className="space-y-8">
-              {!clientSecret ? (
-                <>
-                  {/* Shipping Information */}
-                  <div className="bg-white rounded-lg shadow p-6">
-                    <h2 className="text-2xl font-bold text-gray-900 mb-6">Shipping Information</h2>
-                    
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
-                            First Name
-                          </label>
-                          <input
-                            type="text"
-                            id="firstName"
-                            name="firstName"
-                            value={formData.firstName}
-                            onChange={handleInputChange}
-                            required
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
-                          />
-                        </div>
-                        <div>
-                          <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
-                            Last Name
-                          </label>
-                          <input
-                            type="text"
-                            id="lastName"
-                            name="lastName"
-                            value={formData.lastName}
-                            onChange={handleInputChange}
-                            required
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                          Email
-                        </label>
-                        <input
-                          type="email"
-                          id="email"
-                          name="email"
-                          value={formData.email}
-                          onChange={handleInputChange}
-                          required
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
-                        />
-                      </div>
-
-                      <div>
-                        <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                          Phone Number
-                        </label>
-                        <input
-                          type="tel"
-                          id="phone"
-                          name="phone"
-                          value={formData.phone}
-                          onChange={handleInputChange}
-                          required
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
-                        />
-                      </div>
-
-                      <div>
-                        <label htmlFor="address" className="block text-sm font-medium text-gray-700">
-                          Address Line 1
-                        </label>
-                        <input
-                          type="text"
-                          id="address"
-                          name="address"
-                          value={formData.address}
-                          onChange={handleInputChange}
-                          required
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
-                        />
-                      </div>
-
-                      <div>
-                        <label htmlFor="addressLine2" className="block text-sm font-medium text-gray-700">
-                          Address Line 2 (Optional)
-                        </label>
-                        <input
-                          type="text"
-                          id="addressLine2"
-                          name="addressLine2"
-                          value={formData.addressLine2}
-                          onChange={handleInputChange}
-                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label htmlFor="city" className="block text-sm font-medium text-gray-700">
-                            City
-                          </label>
-                          <input
-                            type="text"
-                            id="city"
-                            name="city"
-                            value={formData.city}
-                            onChange={handleInputChange}
-                            required
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
-                          />
-                        </div>
-                        <div>
-                          <label htmlFor="county" className="block text-sm font-medium text-gray-700">
-                            County
-                          </label>
-                          <input
-                            type="text"
-                            id="county"
-                            name="county"
-                            value={formData.county}
-                            onChange={handleInputChange}
-                            required
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label htmlFor="postcode" className="block text-sm font-medium text-gray-700">
-                            Postcode
-                          </label>
-                          <input
-                            type="text"
-                            id="postcode"
-                            name="postcode"
-                            value={formData.postcode}
-                            onChange={handleInputChange}
-                            required
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
-                          />
-                        </div>
-                        <div>
-                          <label htmlFor="country" className="block text-sm font-medium text-gray-700">
-                            Country
-                          </label>
-                          <select
-                            id="country"
-                            name="country"
-                            value={formData.country}
-                            onChange={handleInputChange}
-                            required
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
-                          >
-                            <option value="United Kingdom">United Kingdom</option>
-                            <option value="Ireland">Ireland</option>
-                            <option value="France">France</option>
-                            <option value="Germany">Germany</option>
-                            <option value="Spain">Spain</option>
-                            <option value="Italy">Italy</option>
-                            <option value="Netherlands">Netherlands</option>
-                            <option value="Belgium">Belgium</option>
-                            <option value="Portugal">Portugal</option>
-                            <option value="Sweden">Sweden</option>
-                            <option value="Denmark">Denmark</option>
-                            <option value="Norway">Norway</option>
-                            <option value="Finland">Finland</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      {/* Shipping Method Selection */}
-                      <div className="mt-8">
-                        <h3 className="text-lg font-medium text-gray-900 mb-4">Shipping Method</h3>
-                        <div className="space-y-4">
-                          {shippingOptions.map((option) => (
-                            <div key={option.id} className="relative">
-                              <input
-                                type="radio"
-                                id={option.id}
-                                name="shippingMethod"
-                                value={option.id}
-                                checked={formData.shippingMethod === option.id}
-                                onChange={handleInputChange}
-                                className="peer sr-only"
-                              />
-                              <label
-                                htmlFor={option.id}
-                                className="flex items-center justify-between p-4 border rounded-lg cursor-pointer
-                                  peer-checked:border-purple-600 peer-checked:bg-purple-50 hover:bg-gray-50"
-                              >
-                                <div>
-                                  <div className="font-medium text-gray-900">{option.name}</div>
-                                  <div className="text-sm text-gray-500">{option.description}</div>
-                                  <div className="text-sm text-gray-500">{option.estimatedDays}</div>
-                                </div>
-                                <div className="text-lg font-medium text-gray-900">
-                                  £{option.price.toFixed(2)}
-                                </div>
-                              </label>
-                              <div className="absolute top-4 right-4 w-5 h-5 rounded-full border
-                                peer-checked:border-purple-600 peer-checked:bg-purple-600 peer-checked:flex
-                                items-center justify-center hidden">
-                                <svg className="w-3 h-3 text-white" viewBox="0 0 12 12">
-                                  <path
-                                    d="M3.72 6.96l1.44 1.44 3.12-3.12"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                  />
-                                </svg>
-                              </div>
+      <div className="max-w-4xl mx-auto">
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+          <div className="p-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-8">Complete Your Purchase</h1>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+              {/* Order Summary - Takes up 2 columns */}
+              <div className="lg:col-span-2 order-2 lg:order-1">
+                <div className="bg-gray-50 rounded-lg p-6">
+                  <h2 className="text-xl font-semibold text-gray-900 mb-6">Order Summary</h2>
+                  <div className="space-y-4">
+                    {items.map((item) => (
+                      <div key={item.productId + item.size} className="flex items-center py-4 border-b border-gray-200 last:border-0 gap-4">
+                        {/* Product Image */}
+                        <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border border-gray-200 bg-white">
+                          {item.image ? (
+                            <Image
+                              src={item.image}
+                              alt={item.name}
+                              fill
+                              className="object-cover object-center"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                              <span className="text-gray-400 text-xs">No image</span>
                             </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      <button
-                        type="submit"
-                        disabled={isProcessing}
-                        className={`w-full py-3 px-4 text-white font-medium rounded-md ${
-                          isProcessing ? 'bg-gray-400' : 'bg-purple-600 hover:bg-purple-700'
-                        }`}
-                      >
-                        {isProcessing ? 'Processing...' : 'Continue to Payment'}
-                      </button>
-                    </form>
-                  </div>
-                </>
-              ) : (
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-6">Payment Information</h2>
-                  {clientSecret && orderId && (
-                    <Elements stripe={stripePromise} options={{ clientSecret }}>
-                      <PaymentForm orderId={orderId} total={total} />
-                    </Elements>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Order Summary */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-6">Order Summary</h2>
-              
-              <div className="space-y-4">
-                {items.map((item) => (
-                  <div key={`${item.productId}-${item.size}`} className="flex items-center py-4 border-b">
-                    <div className="relative h-20 w-20 flex-shrink-0">
-                      {item.image ? (
-                        <Image
-                          src={item.image}
-                          alt={item.name}
-                          fill
-                          className="object-cover rounded-md"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-gray-100 rounded-md flex items-center justify-center">
-                          <span className="text-gray-400">No image</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="ml-4 flex-1">
-                      <h3 className="text-sm font-medium text-gray-900">{item.name}</h3>
-                      <p className="mt-1 text-sm text-gray-500">
-                        Size: {item.size}
-                      </p>
-                      {/* Customization Details */}
-                      {item.customization?.isCustomized && (
-                        <div className="mt-1 space-y-1">
-                          {item.customization.name && (
-                            <p className="text-sm text-gray-600">
-                              Name: {item.customization.name}
-                              <span className="text-xs text-gray-500 ml-2">
-                                ({item.customization.name.length} × £2)
-                              </span>
-                            </p>
-                          )}
-                          {item.customization.number && (
-                            <p className="text-sm text-gray-600">
-                              Number: {item.customization.number}
-                              <span className="text-xs text-gray-500 ml-2">
-                                ({item.customization.number.length} × £2)
-                              </span>
-                            </p>
                           )}
                         </div>
-                      )}
-                      <div className="mt-1 text-sm text-gray-500">
-                        {item.quantity} × £{item.price.toFixed(2)}
+                        {/* Product Details */}
+                        <div className="flex-1">
+                          <h3 className="font-medium text-gray-900 text-sm lg:text-base">{item.name}</h3>
+                          <p className="text-xs text-gray-500">Size: {item.size}</p>
+                          <p className="text-xs text-gray-500">Quantity: {item.quantity}</p>
+                        </div>
+                        <span className="font-semibold text-gray-900 text-sm lg:text-base">£{(item.price * item.quantity).toFixed(2)}</span>
                       </div>
-                    </div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-900">
-                        £{(item.price * item.quantity).toFixed(2)}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Subtotal</span>
-                    <span className="text-gray-900">£{subtotal.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">
-                      Shipping ({selectedShipping?.name})
-                      <div className="text-xs text-gray-500">{selectedShipping?.estimatedDays}</div>
-                    </span>
-                    <span className="text-gray-900">£{shippingCost.toFixed(2)}</span>
-                  </div>
-                  <div className="border-t border-gray-200 pt-2 mt-2">
-                    <div className="flex justify-between">
-                      <span className="text-base font-medium text-gray-900">Total</span>
-                      <span className="text-base font-medium text-gray-900">
-                        £{total.toFixed(2)}
-                      </span>
+                    ))}
+                    {/* Subtotal, Shipping, and Total (VAT included) */}
+                    <div className="mt-6 pt-6 border-t border-gray-200">
+                      <div className="flex justify-between mb-2 text-sm text-gray-500">
+                        <span>Subtotal</span>
+                        <span>£{subtotal.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between mb-2 text-sm text-gray-500">
+                        <span>Shipping ({shippingMethod})</span>
+                        <span>£{shippingCost.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-lg font-bold text-gray-900 mt-4">
+                        <span>Total</span>
+                        <span>£{total.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between mt-2 text-xs text-gray-500 italic">
+                        <span>Includes VAT (20%)</span>
+                        <span>£{vatIncluded.toFixed(2)}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
+
+              {/* Form Section - Takes up 3 columns */}
+              <div className="lg:col-span-3 order-1 lg:order-2">
+                {isLoading ? (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600"></div>
+                    <p className="mt-4 text-gray-600">Processing your order...</p>
+                  </div>
+                ) : step.clientSecret && step.orderId && step.shippingDetails ? (
+                  <div className="bg-white rounded-lg">
+                    <StripeProvider clientSecret={step.clientSecret}>
+                      <PaymentForm 
+                        orderId={step.orderId} 
+                        total={getTotal() + step.shippingDetails.shippingCost} 
+                      />
+                    </StripeProvider>
+                  </div>
+                ) : (
+                  <ShippingForm onSubmit={handleShippingSubmit} />
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </main>
-      <Footer />
+      </div>
     </div>
   );
 } 

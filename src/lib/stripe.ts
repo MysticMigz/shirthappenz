@@ -1,33 +1,70 @@
 import { loadStripe } from '@stripe/stripe-js';
-
-// Make sure to call `loadStripe` outside of a component's render to avoid
-// recreating the `Stripe` object on every render.
-export const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
-
-// Server-side Stripe instance
 import Stripe from 'stripe';
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('STRIPE_SECRET_KEY is not defined');
+// Debug environment variables
+if (typeof window === 'undefined') {  // Only log on server-side
+  console.log('Checking Stripe environment:', {
+    hasSecretKey: !!process.env.STRIPE_SECRET_KEY,
+    hasPublishableKey: !!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
+  });
 }
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2025-05-28.basil',
-});
+// Client-side Stripe instance
+export const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
-export const createPaymentIntent = async (amount: number) => {
+// Server-side Stripe instance - only initialize if we're on the server
+let stripe: Stripe | undefined;
+
+if (typeof window === 'undefined') {  // Only run on server side
+  if (!process.env.STRIPE_SECRET_KEY) {
+    console.error('Warning: STRIPE_SECRET_KEY is not configured in environment');
+  } else {
+    stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2025-05-28.basil',
+      typescript: true,
+    });
+  }
+}
+
+export interface CreatePaymentIntentOptions {
+  amount: number;
+  orderId: string;
+  currency?: string;
+  paymentMethodTypes?: string[];
+}
+
+export async function createPaymentIntent({
+  amount,
+  orderId,
+  currency = 'gbp',
+  paymentMethodTypes = ['card'],
+}: CreatePaymentIntentOptions) {
+  if (!stripe) {
+    throw new Error('Stripe has not been initialized. This method can only be called from the server.');
+  }
+
   try {
+    // Validate amount
+    if (amount <= 0) {
+      throw new Error('Amount must be greater than 0');
+    }
+
+    // Create the payment intent
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100), // Convert to cents
-      currency: 'gbp',
-      automatic_payment_methods: {
-        enabled: true,
+      currency,
+      payment_method_types: paymentMethodTypes,
+      metadata: {
+        orderId,
       },
     });
 
-    return { clientSecret: paymentIntent.client_secret };
+    return {
+      clientSecret: paymentIntent.client_secret,
+      paymentIntentId: paymentIntent.id,
+    };
   } catch (error) {
     console.error('Error creating payment intent:', error);
-    throw error;
+    throw new Error('Failed to create payment intent');
   }
-}; 
+} 

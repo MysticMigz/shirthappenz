@@ -21,6 +21,7 @@ interface Product {
   stock: { [key: string]: number };
   featured: boolean;
   customizable: boolean;
+  rrp?: number;
 }
 
 // Size order mapping for correct sorting
@@ -117,7 +118,7 @@ export default function ProductPage({ params }: { params: { id: string } }) {
         name: product.name,
         size: selectedSize,
         quantity: quantity,
-        price: product.basePrice,
+        price: product.price,
         image: product.images[0]?.url,
         color: product.colors[0]?.name
       };
@@ -202,9 +203,17 @@ export default function ProductPage({ params }: { params: { id: string } }) {
             <div className="flex flex-col">
               <h1 className="text-3xl font-bold text-gray-900 mb-2">{product.name}</h1>
               <p className="text-sm text-gray-500 mb-4">{product.category}</p>
-              <p className="text-2xl font-bold text-purple-600 mb-6">
-                £{product.basePrice.toFixed(2)}
-              </p>
+              {/* RRP and Offer Price */}
+              {product.basePrice > product.price ? (
+                <div className="flex items-center gap-2 mb-6">
+                  <span className="text-lg text-gray-400 line-through">RRP: £{product.basePrice.toFixed(2)}</span>
+                  <span className="text-2xl font-bold text-green-700">Offer: £{product.price.toFixed(2)}</span>
+                </div>
+              ) : (
+                <p className="text-2xl font-bold text-purple-600 mb-6">
+                  £{product.price.toFixed(2)}
+                </p>
+              )}
               <div className="prose prose-sm text-gray-600 mb-6">
                 {product.description}
               </div>
