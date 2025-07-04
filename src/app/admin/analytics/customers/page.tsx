@@ -15,6 +15,7 @@ import {
 } from 'chart.js';
 import { Line, Bar, Doughnut } from 'react-chartjs-2';
 import { FaUsers, FaUserPlus, FaChartPie, FaShoppingBag } from 'react-icons/fa';
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 
 // Register ChartJS components
 ChartJS.register(
@@ -51,6 +52,8 @@ interface CustomerData {
 }
 
 export default function CustomerInsightsPage() {
+  const [filterType, setFilterType] = useState<'day' | 'week' | 'month'>('week');
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [period, setPeriod] = useState<'week' | 'month' | 'year'>('month');
   const [customerData, setCustomerData] = useState<CustomerData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -58,12 +61,23 @@ export default function CustomerInsightsPage() {
 
   useEffect(() => {
     fetchCustomerData();
-  }, [period]);
+  }, [filterType, selectedDate]);
 
   const fetchCustomerData = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/admin/analytics/customers?period=${period}`);
+      let startDate: string, endDate: string;
+      if (filterType === 'day') {
+        startDate = format(selectedDate, 'yyyy-MM-dd');
+        endDate = startDate;
+      } else if (filterType === 'week') {
+        startDate = format(startOfWeek(selectedDate, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+        endDate = format(endOfWeek(selectedDate, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+      } else {
+        startDate = format(startOfMonth(selectedDate), 'yyyy-MM-dd');
+        endDate = format(endOfMonth(selectedDate), 'yyyy-MM-dd');
+      }
+      const response = await fetch(`/api/admin/analytics/customers?filterType=${filterType}&startDate=${startDate}&endDate=${endDate}`);
       if (!response.ok) throw new Error('Failed to fetch customer data');
       const data = await response.json();
       setCustomerData(data);
@@ -140,6 +154,31 @@ export default function CustomerInsightsPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Customer Insights</h1>
         <p className="mt-2 text-gray-600">Analyze customer behavior and demographics</p>
+      </div>
+
+      {/* Filter UI */}
+      <div className="mb-8 flex flex-col md:flex-row md:items-center gap-4">
+        <select
+          value={filterType}
+          onChange={e => setFilterType(e.target.value as 'day' | 'week' | 'month')}
+          className="border rounded-md px-3 py-2 text-sm"
+        >
+          <option value="day">Day</option>
+          <option value="week">Week</option>
+          <option value="month">Month</option>
+        </select>
+        <input
+          type="date"
+          value={format(selectedDate, 'yyyy-MM-dd')}
+          onChange={e => setSelectedDate(new Date(e.target.value))}
+          className="border rounded-md px-3 py-2 text-sm"
+        />
+        {filterType === 'week' && (
+          <span className="text-gray-500 text-sm">Week of {format(startOfWeek(selectedDate, { weekStartsOn: 1 }), 'dd MMM yyyy')}</span>
+        )}
+        {filterType === 'month' && (
+          <span className="text-gray-500 text-sm">{format(selectedDate, 'MMMM yyyy')}</span>
+        )}
       </div>
 
       {/* Time Period Selector */}

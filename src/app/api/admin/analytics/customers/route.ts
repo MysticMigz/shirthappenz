@@ -17,12 +17,22 @@ export async function GET(request: NextRequest) {
 
     // Get query parameters for date range
     const { searchParams } = new URL(request.url);
-    const period = searchParams.get('period') || 'month'; // week, month, year
+    const filterType = searchParams.get('filterType');
+    const startDateParam = searchParams.get('startDate');
+    const endDateParam = searchParams.get('endDate');
+    const period = searchParams.get('period') || 'month'; // fallback
 
     // Calculate date range
     const now = new Date();
     let startDate = new Date();
-    if (period === 'week') {
+    let endDate = now;
+    if (startDateParam && endDateParam) {
+      // Use custom date range from query
+      startDate = new Date(startDateParam);
+      endDate = new Date(endDateParam);
+      // Set endDate to end of day
+      endDate.setHours(23, 59, 59, 999);
+    } else if (period === 'week') {
       startDate.setDate(now.getDate() - 7);
     } else if (period === 'month') {
       startDate.setMonth(now.getMonth() - 1);
@@ -36,12 +46,12 @@ export async function GET(request: NextRequest) {
     // Get new customers in period
     const newCustomers = await User.countDocuments({
       role: 'customer',
-      createdAt: { $gte: startDate, $lte: now }
+      createdAt: { $gte: startDate, $lte: endDate }
     });
 
     // Get orders data
     const orders = await Order.find({
-      createdAt: { $gte: startDate, $lte: now }
+      createdAt: { $gte: startDate, $lte: endDate }
     });
 
     // Calculate customer metrics
@@ -84,7 +94,7 @@ export async function GET(request: NextRequest) {
       {
         $match: {
           role: 'customer',
-          createdAt: { $gte: startDate, $lte: now }
+          createdAt: { $gte: startDate, $lte: endDate }
         }
       },
       {
