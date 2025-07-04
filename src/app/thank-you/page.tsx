@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import Header from '@/app/components/Header';
 import Footer from '@/app/components/Footer';
+import { getImageUrl } from '@/lib/utils';
 
 interface OrderItem {
   productId: string;
@@ -67,7 +68,8 @@ const statusColors = {
 export default function ThankYouPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const orderId = searchParams.get('id');
+  const orderId = searchParams.get('orderId');
+  const paymentStatus = searchParams.get('payment_status');
   const [state, setState] = useState<OrderState>({
     orderDetails: null,
     loading: true,
@@ -167,21 +169,60 @@ export default function ThankYouPage() {
           {/* Success Message */}
           <div className="text-center mb-8">
             <div className="mb-4">
-              <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-green-100">
-                <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
+              {orderDetails?.status === 'paid' || paymentStatus === 'succeeded' ? (
+                <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-green-100">
+                  <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              ) : orderDetails?.status === 'payment_failed' || paymentStatus === 'failed' ? (
+                <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-red-100">
+                  <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </div>
+              ) : (
+                <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-yellow-100">
+                  <svg className="h-6 w-6 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+              )}
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Thank You for Your Order!</h1>
-            <p className="text-gray-600">Your order has been received and is being processed.</p>
+            {orderDetails?.status === 'paid' || paymentStatus === 'succeeded' ? (
+              <>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">Thank You for Your Order!</h1>
+                <p className="text-gray-600">Your payment has been processed successfully.</p>
+              </>
+            ) : orderDetails?.status === 'payment_failed' || paymentStatus === 'failed' ? (
+              <>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">Payment Failed</h1>
+                <p className="text-gray-600">There was an issue processing your payment. Please try again.</p>
+                <Link 
+                  href="/checkout" 
+                  className="mt-4 inline-block px-6 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
+                >
+                  Return to Checkout
+                </Link>
+              </>
+            ) : (
+              <>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">Order Received</h1>
+                <p className="text-gray-600">Your order is being processed. Please complete the payment.</p>
+              </>
+            )}
           </div>
 
           {/* Order Reference */}
           <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
             <div className="text-center">
               <p className="text-sm text-gray-500">Order Reference</p>
-              <p className="text-lg font-semibold text-gray-900">{orderDetails.reference}</p>
+              <p className="text-lg font-semibold text-gray-900">{orderDetails?.reference}</p>
+              <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mt-2 ${
+                statusColors[orderDetails?.status as keyof typeof statusColors] || 'bg-gray-100 text-gray-800'
+              }`}>
+                {orderDetails?.status}
+              </div>
             </div>
           </div>
 
@@ -197,7 +238,7 @@ export default function ThankYouPage() {
                       <div className="relative h-24 w-24 flex-shrink-0">
                         {item.image ? (
                           <Image
-                            src={item.image}
+                            src={getImageUrl(item.image)}
                             alt={item.name}
                             fill
                             className="object-cover rounded-md"

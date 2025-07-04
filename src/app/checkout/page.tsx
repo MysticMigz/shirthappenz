@@ -8,13 +8,12 @@ import Header from '@/app/components/Header';
 import Footer from '@/app/components/Footer';
 import { useCart } from '@/context/CartContext';
 import { useUser } from '@/context/UserContext';
-// Stripe imports - uncomment when implementing payments
-// import { Elements } from '@stripe/react-stripe-js';
-// import { loadStripe } from '@stripe/stripe-js';
-// import PaymentForm from './PaymentForm';
+import { Elements } from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
+import PaymentForm from './PaymentForm';
 
-// Initialize Stripe - uncomment when implementing payments
-// const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+// Initialize Stripe
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 export interface CheckoutForm {
   email: string;
@@ -67,6 +66,8 @@ export default function CheckoutPage() {
   const { items, getTotal, clearCart } = useCart();
   const { user } = useUser();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [clientSecret, setClientSecret] = useState<string>();
+  const [orderId, setOrderId] = useState<string>();
   const [formData, setFormData] = useState<CheckoutForm>({
     email: user?.email || '',
     firstName: user?.firstName || '',
@@ -103,9 +104,10 @@ export default function CheckoutPage() {
     try {
       // Get selected shipping option details
       const selectedShipping = shippingOptions.find(option => option.id === formData.shippingMethod);
+      const orderTotal = getTotal() + (selectedShipping?.price || 4.99);
       
       // Create order in database
-      const response = await fetch('/api/orders', {
+      const orderResponse = await fetch('/api/orders', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -128,26 +130,43 @@ export default function CheckoutPage() {
             shippingCost: selectedShipping?.price || 4.99,
             estimatedDeliveryDays: selectedShipping?.estimatedDays || '3-5 working days'
           },
-          total: getTotal() + (selectedShipping?.price || 4.99),
+          total: orderTotal,
+          status: 'pending_payment'
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
+      if (!orderResponse.ok) {
+        const errorData = await orderResponse.json();
         throw new Error(errorData.error || 'Failed to create order');
       }
 
-      const data = await response.json();
+      const orderData = await orderResponse.json();
       
-      if (!data._id) {
+      if (!orderData._id) {
         throw new Error('No order ID received');
       }
 
-      // Clear cart before redirecting
-      clearCart();
-      
-      // Use replace instead of push to prevent going back to checkout
-      router.replace(`/thank-you?id=${data._id}`);
+      setOrderId(orderData._id);
+
+      // Create payment intent
+      const paymentResponse = await fetch('/api/payment/create-payment-intent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: orderTotal,
+          orderId: orderData._id,
+        }),
+      });
+
+      if (!paymentResponse.ok) {
+        throw new Error('Failed to create payment intent');
+      }
+
+      const { clientSecret } = await paymentResponse.json();
+      setClientSecret(clientSecret);
+
     } catch (error) {
       console.error('Checkout error:', error);
       setIsProcessing(false);
@@ -168,244 +187,248 @@ export default function CheckoutPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Checkout Form */}
             <div className="space-y-8">
-              {/* Shipping Information */}
-              <div className="bg-white rounded-lg shadow p-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Shipping Information</h2>
-                
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
-                        First Name
-                      </label>
-                      <input
-                        type="text"
-                        id="firstName"
-                        name="firstName"
-                        value={formData.firstName}
-                        onChange={handleInputChange}
-                        required
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
-                        Last Name
-                      </label>
-                      <input
-                        type="text"
-                        id="lastName"
-                        name="lastName"
-                        value={formData.lastName}
-                        onChange={handleInputChange}
-                        required
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                      Email
-                    </label>
-                    <input
-                      type="email"
-                      id="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      required
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                      Phone Number
-                    </label>
-                    <input
-                      type="tel"
-                      id="phone"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      required
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="address" className="block text-sm font-medium text-gray-700">
-                      Address Line 1
-                    </label>
-                    <input
-                      type="text"
-                      id="address"
-                      name="address"
-                      value={formData.address}
-                      onChange={handleInputChange}
-                      required
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label htmlFor="addressLine2" className="block text-sm font-medium text-gray-700">
-                      Address Line 2 (Optional)
-                    </label>
-                    <input
-                      type="text"
-                      id="addressLine2"
-                      name="addressLine2"
-                      value={formData.addressLine2}
-                      onChange={handleInputChange}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label htmlFor="city" className="block text-sm font-medium text-gray-700">
-                        City
-                      </label>
-                      <input
-                        type="text"
-                        id="city"
-                        name="city"
-                        value={formData.city}
-                        onChange={handleInputChange}
-                        required
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="county" className="block text-sm font-medium text-gray-700">
-                        County
-                      </label>
-                      <input
-                        type="text"
-                        id="county"
-                        name="county"
-                        value={formData.county}
-                        onChange={handleInputChange}
-                        required
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label htmlFor="postcode" className="block text-sm font-medium text-gray-700">
-                        Postcode
-                      </label>
-                      <input
-                        type="text"
-                        id="postcode"
-                        name="postcode"
-                        value={formData.postcode}
-                        onChange={handleInputChange}
-                        required
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="country" className="block text-sm font-medium text-gray-700">
-                        Country
-                      </label>
-                      <select
-                        id="country"
-                        name="country"
-                        value={formData.country}
-                        onChange={handleInputChange}
-                        required
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
-                      >
-                        <option value="United Kingdom">United Kingdom</option>
-                        <option value="Ireland">Ireland</option>
-                        <option value="France">France</option>
-                        <option value="Germany">Germany</option>
-                        <option value="Spain">Spain</option>
-                        <option value="Italy">Italy</option>
-                        <option value="Netherlands">Netherlands</option>
-                        <option value="Belgium">Belgium</option>
-                        <option value="Portugal">Portugal</option>
-                        <option value="Sweden">Sweden</option>
-                        <option value="Denmark">Denmark</option>
-                        <option value="Norway">Norway</option>
-                        <option value="Finland">Finland</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Shipping Method Selection */}
-                  <div className="mt-8">
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">Shipping Method</h3>
-                    <div className="space-y-4">
-                      {shippingOptions.map((option) => (
-                        <div key={option.id} className="relative">
-                          <input
-                            type="radio"
-                            id={option.id}
-                            name="shippingMethod"
-                            value={option.id}
-                            checked={formData.shippingMethod === option.id}
-                            onChange={handleInputChange}
-                            className="peer sr-only"
-                          />
-                          <label
-                            htmlFor={option.id}
-                            className="flex items-center justify-between p-4 border rounded-lg cursor-pointer
-                              peer-checked:border-purple-600 peer-checked:bg-purple-50 hover:bg-gray-50"
-                          >
-                            <div>
-                              <div className="font-medium text-gray-900">{option.name}</div>
-                              <div className="text-sm text-gray-500">{option.description}</div>
-                              <div className="text-sm text-gray-500">{option.estimatedDays}</div>
-                            </div>
-                            <div className="text-lg font-medium text-gray-900">
-                              £{option.price.toFixed(2)}
-                            </div>
+              {!clientSecret ? (
+                <>
+                  {/* Shipping Information */}
+                  <div className="bg-white rounded-lg shadow p-6">
+                    <h2 className="text-2xl font-bold text-gray-900 mb-6">Shipping Information</h2>
+                    
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
+                            First Name
                           </label>
-                          <div className="absolute top-4 right-4 w-5 h-5 rounded-full border
-                            peer-checked:border-purple-600 peer-checked:bg-purple-600 peer-checked:flex
-                            items-center justify-center hidden">
-                            <svg className="w-3 h-3 text-white" viewBox="0 0 12 12">
-                              <path
-                                d="M3.72 6.96l1.44 1.44 3.12-3.12"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                            </svg>
-                          </div>
+                          <input
+                            type="text"
+                            id="firstName"
+                            name="firstName"
+                            value={formData.firstName}
+                            onChange={handleInputChange}
+                            required
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                          />
                         </div>
-                      ))}
-                    </div>
-                  </div>
+                        <div>
+                          <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
+                            Last Name
+                          </label>
+                          <input
+                            type="text"
+                            id="lastName"
+                            name="lastName"
+                            value={formData.lastName}
+                            onChange={handleInputChange}
+                            required
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                          />
+                        </div>
+                      </div>
 
-                  <button
-                    type="submit"
-                    disabled={isProcessing}
-                    className={`w-full py-3 px-4 rounded-md text-white font-medium
-                      ${isProcessing
-                        ? 'bg-gray-400 cursor-not-allowed'
-                        : 'bg-purple-600 hover:bg-purple-700'
-                      }`}
-                  >
-                    {isProcessing ? (
-                      <span className="flex items-center justify-center">
-                        <div className="w-5 h-5 border-t-2 border-b-2 border-white rounded-full animate-spin mr-2"></div>
-                        Processing Order...
-                      </span>
-                    ) : (
-                      `Place Order - £${total.toFixed(2)}`
-                    )}
-                  </button>
-                </form>
-              </div>
+                      <div>
+                        <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                          Email
+                        </label>
+                        <input
+                          type="email"
+                          id="email"
+                          name="email"
+                          value={formData.email}
+                          onChange={handleInputChange}
+                          required
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+                          Phone Number
+                        </label>
+                        <input
+                          type="tel"
+                          id="phone"
+                          name="phone"
+                          value={formData.phone}
+                          onChange={handleInputChange}
+                          required
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label htmlFor="address" className="block text-sm font-medium text-gray-700">
+                          Address Line 1
+                        </label>
+                        <input
+                          type="text"
+                          id="address"
+                          name="address"
+                          value={formData.address}
+                          onChange={handleInputChange}
+                          required
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label htmlFor="addressLine2" className="block text-sm font-medium text-gray-700">
+                          Address Line 2 (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          id="addressLine2"
+                          name="addressLine2"
+                          value={formData.addressLine2}
+                          onChange={handleInputChange}
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label htmlFor="city" className="block text-sm font-medium text-gray-700">
+                            City
+                          </label>
+                          <input
+                            type="text"
+                            id="city"
+                            name="city"
+                            value={formData.city}
+                            onChange={handleInputChange}
+                            required
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="county" className="block text-sm font-medium text-gray-700">
+                            County
+                          </label>
+                          <input
+                            type="text"
+                            id="county"
+                            name="county"
+                            value={formData.county}
+                            onChange={handleInputChange}
+                            required
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label htmlFor="postcode" className="block text-sm font-medium text-gray-700">
+                            Postcode
+                          </label>
+                          <input
+                            type="text"
+                            id="postcode"
+                            name="postcode"
+                            value={formData.postcode}
+                            onChange={handleInputChange}
+                            required
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="country" className="block text-sm font-medium text-gray-700">
+                            Country
+                          </label>
+                          <select
+                            id="country"
+                            name="country"
+                            value={formData.country}
+                            onChange={handleInputChange}
+                            required
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                          >
+                            <option value="United Kingdom">United Kingdom</option>
+                            <option value="Ireland">Ireland</option>
+                            <option value="France">France</option>
+                            <option value="Germany">Germany</option>
+                            <option value="Spain">Spain</option>
+                            <option value="Italy">Italy</option>
+                            <option value="Netherlands">Netherlands</option>
+                            <option value="Belgium">Belgium</option>
+                            <option value="Portugal">Portugal</option>
+                            <option value="Sweden">Sweden</option>
+                            <option value="Denmark">Denmark</option>
+                            <option value="Norway">Norway</option>
+                            <option value="Finland">Finland</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Shipping Method Selection */}
+                      <div className="mt-8">
+                        <h3 className="text-lg font-medium text-gray-900 mb-4">Shipping Method</h3>
+                        <div className="space-y-4">
+                          {shippingOptions.map((option) => (
+                            <div key={option.id} className="relative">
+                              <input
+                                type="radio"
+                                id={option.id}
+                                name="shippingMethod"
+                                value={option.id}
+                                checked={formData.shippingMethod === option.id}
+                                onChange={handleInputChange}
+                                className="peer sr-only"
+                              />
+                              <label
+                                htmlFor={option.id}
+                                className="flex items-center justify-between p-4 border rounded-lg cursor-pointer
+                                  peer-checked:border-purple-600 peer-checked:bg-purple-50 hover:bg-gray-50"
+                              >
+                                <div>
+                                  <div className="font-medium text-gray-900">{option.name}</div>
+                                  <div className="text-sm text-gray-500">{option.description}</div>
+                                  <div className="text-sm text-gray-500">{option.estimatedDays}</div>
+                                </div>
+                                <div className="text-lg font-medium text-gray-900">
+                                  £{option.price.toFixed(2)}
+                                </div>
+                              </label>
+                              <div className="absolute top-4 right-4 w-5 h-5 rounded-full border
+                                peer-checked:border-purple-600 peer-checked:bg-purple-600 peer-checked:flex
+                                items-center justify-center hidden">
+                                <svg className="w-3 h-3 text-white" viewBox="0 0 12 12">
+                                  <path
+                                    d="M3.72 6.96l1.44 1.44 3.12-3.12"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                </svg>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={isProcessing}
+                        className={`w-full py-3 px-4 text-white font-medium rounded-md ${
+                          isProcessing ? 'bg-gray-400' : 'bg-purple-600 hover:bg-purple-700'
+                        }`}
+                      >
+                        {isProcessing ? 'Processing...' : 'Continue to Payment'}
+                      </button>
+                    </form>
+                  </div>
+                </>
+              ) : (
+                <div className="bg-white rounded-lg shadow p-6">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-6">Payment Information</h2>
+                  {clientSecret && orderId && (
+                    <Elements stripe={stripePromise} options={{ clientSecret }}>
+                      <PaymentForm orderId={orderId} total={total} />
+                    </Elements>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Order Summary */}
