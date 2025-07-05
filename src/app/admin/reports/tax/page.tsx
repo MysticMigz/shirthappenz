@@ -1,5 +1,8 @@
 'use client';
 import { useState } from 'react';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export default function TaxReportsPage() {
   const [from, setFrom] = useState('');
@@ -25,20 +28,54 @@ export default function TaxReportsPage() {
     }
   };
 
-  const exportCSV = () => {
+  const exportExcel = () => {
     if (!report?.orders) return;
-    const header = 'Order Reference,Date,Net,VAT,Gross\n';
-    const rows = report.orders.map((o: any) =>
-      `${o.reference},${new Date(o.createdAt).toLocaleDateString()},${o.net},${o.vat},${o.gross}`
-    ).join('\n');
-    const csv = header + rows;
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'tax-report.csv';
-    a.click();
-    URL.revokeObjectURL(url);
+    // Add summary rows at the top
+    const summary = [
+      ['Tax Report (VAT)'],
+      [`Period: ${from || 'All Time'} to ${to || 'All Time'}`],
+      [`Total Net Sales: £${report.totalNet?.toFixed(2)}`],
+      [`Total VAT Collected: £${report.totalVAT?.toFixed(2)}`],
+      [`Total Gross Sales: £${report.totalGross?.toFixed(2)}`],
+      [],
+    ];
+    const data = report.orders.map((o: any) => ([
+      o.reference,
+      new Date(o.createdAt).toLocaleDateString(),
+      o.net,
+      o.vat,
+      o.gross
+    ]));
+    const ws = XLSX.utils.aoa_to_sheet([
+      ...summary,
+      ['Order Reference', 'Date', 'Net', 'VAT', 'Gross'],
+      ...data
+    ]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Tax Report');
+    XLSX.writeFile(wb, 'tax-report.xlsx');
+  };
+
+  const exportPDF = () => {
+    if (!report?.orders) return;
+    const doc = new jsPDF();
+    doc.text('Tax Report (VAT)', 14, 16);
+    doc.text(`Period: ${from || 'All Time'} to ${to || 'All Time'}`, 14, 24);
+    doc.text(`Total Net Sales: £${report.totalNet?.toFixed(2)}`, 14, 32);
+    doc.text(`Total VAT Collected: £${report.totalVAT?.toFixed(2)}`, 14, 40);
+    doc.text(`Total Gross Sales: £${report.totalGross?.toFixed(2)}`, 14, 48);
+    autoTable(doc, {
+      startY: 56,
+      head: [['Order Reference', 'Date', 'Net', 'VAT', 'Gross']],
+      body: report.orders.map((o: any) => [
+        o.reference,
+        new Date(o.createdAt).toLocaleDateString(),
+        `£${o.net.toFixed(2)}`,
+        `£${o.vat.toFixed(2)}`,
+        `£${o.gross.toFixed(2)}`
+      ]),
+    });
+    doc.save('tax-report.pdf');
   };
 
   return (
@@ -56,7 +93,10 @@ export default function TaxReportsPage() {
           </div>
           <button onClick={fetchReport} className="bg-purple-600 text-white px-4 py-2 rounded self-end">Generate Report</button>
           {report?.orders?.length > 0 && (
-            <button onClick={exportCSV} className="bg-gray-200 text-gray-800 px-4 py-2 rounded self-end ml-2">Export CSV</button>
+            <>
+              <button onClick={exportExcel} className="bg-green-200 text-green-800 px-4 py-2 rounded self-end ml-2">Export Excel</button>
+              <button onClick={exportPDF} className="bg-blue-200 text-blue-800 px-4 py-2 rounded self-end ml-2">Export PDF</button>
+            </>
           )}
         </div>
         {loading && <div>Loading...</div>}

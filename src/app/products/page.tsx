@@ -40,7 +40,7 @@ export default function ProductsPage() {
   const [selectedGender, setSelectedGender] = useState('men');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [priceRange, setPriceRange] = useState<{ min: number; max: number | null }>({ min: 0, max: null });
-  const [sortBy, setSortBy] = useState<'price-asc' | 'price-desc' | 'name-asc' | 'name-desc'>('name-asc');
+  const [sortBy, setSortBy] = useState<'bestsellers' | 'price-asc' | 'price-desc' | 'name-asc' | 'name-desc' | 'newest'>('bestsellers');
   const [showFilters, setShowFilters] = useState(false);
 
   const genderNav = [
@@ -265,7 +265,7 @@ export default function ProductsPage() {
               />
               <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
               <button
                 onClick={() => setShowFilters(!showFilters)}
                 className="flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
@@ -274,16 +274,14 @@ export default function ProductsPage() {
                 Filters
               </button>
               <select
-                value={selectedCategory}
-                onChange={(e) => handleFilterChange('category', e.target.value)}
+                value={sortBy}
+                onChange={e => setSortBy(e.target.value as any)}
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               >
-                <option value="">All Categories</option>
-                {Object.keys(allCategories).map((category) => (
-                  <option key={category} value={category}>
-                    {category.charAt(0).toUpperCase() + category.slice(1)}
-                  </option>
-                ))}
+                <option value="bestsellers">Best Sellers</option>
+                <option value="price-asc">Lowest Price</option>
+                <option value="price-desc">Highest Price</option>
+                <option value="newest">Newest</option>
               </select>
             </div>
           </div>
@@ -384,9 +382,20 @@ export default function ProductsPage() {
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <span className="text-lg font-bold text-purple-600">
-                    From £{product.basePrice.toFixed(2)}
-                  </span>
+                  {product.basePrice > product.price ? (
+                    <>
+                      <span className="text-sm text-gray-400 line-through mr-2">
+                        RRP: £{product.basePrice.toFixed(2)}
+                      </span>
+                      <span className="text-lg font-bold text-green-700">
+                        Offer: £{product.price.toFixed(2)}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-lg font-bold text-purple-600">
+                      £{product.price.toFixed(2)}
+                    </span>
+                  )}
                   <span className="text-sm text-purple-600 group-hover:translate-x-1 transition-transform duration-200">
                     View Details →
                   </span>

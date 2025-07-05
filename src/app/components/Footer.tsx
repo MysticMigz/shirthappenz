@@ -112,7 +112,7 @@ const Footer = () => {
                 </Link>
               </li>
               <li>
-                <Link href="/help/faqs" className="text-gray-300 hover:text-purple-400 transition-colors">
+                <Link href="/faq" className="text-gray-300 hover:text-purple-400 transition-colors">
                   FAQs
                 </Link>
               </li>
@@ -184,6 +184,9 @@ const Footer = () => {
               </Link>
               <Link href="/cookies" className="text-gray-400 hover:text-purple-400 transition-colors">
                 Cookie Policy
+              </Link>
+              <Link href="/faq" className="text-gray-400 hover:text-purple-400 transition-colors">
+                FAQs
               </Link>
             </div>
           </div>
