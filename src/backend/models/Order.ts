@@ -105,6 +105,10 @@ const OrderSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
+  vat: {
+    type: Number,
+    required: true,
+  },
   status: {
     type: String,
     enum: ['pending', 'paid', 'shipped', 'delivered', 'cancelled', 'payment_failed'],

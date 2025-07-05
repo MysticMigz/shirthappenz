@@ -14,6 +14,7 @@ interface OrderDetails {
   reference: string;
   status: string;
   total: number;
+  vat?: number;
   items: Array<{
     name: string;
     quantity: number;
@@ -117,7 +118,10 @@ export default function ThankYouPage() {
   const shipping = order.shippingDetails.shippingCost;
   const total = subtotal + shipping;
   const vatRate = 0.2;
-  const vatIncluded = total * vatRate / (1 + vatRate);
+  // Prefer backend VAT if available, otherwise calculate
+  const vatIncluded = typeof order.vat === 'number'
+    ? order.vat
+    : Number(((subtotal + shipping) * 0.2).toFixed(2));
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -259,6 +263,10 @@ export default function ThankYouPage() {
               <div className="flex justify-between mt-2 text-xs text-gray-500 italic">
                 <span>Includes VAT (20%)</span>
                 <span>£{vatIncluded.toFixed(2)}</span>
+              </div>
+              <div>
+                <p className="text-gray-600">VAT (20%):</p>
+                <p className="font-medium">£{vatIncluded.toFixed(2)}</p>
               </div>
             </div>
 

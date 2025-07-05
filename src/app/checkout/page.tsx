@@ -121,7 +121,8 @@ export default function CheckoutPage() {
   const shippingMethod = step.shippingDetails ? step.shippingDetails.shippingMethod : DEFAULT_SHIPPING_METHOD;
   const vatRate = 0.2;
   const total = subtotal + shippingCost;
-  const vatIncluded = total * vatRate / (1 + vatRate);
+  // VAT is 20% of (subtotal + shippingCost)
+  const vatIncluded = Number(((subtotal + shippingCost) * 0.2).toFixed(2));
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 py-12 px-4">

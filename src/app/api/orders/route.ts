@@ -236,6 +236,10 @@ export async function POST(request: Request) {
       });
     }
 
+    // Calculate VAT (UK VAT 20%) on subtotal + shipping cost
+    const vatBase = total + shippingDetails.shippingCost;
+    const vat = Number((vatBase / 1.2 * 0.2).toFixed(2));
+
     // Calculate backend total for safety
     const subtotal = processedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const backendTotal = subtotal + shippingDetails.shippingCost;
@@ -256,11 +260,9 @@ export async function POST(request: Request) {
           userId: session.user.email,
           reference,
           items: processedItems,
-          shippingDetails: {
-            ...shippingDetails,
-            country: shippingDetails.country || 'United Kingdom'
-          },
+          shippingDetails,
           total: backendTotal,
+          vat,
           status: 'pending'
         });
 

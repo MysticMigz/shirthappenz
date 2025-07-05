@@ -20,6 +20,11 @@ export default function AdminSidebar() {
       text: 'Analytics'
     },
     {
+      href: '/admin/reports/tax',
+      icon: FaChartLine,
+      text: 'Tax Reports'
+    },
+    {
       href: '/admin/products',
       icon: FaBox,
       text: 'Products'
