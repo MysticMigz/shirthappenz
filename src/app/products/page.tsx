@@ -15,11 +15,18 @@ interface Product {
   price: number;
   basePrice: number;
   category: string;
+  gender: string;
   images: Array<{ url: string; alt: string }>;
   sizes: string[];
   colors: Array<{ name: string; hexCode: string }>;
   featured: boolean;
   customizable: boolean;
+}
+
+interface Category {
+  key: string;
+  label: string;
+  icon: JSX.Element;
 }
 
 export default function ProductsPage() {
@@ -30,20 +37,82 @@ export default function ProductsPage() {
   
   // Filters and sorting state
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedGender, setSelectedGender] = useState('men');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [priceRange, setPriceRange] = useState<{ min: number; max: number | null }>({ min: 0, max: null });
   const [sortBy, setSortBy] = useState<'price-asc' | 'price-desc' | 'name-asc' | 'name-desc'>('name-asc');
   const [showFilters, setShowFilters] = useState(false);
 
-  const categories = [
-    'T-Shirts',
-    'Hoodies',
-    'Sweatshirts',
-    'Polo Shirts',
-    'Sports Wear',
-    'Workwear',
-    'Accessories'
+  const genderNav = [
+    { key: 'men', label: 'Men' },
+    { key: 'women', label: 'Women' },
+    { key: 'unisex', label: 'Unisex' },
   ];
+
+  const jerseyIcon = (
+    <svg width="48" height="48" fill="none" viewBox="0 0 48 48">
+      <rect x="10" y="8" width="28" height="32" rx="4" stroke="#888" strokeWidth="2" fill="#fff"/>
+      <path d="M10 8l6 6v26h16V14l6-6" stroke="#888" strokeWidth="2" fill="none"/>
+      <path d="M24 8v8" stroke="#888" strokeWidth="2"/>
+    </svg>
+  );
+
+  const allCategories: Record<string, Category[]> = {
+    men: [
+      { key: 'tshirts', label: 'T-Shirts', icon: (
+        <svg width="48" height="48" fill="none" viewBox="0 0 48 48"><rect x="8" y="8" width="32" height="32" rx="4" stroke="#888" strokeWidth="2" fill="#fff"/><path d="M12 8l4 8v24h16V16l4-8" stroke="#888" strokeWidth="2" fill="none"/></svg>
+      ) },
+      { key: 'jerseys', label: 'Jerseys', icon: jerseyIcon },
+      { key: 'tanktops', label: 'Tank Tops', icon: (
+        <svg width="48" height="48" fill="none" viewBox="0 0 48 48"><rect x="12" y="8" width="24" height="32" rx="4" stroke="#888" strokeWidth="2" fill="#fff"/><path d="M16 8v8m16-8v8" stroke="#888" strokeWidth="2"/></svg>
+      ) },
+      { key: 'longsleeve', label: 'Long Sleeve Shirts', icon: (
+        <svg width="48" height="48" fill="none" viewBox="0 0 48 48"><rect x="8" y="8" width="32" height="32" rx="4" stroke="#888" strokeWidth="2" fill="#fff"/><path d="M8 16l8 8v16m24-24l-8 8v16" stroke="#888" strokeWidth="2"/></svg>
+      ) },
+      { key: 'hoodies', label: 'Hoodies', icon: (
+        <svg width="48" height="48" fill="none" viewBox="0 0 48 48"><rect x="8" y="12" width="32" height="28" rx="4" stroke="#888" strokeWidth="2" fill="#fff"/><ellipse cx="24" cy="16" rx="8" ry="4" stroke="#888" strokeWidth="2" fill="#fff"/></svg>
+      ) },
+      { key: 'sweatshirts', label: 'Sweatshirts', icon: (
+        <svg width="48" height="48" fill="none" viewBox="0 0 48 48"><rect x="8" y="12" width="32" height="24" rx="4" stroke="#888" strokeWidth="2" fill="#fff"/><path d="M8 24h32" stroke="#888" strokeWidth="2"/></svg>
+      ) },
+      { key: 'sweatpants', label: 'Sweatpants', icon: (
+        <svg width="48" height="48" fill="none" viewBox="0 0 48 48"><rect x="16" y="8" width="16" height="32" rx="4" stroke="#888" strokeWidth="2" fill="#fff"/><path d="M16 32v8m16-8v8" stroke="#888" strokeWidth="2"/></svg>
+      ) },
+    ],
+    women: [
+      { key: 'tshirts', label: 'T-Shirts', icon: (
+        <svg width="48" height="48" fill="none" viewBox="0 0 48 48"><rect x="8" y="8" width="32" height="32" rx="4" stroke="#888" strokeWidth="2" fill="#fff"/><path d="M12 8l4 8v24h16V16l4-8" stroke="#888" strokeWidth="2" fill="none"/></svg>
+      ) },
+      { key: 'jerseys', label: 'Jerseys', icon: jerseyIcon },
+      { key: 'tanktops', label: 'Tank Tops', icon: (
+        <svg width="48" height="48" fill="none" viewBox="0 0 48 48"><rect x="12" y="8" width="24" height="32" rx="4" stroke="#888" strokeWidth="2" fill="#fff"/><path d="M16 8v8m16-8v8" stroke="#888" strokeWidth="2"/></svg>
+      ) },
+      { key: 'longsleeve', label: 'Long Sleeve Shirts', icon: (
+        <svg width="48" height="48" fill="none" viewBox="0 0 48 48"><rect x="8" y="8" width="32" height="32" rx="4" stroke="#888" strokeWidth="2" fill="#fff"/><path d="M8 16l8 8v16m24-24l-8 8v16" stroke="#888" strokeWidth="2"/></svg>
+      ) },
+      { key: 'hoodies', label: 'Hoodies', icon: (
+        <svg width="48" height="48" fill="none" viewBox="0 0 48 48"><rect x="8" y="12" width="32" height="28" rx="4" stroke="#888" strokeWidth="2" fill="#fff"/><ellipse cx="24" cy="16" rx="8" ry="4" stroke="#888" strokeWidth="2" fill="#fff"/></svg>
+      ) },
+      { key: 'sweatshirts', label: 'Sweatshirts', icon: (
+        <svg width="48" height="48" fill="none" viewBox="0 0 48 48"><rect x="8" y="12" width="32" height="24" rx="4" stroke="#888" strokeWidth="2" fill="#fff"/><path d="M8 24h32" stroke="#888" strokeWidth="2"/></svg>
+      ) },
+      { key: 'sweatpants', label: 'Sweatpants', icon: (
+        <svg width="48" height="48" fill="none" viewBox="0 0 48 48"><rect x="16" y="8" width="16" height="32" rx="4" stroke="#888" strokeWidth="2" fill="#fff"/><path d="M16 32v8m16-8v8" stroke="#888" strokeWidth="2"/></svg>
+      ) },
+    ],
+    unisex: [
+      { key: 'tshirts', label: 'T-Shirts', icon: (
+        <svg width="48" height="48" fill="none" viewBox="0 0 48 48"><rect x="8" y="8" width="32" height="32" rx="4" stroke="#888" strokeWidth="2" fill="#fff"/><path d="M12 8l4 8v24h16V16l4-8" stroke="#888" strokeWidth="2" fill="none"/></svg>
+      ) },
+      { key: 'jerseys', label: 'Jerseys', icon: jerseyIcon },
+      { key: 'hoodies', label: 'Hoodies', icon: (
+        <svg width="48" height="48" fill="none" viewBox="0 0 48 48"><rect x="8" y="12" width="32" height="28" rx="4" stroke="#888" strokeWidth="2" fill="#fff"/><ellipse cx="24" cy="16" rx="8" ry="4" stroke="#888" strokeWidth="2" fill="#fff"/></svg>
+      ) },
+      { key: 'sweatshirts', label: 'Sweatshirts', icon: (
+        <svg width="48" height="48" fill="none" viewBox="0 0 48 48"><rect x="8" y="12" width="32" height="24" rx="4" stroke="#888" strokeWidth="2" fill="#fff"/><path d="M8 24h32" stroke="#888" strokeWidth="2"/></svg>
+      ) },
+    ],
+  };
 
   useEffect(() => {
     fetchProducts();
@@ -89,18 +158,28 @@ export default function ProductsPage() {
     }
   };
 
+  const handleGenderClick = (key: string) => {
+    setSelectedGender(key);
+    setSelectedCategory('');
+  };
+
+  const handleCategoryClick = (key: string) => {
+    setSelectedCategory(key);
+  };
+
   const filteredProducts = products
     .filter(product => {
       const matchesSearch = searchQuery === '' || 
         product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         product.description.toLowerCase().includes(searchQuery.toLowerCase());
       
-      const matchesCategory = selectedCategory === '' || product.category === selectedCategory;
+      const matchesGender = selectedGender === '' || product.gender === selectedGender;
+      const matchesCategory = selectedCategory === '' || product.category.toLowerCase().replace(/\s/g, '') === selectedCategory;
       
       const matchesPriceRange = (priceRange.max === null || product.basePrice <= priceRange.max) &&
         product.basePrice >= priceRange.min;
 
-      return matchesSearch && matchesCategory && matchesPriceRange;
+      return matchesSearch && matchesGender && matchesCategory && matchesPriceRange;
     })
     .sort((a, b) => {
       switch (sortBy) {
@@ -142,6 +221,37 @@ export default function ProductsPage() {
           </p>
         </div>
 
+        {/* Gender Nav Bar */}
+        <div className="flex justify-center gap-8 mb-8">
+          {genderNav.map((gender) => (
+            <button
+              key={gender.key}
+              onClick={() => handleGenderClick(gender.key)}
+              className={`px-8 py-2 rounded-full font-semibold text-lg transition border-b-4 focus:outline-none ${
+                selectedGender === gender.key ? 'border-purple-600 text-purple-700 bg-purple-50' : 'border-transparent text-gray-700 bg-white hover:bg-gray-50'
+              }`}
+            >
+              {gender.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Category Cards for selected gender */}
+        <div className="flex flex-wrap gap-4 justify-center mb-8">
+          {allCategories[selectedGender].map((cat: Category) => (
+            <button
+              key={cat.key}
+              onClick={() => handleCategoryClick(cat.key)}
+              className={`flex flex-col items-center px-6 py-4 rounded-lg border transition shadow-sm bg-white hover:bg-gray-50 focus:outline-none ${
+                selectedCategory === cat.key ? 'border-purple-500 shadow-md' : 'border-gray-200'
+              }`}
+            >
+              <span className="mb-2">{cat.icon}</span>
+              <span className="text-sm font-medium text-gray-700">{cat.label}</span>
+            </button>
+          ))}
+        </div>
+
         {/* Search and Filter Controls */}
         <div className="bg-white rounded-lg shadow-sm p-4 mb-8">
           <div className="flex flex-col md:flex-row gap-4 items-center justify-between mb-4">
@@ -169,9 +279,9 @@ export default function ProductsPage() {
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               >
                 <option value="">All Categories</option>
-                {categories.map((category) => (
+                {Object.keys(allCategories).map((category) => (
                   <option key={category} value={category}>
-                    {category}
+                    {category.charAt(0).toUpperCase() + category.slice(1)}
                   </option>
                 ))}
               </select>

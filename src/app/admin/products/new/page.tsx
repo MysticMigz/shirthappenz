@@ -9,14 +9,15 @@ import { FaUpload, FaTrash } from 'react-icons/fa';
 interface ProductFormData {
   name: string;
   description: string;
-  price: number;
+  price: string;
   category: string;
+  gender: string;
   images: Array<{ url: string; alt: string }>;
   sizes: string[];
   colors: Array<{ name: string; hexCode: string }>;
   featured: boolean;
   customizable: boolean;
-  basePrice: number;
+  basePrice: string;
   stock: { [size: string]: number };
 }
 
@@ -26,6 +27,7 @@ interface FormErrors {
   price?: string;
   basePrice?: string;
   category?: string;
+  gender?: string;
   sizes?: string;
   images?: string;
 }
@@ -41,14 +43,15 @@ export default function NewProduct() {
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
     description: '',
-    price: 0,
+    price: '',
     category: '',
+    gender: '',
     images: [],
     sizes: [],
     colors: [],
     featured: false,
     customizable: true,
-    basePrice: 0,
+    basePrice: '',
     stock: {}
   });
 
@@ -69,12 +72,17 @@ export default function NewProduct() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     
-    if (type === 'number') {
+    if (name === 'price' || name === 'basePrice') {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    } else if (type === 'number') {
       // Convert to number and ensure it's not NaN
       const numValue = parseFloat(value);
       setFormData(prev => ({
         ...prev,
-        [name]: isNaN(numValue) ? 0 : numValue
+        [name]: isNaN(numValue) ? '' : numValue
       }));
     } else {
       setFormData(prev => ({
@@ -181,13 +189,18 @@ export default function NewProduct() {
       isValid = false;
     }
 
-    if (!formData.price || formData.price <= 0) {
+    if (!formData.price || isNaN(Number(formData.price)) || Number(formData.price) <= 0) {
       errors.price = 'Valid price is required';
       isValid = false;
     }
 
-    if (!formData.basePrice || formData.basePrice <= 0) {
+    if (!formData.basePrice || isNaN(Number(formData.basePrice)) || Number(formData.basePrice) <= 0) {
       errors.basePrice = 'Valid base price is required';
+      isValid = false;
+    }
+
+    if (!formData.gender) {
+      errors.gender = 'Please select a gender';
       isValid = false;
     }
 
@@ -257,7 +270,8 @@ export default function NewProduct() {
         stock: formData.stock, // Use the stock object directly
         price: Number(formData.price),
         basePrice: Number(formData.basePrice),
-        category: formData.category.toLowerCase() // Ensure category is lowercase
+        category: formData.category ? formData.category.toLowerCase() : '',
+        gender: formData.gender ? formData.gender.toLowerCase() : '',
       };
 
       const response = await fetch('/api/admin/products', {
@@ -429,6 +443,7 @@ export default function NewProduct() {
                       onChange={handleInputChange}
                       min="0"
                       step="0.01"
+                      placeholder="Enter price"
                       className={`block w-full pl-7 rounded-md sm:text-sm ${
                         fieldErrors.price 
                           ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
@@ -456,6 +471,7 @@ export default function NewProduct() {
                       onChange={handleInputChange}
                       min="0"
                       step="0.01"
+                      placeholder="Enter base price"
                       className={`block w-full pl-7 rounded-md sm:text-sm ${
                         fieldErrors.basePrice 
                           ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
@@ -467,6 +483,30 @@ export default function NewProduct() {
                     <p className="mt-1 text-sm text-red-600">{fieldErrors.basePrice}</p>
                   )}
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 required-field">
+                  Gender
+                </label>
+                <select
+                  name="gender"
+                  value={formData.gender}
+                  onChange={handleInputChange}
+                  className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${
+                    fieldErrors.gender 
+                      ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
+                      : 'border-gray-300 focus:border-purple-500 focus:ring-purple-500'
+                  }`}
+                >
+                  <option value="">Select a gender</option>
+                  <option value="men">Men</option>
+                  <option value="women">Women</option>
+                  <option value="unisex">Unisex</option>
+                </select>
+                {fieldErrors.gender && (
+                  <p className="mt-1 text-sm text-red-600">{fieldErrors.gender}</p>
+                )}
               </div>
 
               <div>
@@ -484,10 +524,13 @@ export default function NewProduct() {
                   }`}
                 >
                   <option value="">Select a category</option>
-                  <option value="t-shirts">T-shirts</option>
+                  <option value="tshirts">T-Shirts</option>
+                  <option value="jerseys">Jerseys</option>
+                  <option value="tanktops">Tank Tops</option>
+                  <option value="longsleeve">Long Sleeve Shirts</option>
                   <option value="hoodies">Hoodies</option>
                   <option value="sweatshirts">Sweatshirts</option>
-                  <option value="jerseys">Jerseys</option>
+                  <option value="sweatpants">Sweatpants</option>
                   <option value="accessories">Accessories</option>
                 </select>
                 {fieldErrors.category && (

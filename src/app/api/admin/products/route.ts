@@ -17,6 +17,7 @@ interface ProductData {
   stock: { [key: string]: number };
   featured?: boolean;
   customizable?: boolean;
+  gender: string;
 }
 
 // Get all products
@@ -108,6 +109,7 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await request.json() as ProductData;
+    console.log('Received product data:', data);
 
     // Validate required fields
     if (!data.name || !data.description || !data.price || !data.category || !data.basePrice) {
@@ -142,6 +144,7 @@ export async function POST(request: NextRequest) {
       price: Number(data.price),
       basePrice: Number(data.basePrice),
       category: data.category,
+      gender: data.gender,
       sizes: Array.isArray(data.sizes) ? data.sizes : [],
       colors: Array.isArray(data.colors) ? data.colors : [],
       images: Array.isArray(data.images) ? data.images : [],

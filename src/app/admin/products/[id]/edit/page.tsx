@@ -11,6 +11,7 @@ interface ProductFormData {
   description: string;
   price: number;
   category: string;
+  gender: string;
   images: Array<{ url: string; alt: string }>;
   sizes: string[];
   colors: Array<{ name: string; hexCode: string }>;
@@ -32,6 +33,7 @@ export default function EditProduct({ params }: { params: { id: string } }) {
     description: '',
     price: 0,
     category: '',
+    gender: '',
     images: [],
     sizes: [],
     colors: [],
@@ -210,7 +212,8 @@ export default function EditProduct({ params }: { params: { id: string } }) {
         stock: formData.stock,
         price: Number(formData.price),
         basePrice: Number(formData.basePrice),
-        category: formData.category.toLowerCase()
+        category: formData.category ? formData.category.toLowerCase() : '',
+        gender: formData.gender ? formData.gender.toLowerCase() : '',
       };
 
       const response = await fetch(`/api/admin/products/${params.id}`, {
@@ -337,6 +340,24 @@ export default function EditProduct({ params }: { params: { id: string } }) {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Gender
+                </label>
+                <select
+                  name="gender"
+                  value={formData.gender}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  required
+                >
+                  <option value="">Select a gender</option>
+                  <option value="men">Men</option>
+                  <option value="women">Women</option>
+                  <option value="unisex">Unisex</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Category
                 </label>
                 <select
@@ -347,10 +368,13 @@ export default function EditProduct({ params }: { params: { id: string } }) {
                   required
                 >
                   <option value="">Select a category</option>
-                  <option value="t-shirts">T-Shirts</option>
+                  <option value="tshirts">T-Shirts</option>
+                  <option value="jerseys">Jerseys</option>
+                  <option value="tanktops">Tank Tops</option>
+                  <option value="longsleeve">Long Sleeve Shirts</option>
                   <option value="hoodies">Hoodies</option>
                   <option value="sweatshirts">Sweatshirts</option>
-                  <option value="jerseys">Jerseys</option>
+                  <option value="sweatpants">Sweatpants</option>
                   <option value="accessories">Accessories</option>
                 </select>
               </div>

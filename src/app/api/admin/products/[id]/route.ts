@@ -126,7 +126,7 @@ export async function PUT(
       }
     } else {
       // Validate required fields for full updates
-      const requiredFields = ['name', 'description', 'price', 'category', 'basePrice'];
+      const requiredFields = ['name', 'description', 'price', 'category', 'basePrice', 'gender'];
       const missingFields = requiredFields.filter(field => !data[field]);
       
       if (missingFields.length > 0) {

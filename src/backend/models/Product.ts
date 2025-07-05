@@ -23,8 +23,25 @@ const productSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Product category is required'],
     enum: {
-      values: ['t-shirts', 'hoodies', 'sweatshirts', 'jerseys', 'accessories'],
+      values: [
+        'tshirts',
+        'jerseys',
+        'tanktops',
+        'longsleeve',
+        'hoodies',
+        'sweatshirts',
+        'sweatpants',
+        'accessories'
+      ],
       message: '{VALUE} is not a valid category'
+    }
+  },
+  gender: {
+    type: String,
+    required: [true, 'Product gender is required'],
+    enum: {
+      values: ['men', 'women', 'unisex'],
+      message: '{VALUE} is not a valid gender'
     }
   },
   sizes: [{
