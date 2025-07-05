@@ -45,6 +45,7 @@ interface Order {
     shippingMethod: string;
   };
   total: number;
+  vat: number;
   status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled' | 'payment_failed';
   createdAt: string;
 }
@@ -275,7 +276,7 @@ export default function OrdersPage() {
                       </div>
                       <div className="flex justify-between mt-2 text-xs text-gray-500 italic">
                         <span>Includes VAT (20%)</span>
-                        <span>£{(order.total * 0.2 / 1.2).toFixed(2)}</span>
+                        <span>£{order.vat.toFixed(2)}</span>
                       </div>
                     </div>
                   </div>
