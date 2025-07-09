@@ -21,6 +21,11 @@ interface Order {
   items: OrderItem[];
   total: number;
   status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled' | 'payment_failed';
+  productionStatus: 'not_started' | 'in_production' | 'quality_check' | 'ready_to_ship' | 'completed';
+  deliveryPriority: number;
+  productionNotes: string;
+  productionStartDate: string | null;
+  productionCompletedDate: string | null;
   createdAt: string;
   shippingDetails: {
     firstName: string;
@@ -30,6 +35,7 @@ interface Order {
     address: string;
     city: string;
     postcode: string;
+    shippingMethod: string;
   };
 }
 
@@ -40,6 +46,9 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusUpdateLoading, setStatusUpdateLoading] = useState(false);
+  const [productionStatusUpdateLoading, setProductionStatusUpdateLoading] = useState(false);
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [notesText, setNotesText] = useState('');
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -89,6 +98,53 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
       setError(err instanceof Error ? err.message : 'Failed to update order status');
     } finally {
       setStatusUpdateLoading(false);
+    }
+  };
+
+  const handleProductionStatusChange = async (newProductionStatus: string) => {
+    setProductionStatusUpdateLoading(true);
+    try {
+      const response = await fetch(`/api/admin/orders/${params.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ productionStatus: newProductionStatus }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update production status');
+      }
+
+      const updatedOrder = await response.json();
+      setOrder(updatedOrder);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update production status');
+    } finally {
+      setProductionStatusUpdateLoading(false);
+    }
+  };
+
+  const handleNotesUpdate = async () => {
+    try {
+      const response = await fetch(`/api/admin/orders/${params.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ productionNotes: notesText }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update production notes');
+      }
+
+      const updatedOrder = await response.json();
+      setOrder(updatedOrder);
+      setEditingNotes(false);
+      setNotesText('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update production notes');
     }
   };
 
@@ -194,6 +250,104 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
                     {order.shippingDetails.postcode}
                   </p>
                 </div>
+              </div>
+            </div>
+
+            {/* Production Information */}
+            <div className="mt-8">
+              <h2 className="text-lg font-medium text-gray-900 mb-4">Production Information</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="text-sm font-medium text-gray-900 mb-2">Delivery Priority</h3>
+                  <p className={`text-2xl font-bold ${
+                    order.deliveryPriority >= 100 ? 'text-red-600' : 
+                    order.deliveryPriority >= 50 ? 'text-orange-600' : 'text-gray-600'
+                  }`}>
+                    {order.deliveryPriority}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {order.shippingDetails.shippingMethod}
+                  </p>
+                </div>
+                
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="text-sm font-medium text-gray-900 mb-2">Production Status</h3>
+                  <select
+                    value={order.productionStatus}
+                    onChange={(e) => handleProductionStatusChange(e.target.value)}
+                    disabled={productionStatusUpdateLoading}
+                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                  >
+                    <option value="not_started">Not Started</option>
+                    <option value="in_production">In Production</option>
+                    <option value="quality_check">Quality Check</option>
+                    <option value="ready_to_ship">Ready to Ship</option>
+                    <option value="completed">Completed</option>
+                  </select>
+                </div>
+                
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="text-sm font-medium text-gray-900 mb-2">Production Dates</h3>
+                  <div className="space-y-1 text-xs text-gray-600">
+                    {order.productionStartDate && (
+                      <p><strong>Started:</strong> {new Date(order.productionStartDate).toLocaleDateString()}</p>
+                    )}
+                    {order.productionCompletedDate && (
+                      <p><strong>Completed:</strong> {new Date(order.productionCompletedDate).toLocaleDateString()}</p>
+                    )}
+                    {!order.productionStartDate && !order.productionCompletedDate && (
+                      <p>No production dates set</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Production Notes */}
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <h3 className="text-sm font-medium text-gray-900 mb-2">Production Notes</h3>
+                {editingNotes ? (
+                  <div className="space-y-2">
+                    <textarea
+                      value={notesText}
+                      onChange={(e) => setNotesText(e.target.value)}
+                      className="w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                      rows={3}
+                      placeholder="Add production notes..."
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleNotesUpdate}
+                        className="px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm"
+                      >
+                        Save Notes
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingNotes(false);
+                          setNotesText('');
+                        }}
+                        className="px-3 py-1 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="text-sm text-gray-600 mb-2">
+                      {order.productionNotes || 'No production notes added yet.'}
+                    </p>
+                    <button
+                      onClick={() => {
+                        setEditingNotes(true);
+                        setNotesText(order.productionNotes || '');
+                      }}
+                      className="px-3 py-1 bg-purple-600 text-white rounded-md hover:bg-purple-700 text-sm"
+                    >
+                      {order.productionNotes ? 'Edit Notes' : 'Add Notes'}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
 

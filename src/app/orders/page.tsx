@@ -67,6 +67,16 @@ const formatDate = (dateString: string) => {
   });
 };
 
+const formatDateTime = (dateString: string) => {
+  return new Date(dateString).toLocaleString('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
 export default function OrdersPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -181,7 +191,7 @@ export default function OrdersPage() {
                       Order {order.reference}
                     </h3>
                     <p className="mt-1 text-sm text-gray-500">
-                      Placed on {formatDate(order.createdAt)}
+                      Placed on {formatDateTime(order.createdAt)}
                     </p>
                   </div>
                   <span

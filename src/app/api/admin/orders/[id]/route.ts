@@ -22,6 +22,11 @@ interface OrderDocument extends mongoose.Document {
   userId: string;
   items: OrderItem[];
   status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled' | 'payment_failed';
+  productionStatus: 'not_started' | 'in_production' | 'quality_check' | 'ready_to_ship' | 'completed';
+  deliveryPriority: number;
+  productionNotes: string;
+  productionStartDate: Date | null;
+  productionCompletedDate: Date | null;
   total: number;
   createdAt: Date;
   updatedAt: Date;
@@ -149,15 +154,28 @@ export async function PATCH(
 
     // Get request body
     const body = await request.json();
-    const { status } = body;
+    const { status, productionStatus, productionNotes } = body;
 
-    // Validate status
-    const validStatuses = ['pending', 'paid', 'shipped', 'delivered', 'cancelled', 'payment_failed'] as const;
-    if (!status || !validStatuses.includes(status)) {
-      return NextResponse.json(
-        { error: 'Invalid status' },
-        { status: 400 }
-      );
+    // Validate status if provided
+    if (status) {
+      const validStatuses = ['pending', 'paid', 'shipped', 'delivered', 'cancelled', 'payment_failed'] as const;
+      if (!validStatuses.includes(status)) {
+        return NextResponse.json(
+          { error: 'Invalid status' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Validate production status if provided
+    if (productionStatus) {
+      const validProductionStatuses = ['not_started', 'in_production', 'quality_check', 'ready_to_ship', 'completed'] as const;
+      if (!validProductionStatuses.includes(productionStatus)) {
+        return NextResponse.json(
+          { error: 'Invalid production status' },
+          { status: 400 }
+        );
+      }
     }
 
     // Get the order
@@ -187,8 +205,27 @@ export async function PATCH(
       }
     }
 
-    // Update status and save
-    order.status = status;
+    // Update fields
+    if (status) {
+      order.status = status;
+    }
+    if (productionStatus) {
+      order.productionStatus = productionStatus;
+      
+      // Set production start date when moving to in_production
+      if (productionStatus === 'in_production' && order.productionStatus !== 'in_production') {
+        order.productionStartDate = new Date();
+      }
+      
+      // Set production completed date when moving to completed
+      if (productionStatus === 'completed' && order.productionStatus !== 'completed') {
+        order.productionCompletedDate = new Date();
+      }
+    }
+    if (productionNotes !== undefined) {
+      order.productionNotes = productionNotes;
+    }
+    
     await order.save();
 
     return NextResponse.json(order);

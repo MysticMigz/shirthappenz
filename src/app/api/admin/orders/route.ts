@@ -29,6 +29,8 @@ export async function GET(request: NextRequest) {
     // Get query parameters
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
+    const productionStatus = searchParams.get('productionStatus');
+    const sortBy = searchParams.get('sortBy') || 'priority';
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');
 
@@ -37,10 +39,29 @@ export async function GET(request: NextRequest) {
     if (status && status !== 'all') {
       query.status = status;
     }
+    if (productionStatus && productionStatus !== 'all') {
+      query.productionStatus = productionStatus;
+    }
+
+    // Build sort object
+    let sortObject: any = {};
+    switch (sortBy) {
+      case 'priority':
+        sortObject = { deliveryPriority: -1, createdAt: -1 };
+        break;
+      case 'production':
+        sortObject = { productionStatus: 1, deliveryPriority: -1, createdAt: -1 };
+        break;
+      case 'date':
+        sortObject = { createdAt: -1 };
+        break;
+      default:
+        sortObject = { deliveryPriority: -1, createdAt: -1 };
+    }
 
     // Get orders with pagination
     const orders = await Order.find(query)
-      .sort({ createdAt: -1 })
+      .sort(sortObject)
       .skip((page - 1) * limit)
       .limit(limit);
 

@@ -99,7 +99,11 @@ const OrderSchema = new mongoose.Schema({
       type: Number,
       required: true
     },
-    estimatedDeliveryDays: String
+    estimatedDeliveryDays: String,
+    trackingNumber: String,
+    courier: String,
+    estimatedDelivery: String,
+    shippedAt: Date
   },
   total: {
     type: Number,
@@ -113,6 +117,28 @@ const OrderSchema = new mongoose.Schema({
     type: String,
     enum: ['pending', 'paid', 'shipped', 'delivered', 'cancelled', 'payment_failed'],
     default: 'pending',
+  },
+  productionStatus: {
+    type: String,
+    enum: ['not_started', 'in_production', 'quality_check', 'ready_to_ship', 'completed'],
+    default: 'not_started',
+  },
+  deliveryPriority: {
+    type: Number,
+    default: 0,
+    index: true,
+  },
+  productionNotes: {
+    type: String,
+    default: '',
+  },
+  productionStartDate: {
+    type: Date,
+    default: null,
+  },
+  productionCompletedDate: {
+    type: Date,
+    default: null,
   },
   transactionId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -134,6 +160,25 @@ OrderSchema.pre('save', function(next) {
   this.updatedAt = new Date();
   next();
 });
+
+  // Calculate delivery priority based on shipping method and order date
+  OrderSchema.pre('save', function(next) {
+    if (this.isModified('shippingDetails.shippingMethod') || this.isModified('createdAt')) {
+      const priorityMap = {
+        'Next Day Delivery': 100,
+        'Express Delivery': 50,
+        'Standard Delivery': 10
+      };
+      
+      const basePriority = priorityMap[this.shippingDetails.shippingMethod as keyof typeof priorityMap] || 10;
+      const createdAtTime = this.createdAt ? this.createdAt.getTime() : Date.now();
+      const daysSinceOrder = Math.floor((Date.now() - createdAtTime) / (1000 * 60 * 60 * 24));
+      
+      // Increase priority for older orders
+      this.deliveryPriority = basePriority + (daysSinceOrder * 5);
+    }
+    next();
+  });
 
 // Function to generate a reference number
 async function generateReference(doc: any) {
