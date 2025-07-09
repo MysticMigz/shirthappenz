@@ -1,994 +1,647 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { useEffect, useState } from "react";
+import { FaBoxOpen, FaCheckCircle, FaClipboardList, FaShippingFast, FaCogs, FaChevronLeft, FaChevronRight, FaEye, FaTimes } from "react-icons/fa";
+import { getImageUrl } from "@/lib/utils";
 
 interface Order {
   _id: string;
   reference: string;
   userId: string;
   total: number;
-  status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled' | 'payment_failed';
-  productionStatus: 'not_started' | 'in_production' | 'quality_check' | 'ready_to_ship' | 'completed';
+  status: string;
+  productionStatus: string;
   deliveryPriority: number;
-  productionNotes: string;
-  productionStartDate: string | null;
-  productionCompletedDate: string | null;
   createdAt: string;
+  updatedAt?: string; // Added for completed orders
   shippingDetails: {
     firstName: string;
     lastName: string;
-    email: string;
-    phone: string;
-    address: string;
-    addressLine2?: string;
-    city: string;
-    county: string;
-    postcode: string;
-    country: string;
     shippingMethod: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    address2?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    country?: string;
   };
   items: Array<{
     name: string;
     quantity: number;
     size: string;
+    price?: number; // Added for item price
+    productId?: string; // Added for product images
+    image?: string; // Added for product images
     customization?: {
-      isCustomized: boolean;
       name?: string;
       number?: string;
+      isCustomized: boolean;
+      color?: string;
+      instructions?: string;
+      customImage?: string; // Added for custom design images
     };
   }>;
 }
 
-interface ProductionBatch {
-  id: string;
-  name: string;
-  orders: Order[];
-  maxOrders: number;
-  createdAt: string;
+const PRODUCTION_STATUSES = [
+  "not_started",
+  "in_production",
+  "quality_check",
+  "ready_to_ship",
+  "completed",
+];
+
+const STATUS_LABELS: Record<string, string> = {
+  not_started: "Not Started",
+  in_production: "In Production",
+  quality_check: "Quality Check",
+  ready_to_ship: "Ready to Ship",
+  completed: "Completed",
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  not_started: "bg-gray-50 border-gray-200",
+  in_production: "bg-blue-50 border-blue-200",
+  quality_check: "bg-yellow-50 border-yellow-200",
+  ready_to_ship: "bg-green-50 border-green-200",
+  completed: "bg-purple-50 border-purple-200",
+};
+
+const DAYS_TO_SCHEDULE = 7;
+const BATCH_SIZE = 50;
+const STATUS_FLOW = [
+  "not_started",
+  "in_production",
+  "quality_check",
+  "ready_to_ship",
+  "completed",
+];
+
+function getDueDate(order: Order): string {
+  const orderDate = new Date(order.createdAt);
+  const shipping = order.shippingDetails.shippingMethod.toLowerCase();
+  if (shipping.includes("next day")) orderDate.setDate(orderDate.getDate() + 1);
+  else if (shipping.includes("express")) orderDate.setDate(orderDate.getDate() + 3);
+  else orderDate.setDate(orderDate.getDate() + 5);
+  return orderDate.toLocaleDateString();
 }
 
-const PRODUCTION_STATUSES = [
-  'not_started',
-  'in_production', 
-  'quality_check',
-  'ready_to_ship',
-  'completed'
-] as const;
+function formatPlacedDate(dateStr: string) {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString();
+}
 
-const PRODUCTION_COLORS = {
-  not_started: 'bg-gray-100 text-gray-800 border-gray-300',
-  in_production: 'bg-blue-100 text-blue-800 border-blue-300',
-  quality_check: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-  ready_to_ship: 'bg-green-100 text-green-800 border-green-300',
-  completed: 'bg-purple-100 text-purple-800 border-purple-300',
-};
+function getPriorityBadge(priority: number) {
+  if (priority >= 150) return <span className="bg-red-600 text-white px-2 py-0.5 rounded text-xs font-bold">{priority}</span>;
+  if (priority >= 100) return <span className="bg-red-400 text-white px-2 py-0.5 rounded text-xs font-bold">{priority}</span>;
+  if (priority >= 50) return <span className="bg-orange-400 text-white px-2 py-0.5 rounded text-xs font-bold">{priority}</span>;
+  return <span className="bg-gray-400 text-white px-2 py-0.5 rounded text-xs font-bold">{priority}</span>;
+}
 
-const PRODUCTION_ACTIONS: Record<Order['productionStatus'], Array<Order['productionStatus']>> = {
-  not_started: ['in_production'],
-  in_production: ['quality_check'],
-  quality_check: ['ready_to_ship', 'in_production'],
-  ready_to_ship: ['completed'],
-  completed: [],
-};
-
-// Calculate if an order is overdue (more than 7 days old for standard delivery, 3 days for express)
-const isOrderOverdue = (order: Order): boolean => {
-  const orderDate = new Date(order.createdAt);
-  const now = new Date();
-  const daysSinceOrder = Math.floor((now.getTime() - orderDate.getTime()) / (1000 * 60 * 60 * 24));
-  
-  if (order.shippingDetails.shippingMethod.toLowerCase().includes('express')) {
-    return daysSinceOrder > 3;
-  }
-  return daysSinceOrder > 7;
-};
-
-// Calculate due date for an order
-const getDueDate = (order: Order): Date => {
-  const orderDate = new Date(order.createdAt);
-  const dueDate = new Date(orderDate);
-  
-  if (order.shippingDetails.shippingMethod.toLowerCase().includes('express')) {
-    dueDate.setDate(dueDate.getDate() + 3); // Express: 3 days
-  } else {
-    dueDate.setDate(dueDate.getDate() + 7); // Standard: 7 days
-  }
-  
-  return dueDate;
-};
-
-// Calculate days until due
-const getDaysUntilDue = (order: Order): number => {
-  const dueDate = getDueDate(order);
-  const now = new Date();
-  const timeDiff = dueDate.getTime() - now.getTime();
-  const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
-  return daysDiff;
-};
-
-// Get due date color based on urgency
-const getDueDateColor = (order: Order): string => {
-  if (isOrderOverdue(order)) return 'text-red-600 font-bold';
-  
-  const daysUntilDue = getDaysUntilDue(order);
-  
-  if (daysUntilDue <= 1) return 'text-red-600 font-bold';
-  if (daysUntilDue <= 3) return 'text-orange-600 font-semibold';
-  if (daysUntilDue <= 5) return 'text-gray-800 font-medium';
-  return 'text-gray-600';
-};
-
-// Format due date for display
-const formatDueDate = (order: Order): string => {
-  const dueDate = getDueDate(order);
-  return dueDate.toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
-};
-
-// Calculate estimated production start date
-const getEstimatedProductionStart = (order: Order): Date => {
-  const orderDate = new Date(order.createdAt);
-  const productionStart = new Date(orderDate);
-  
-  // Add 1-2 days for order processing before production starts
-  productionStart.setDate(productionStart.getDate() + 1);
-  
-  return productionStart;
-};
-
-// Calculate estimated production completion date
-const getEstimatedProductionCompletion = (order: Order): Date => {
-  const productionStart = getEstimatedProductionStart(order);
-  const completionDate = new Date(productionStart);
-  
-  // Standard production time: 2-3 days
-  completionDate.setDate(completionDate.getDate() + 2);
-  
-  return completionDate;
-};
-
-// Generate production schedule for a specific date
-const generateProductionSchedule = (orders: Order[], targetDate: string): Order[] => {
-  const target = new Date(targetDate);
-  const schedule = orders.filter(order => {
-    const productionStart = getEstimatedProductionStart(order);
-    const productionEnd = getEstimatedProductionCompletion(order);
-    
-    // Check if the target date falls within the production period
-    return target >= productionStart && target <= productionEnd;
-  });
-  
-  return schedule.sort((a, b) => {
-    const priorityA = calculateOverduePriority(a);
-    const priorityB = calculateOverduePriority(b);
-    return priorityB - priorityA;
-  });
-};
-
-// Get next 7 days for schedule view
-const getNextWeekDates = (): string[] => {
-  const dates = [];
-  const today = new Date();
-  
-  for (let i = 0; i < 7; i++) {
-    const date = new Date(today);
-    date.setDate(today.getDate() + i);
-    dates.push(date.toISOString().split('T')[0]);
-  }
-  
-  return dates;
-};
-
-// Format date for display
-const formatScheduleDate = (dateString: string): string => {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('en-GB', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  });
-};
-
-// Calculate priority boost for overdue orders
-const calculateOverduePriority = (order: Order): number => {
-  if (!isOrderOverdue(order)) return order.deliveryPriority;
-  
-  const orderDate = new Date(order.createdAt);
-  const now = new Date();
-  const daysOverdue = Math.floor((now.getTime() - orderDate.getTime()) / (1000 * 60 * 60 * 24));
-  
-  // Boost priority by 50 points per day overdue
-  return Math.max(order.deliveryPriority + (daysOverdue * 50), 150);
-};
-
-// Generate daily production batch
-const generateDailyBatch = (orders: Order[], maxOrders: number = 50): ProductionBatch => {
-  const eligibleOrders = orders.filter(order => 
-    order.productionStatus === 'not_started' && 
-    order.status === 'paid'
-  );
-  
-  // Sort by priority (including overdue boost)
-  const sortedOrders = eligibleOrders.sort((a, b) => {
-    const priorityA = calculateOverduePriority(a);
-    const priorityB = calculateOverduePriority(b);
-    return priorityB - priorityA;
-  });
-  
-  return {
-    id: `batch-${Date.now()}`,
-    name: `Daily Production - ${new Date().toLocaleDateString()}`,
-    orders: sortedOrders.slice(0, maxOrders),
-    maxOrders,
-    createdAt: new Date().toISOString(),
+function getStatusBadge(status: string) {
+  const map: Record<string, string> = {
+    not_started: "bg-gray-200 text-gray-700",
+    in_production: "bg-blue-200 text-blue-700",
+    quality_check: "bg-yellow-200 text-yellow-800",
+    ready_to_ship: "bg-green-200 text-green-700",
+    completed: "bg-purple-200 text-purple-700",
   };
-};
+  return <span className={`px-2 py-0.5 rounded text-xs font-semibold ${map[status]}`}>{STATUS_LABELS[status]}</span>;
+}
+
+function getNextStatus(status: string) {
+  const idx = STATUS_FLOW.indexOf(status);
+  return idx < STATUS_FLOW.length - 1 ? STATUS_FLOW[idx + 1] : null;
+}
+function getPrevStatus(status: string) {
+  const idx = STATUS_FLOW.indexOf(status);
+  return idx > 0 ? STATUS_FLOW[idx - 1] : null;
+}
 
 export default function ProductionDashboard() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedStatus, setSelectedStatus] = useState<string>('all');
-  const [editingNotes, setEditingNotes] = useState<string | null>(null);
-  const [notesText, setNotesText] = useState('');
-  const [dailyBatch, setDailyBatch] = useState<ProductionBatch | null>(null);
-  const [batchSize, setBatchSize] = useState<number>(50);
-  const [overdueOrders, setOverdueOrders] = useState<Order[]>([]);
-  const [showOverdueAlert, setShowOverdueAlert] = useState(false);
-  const [viewMode, setViewMode] = useState<'current' | 'schedule'>('current');
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
-
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/admin/login');
-    }
-  }, [status, router]);
+  const [selectedDay, setSelectedDay] = useState(0); // 0 = today
+  const [processing, setProcessing] = useState<string | null>(null); // order id being updated
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null); // for modal
 
   useEffect(() => {
     const fetchOrders = async () => {
+      setLoading(true);
+      setError(null);
       try {
-        const params = new URLSearchParams({
-          sortBy: 'production',
-          ...(selectedStatus !== 'all' && { productionStatus: selectedStatus }),
-        });
-        
-        const response = await fetch(`/api/admin/orders?${params}`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch orders');
-        }
-        const data = await response.json();
-        setOrders(data.orders);
-        
-        // Check for overdue orders
-        const overdue = data.orders.filter(isOrderOverdue);
-        setOverdueOrders(overdue);
-        setShowOverdueAlert(overdue.length > 0);
-        
-        // Generate daily batch
-        const batch = generateDailyBatch(data.orders, batchSize);
-        setDailyBatch(batch);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch orders');
+        const res = await fetch("/api/admin/production-orders");
+        if (!res.ok) throw new Error("Failed to fetch orders");
+        const data = await res.json();
+        setOrders(data.orders || []);
+      } catch (err: any) {
+        setError(err.message || "Failed to fetch orders");
       } finally {
         setLoading(false);
       }
     };
+    fetchOrders();
+  }, []);
 
-    if (session?.user) {
-      fetchOrders();
-    }
-  }, [session, selectedStatus, batchSize]);
-
-  const handleProductionStatusChange = async (orderId: string, newProductionStatus: string) => {
-    try {
-      const response = await fetch(`/api/admin/orders/${orderId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ productionStatus: newProductionStatus }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update production status');
-      }
-
-      // Update local state
-      setOrders(orders.map(order => 
-        order._id === orderId ? { ...order, productionStatus: newProductionStatus as Order['productionStatus'] } : order
-      ));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update production status');
-    }
-  };
-
-  const handleNotesUpdate = async (orderId: string) => {
-    try {
-      const response = await fetch(`/api/admin/orders/${orderId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ productionNotes: notesText }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update production notes');
-      }
-
-      // Update local state
-      setOrders(orders.map(order => 
-        order._id === orderId ? { ...order, productionNotes: notesText } : order
-      ));
-      setEditingNotes(null);
-      setNotesText('');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update production notes');
-    }
-  };
-
-  const handleBatchSizeChange = (newSize: number) => {
-    setBatchSize(newSize);
-    const newBatch = generateDailyBatch(orders, newSize);
-    setDailyBatch(newBatch);
-  };
-
-  const handlePriorityUpdate = async (orderId: string, newPriority: number) => {
-    try {
-      const response = await fetch(`/api/admin/orders/${orderId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ deliveryPriority: newPriority }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update priority');
-      }
-
-      // Update local state
-      setOrders(orders.map(order => 
-        order._id === orderId ? { ...order, deliveryPriority: newPriority } : order
-      ));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update priority');
-    }
-  };
-
-  const getStatusBadgeClass = (status: string) => {
-    return `inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${PRODUCTION_COLORS[status as keyof typeof PRODUCTION_COLORS]}`;
-  };
-
-  const getNextProductionActions = (currentProductionStatus: Order['productionStatus']): Array<Order['productionStatus']> => {
-    return PRODUCTION_ACTIONS[currentProductionStatus] || [];
-  };
-
-  const getPriorityColor = (priority: number) => {
-    if (priority >= 150) return 'text-red-600 font-bold';
-    if (priority >= 100) return 'text-red-600 font-bold';
-    if (priority >= 50) return 'text-orange-600 font-semibold';
-    return 'text-gray-600';
-  };
-
-  const getOrdersByStatus = (status: Order['productionStatus']) => {
-    return orders.filter(order => order.productionStatus === status);
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-100 p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-center items-center min-h-[400px]">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
-          </div>
-        </div>
-      </div>
-    );
+  // --- Scheduling logic ---
+  // Only orders not completed
+  const eligibleOrders = orders.filter(o => o.productionStatus !== "completed");
+  // Sort by priority
+  const sortedOrders = [...eligibleOrders].sort((a, b) => b.deliveryPriority - a.deliveryPriority);
+  // Assign to days in rolling batches
+  const scheduledBatches: Record<number, Order[]> = {};
+  let idx = 0;
+  for (let day = 0; day < DAYS_TO_SCHEDULE; day++) {
+    scheduledBatches[day] = sortedOrders.slice(idx, idx + BATCH_SIZE);
+    idx += BATCH_SIZE;
+  }
+  // Dates for navigation
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const dateList: string[] = [];
+  for (let i = 0; i < DAYS_TO_SCHEDULE; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    dateList.push(d.toLocaleDateString());
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-100 p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-            <p className="text-red-600">{error}</p>
-          </div>
-        </div>
-      </div>
-    );
+  // Orders for the selected day
+  const batch = scheduledBatches[selectedDay] || [];
+  // Group by status for columns
+  const ordersByStatus: Record<string, Order[]> = {};
+  for (const status of PRODUCTION_STATUSES) {
+    ordersByStatus[status] = batch.filter(o => o.productionStatus === status);
+  }
+
+  // --- Status update handler ---
+  async function handleStatusChange(orderId: string, newStatus: string) {
+    setProcessing(orderId);
+    try {
+      const res = await fetch(`/api/admin/production-orders/${orderId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productionStatus: newStatus }),
+      });
+      if (!res.ok) throw new Error("Failed to update status");
+      // Update local state
+      setOrders(orders =>
+        orders.map(o =>
+          o._id === orderId ? { ...o, productionStatus: newStatus } : o
+        )
+      );
+    } catch (err) {
+      alert("Failed to update status");
+    } finally {
+      setProcessing(null);
+    }
+  }
+
+  // --- Modal handlers ---
+  function openOrderDetails(order: Order) {
+    setSelectedOrder(order);
+  }
+
+  function closeOrderDetails() {
+    setSelectedOrder(null);
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
+    <div className="min-h-screen bg-gray-100 p-6 font-sans">
       <div className="max-w-7xl mx-auto">
-        {/* Overdue Orders Alert */}
-        {showOverdueAlert && overdueOrders.length > 0 && (
-          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-red-800">
-                  Overdue Orders Alert
-                </h3>
-                <p className="text-sm text-red-700 mt-1">
-                  {overdueOrders.length} order(s) are overdue and have been automatically boosted to highest priority.
-                </p>
-              </div>
-              <div className="ml-auto">
-                <button
-                  onClick={() => setShowOverdueAlert(false)}
-                  className="text-red-400 hover:text-red-600"
-                >
-                  <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                </button>
-              </div>
-            </div>
+        <h1 className="text-3xl font-bold text-gray-900 mb-8 tracking-tight">Production Dashboard</h1>
+        {/* Day navigation */}
+        <div className="flex items-center gap-4 mb-4">
+          <button
+            className="p-2 rounded bg-white border shadow hover:bg-gray-50 disabled:opacity-50"
+            onClick={() => setSelectedDay(d => Math.max(0, d - 1))}
+            disabled={selectedDay === 0}
+            title="Previous day"
+          >
+            <FaChevronLeft />
+          </button>
+          <div className="font-semibold text-lg">
+            {dateList[selectedDay]}
           </div>
-        )}
-
-        <div className="mb-6 flex flex-col lg:flex-row justify-between items-start lg:items-center space-y-4 lg:space-y-0">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Production Dashboard</h1>
-            <p className="text-sm text-gray-600 mt-1">Manage production workflow and prioritize orders by delivery type</p>
-          </div>
-          <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
-            {/* View Mode Toggle */}
-            <div className="flex rounded-md shadow-sm">
-              <button
-                onClick={() => setViewMode('current')}
-                className={`px-4 py-2 text-sm font-medium rounded-l-md border ${
-                  viewMode === 'current'
-                    ? 'bg-purple-600 text-white border-purple-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                Current
-              </button>
-              <button
-                onClick={() => setViewMode('schedule')}
-                className={`px-4 py-2 text-sm font-medium rounded-r-md border-t border-r border-b ${
-                  viewMode === 'schedule'
-                    ? 'bg-purple-600 text-white border-purple-600'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                Schedule
-              </button>
-            </div>
-            
-            {viewMode === 'current' && (
-              <>
-                <select
-                  value={selectedStatus}
-                  onChange={(e) => setSelectedStatus(e.target.value)}
-                  className="rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
-                >
-                  <option value="all">All Production Statuses</option>
-                  {PRODUCTION_STATUSES.map(status => (
-                    <option key={status} value={status}>
-                      {status.replace('_', ' ').toUpperCase()}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={batchSize}
-                  onChange={(e) => handleBatchSizeChange(Number(e.target.value))}
-                  className="rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
-                >
-                  <option value={20}>Batch Size: 20</option>
-                  <option value={30}>Batch Size: 30</option>
-                  <option value={40}>Batch Size: 40</option>
-                  <option value={50}>Batch Size: 50</option>
-                </select>
-              </>
-            )}
-            
-            {viewMode === 'schedule' && (
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
-              />
-            )}
-            
-            <Link
-              href="/admin/orders"
-              className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 text-sm font-medium"
-            >
-              View All Orders
-            </Link>
+          <button
+            className="p-2 rounded bg-white border shadow hover:bg-gray-50 disabled:opacity-50"
+            onClick={() => setSelectedDay(d => Math.min(DAYS_TO_SCHEDULE - 1, d + 1))}
+            disabled={selectedDay === DAYS_TO_SCHEDULE - 1}
+            title="Next day"
+          >
+            <FaChevronRight />
+          </button>
+          <span className="ml-4 text-gray-500 text-sm">Batch: {batch.length} / {BATCH_SIZE}</span>
+        </div>
+        {/* Daily Production Batch */}
+        <div className="mb-8 p-6 bg-gradient-to-r from-purple-100 to-blue-100 rounded-2xl shadow-lg border border-purple-200">
+          <h2 className="text-xl font-bold mb-4 text-purple-900 flex items-center gap-2">
+            <FaClipboardList className="inline-block text-purple-500" />
+            Daily Production - {dateList[selectedDay]}
+          </h2>
+          <div className="flex flex-wrap gap-4">
+            {batch.length === 0 && <div className="text-gray-500">No orders for this day</div>}
+            {batch.map(order => (
+              <div key={order._id} className="border-2 border-purple-200 rounded-xl p-4 min-w-[260px] bg-white shadow hover:shadow-lg transition-shadow duration-200 flex flex-col gap-1">
+                <div className="flex items-center gap-2 mb-1">
+                  {getPriorityBadge(order.deliveryPriority)}
+                  <span className="text-xs text-gray-400">{order.reference}</span>
+                </div>
+                <div className="text-xs text-gray-700 font-semibold mb-1">{order.shippingDetails.firstName} {order.shippingDetails.lastName}</div>
+                <div className="text-xs text-gray-500 mb-1">{order.shippingDetails.shippingMethod}</div>
+                <div className="text-xs text-gray-500 mb-1">Placed: {formatPlacedDate(order.createdAt)}</div>
+                <div className="text-xs text-gray-500 mb-1">Due: {getDueDate(order)}</div>
+                <div className="text-xs text-gray-500 mb-1">{order.items.length} item(s)</div>
+                <div className="text-xs text-gray-500 mb-1">Total: £{order.total?.toFixed(2) ?? 'N/A'}</div>
+                <div className="mt-1">{getStatusBadge(order.productionStatus)}</div>
+                <div className="mt-2">
+                  <div className="font-semibold text-xs text-gray-700 mb-1">Items:</div>
+                  <ul className="text-xs text-gray-600 list-disc list-inside">
+                    {order.items.map((item, idx) => (
+                      <li key={idx}>
+                        {item.name} ({item.size}) × {item.quantity}
+                        {item.customization?.isCustomized && (
+                          <div className="ml-2 text-[11px] text-purple-700 font-medium">
+                            {item.customization.name && <span>Name: {item.customization.name} </span>}
+                            {item.customization.number && <span>Number: {item.customization.number}</span>}
+                          </div>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                {/* Action buttons */}
+                <div className="flex gap-2 mt-2">
+                  <button
+                    className="px-2 py-1 rounded bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 flex items-center gap-1"
+                    onClick={() => openOrderDetails(order)}
+                  >
+                    <FaEye className="text-xs" />
+                    View Details
+                  </button>
+                  {getPrevStatus(order.productionStatus) && (
+                    <button
+                      className="px-2 py-1 rounded bg-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-300 disabled:opacity-50"
+                      onClick={() => handleStatusChange(order._id, getPrevStatus(order.productionStatus)!)}
+                      disabled={processing === order._id}
+                    >
+                      ← {STATUS_LABELS[getPrevStatus(order.productionStatus)!]}
+                    </button>
+                  )}
+                  {getNextStatus(order.productionStatus) && (
+                    <button
+                      className="px-2 py-1 rounded bg-purple-600 text-white text-xs font-semibold hover:bg-purple-700 disabled:opacity-50"
+                      onClick={() => handleStatusChange(order._id, getNextStatus(order.productionStatus)!)}
+                      disabled={processing === order._id}
+                    >
+                      {STATUS_LABELS[getNextStatus(order.productionStatus)!]} →
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
-
-        {/* Daily Production Batch */}
-        {dailyBatch && (
-          <div className="mb-6 bg-white rounded-lg shadow-sm p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-medium text-gray-900">{dailyBatch.name}</h2>
-              <div className="flex items-center space-x-4">
-                <span className="text-sm text-gray-600">
-                  {dailyBatch.orders.length} orders selected
-                </span>
-                <span className="text-sm text-gray-600">
-                  Max: {dailyBatch.maxOrders} orders
-                </span>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {dailyBatch.orders.map((order) => (
-                <div key={order._id} className="border border-gray-200 rounded-lg p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className={`text-xs font-medium ${getPriorityColor(calculateOverduePriority(order))}`}>
-                      Priority: {calculateOverduePriority(order)}
-                      {isOrderOverdue(order) && <span className="ml-1 text-red-600">(OVERDUE)</span>}
-                    </span>
-                    <span className="text-xs font-medium text-gray-900">
-                      {order.reference}
-                    </span>
-                  </div>
-                  
-                  <div className="mb-2">
-                    <p className="text-sm font-medium text-gray-900">
-                      {order.shippingDetails.firstName} {order.shippingDetails.lastName}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {order.shippingDetails.shippingMethod}
-                    </p>
-                    <p className={`text-xs ${getDueDateColor(order)}`}>
-                      Due: {formatDueDate(order)}
-                      {!isOrderOverdue(order) && (
-                        <span className="ml-1">
-                          ({getDaysUntilDue(order)} days left)
-                        </span>
+        {/* Production Status Columns */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-10">
+          {PRODUCTION_STATUSES.map((status) => (
+            <div key={status} className={`rounded-2xl shadow border p-4 min-h-[260px] flex flex-col gap-2 ${STATUS_COLORS[status]}`}>
+              <h3 className="font-bold text-gray-700 mb-2 uppercase text-xs tracking-wider flex items-center gap-2">
+                {status === "not_started" && <FaBoxOpen className="text-gray-400" />}
+                {status === "in_production" && <FaCogs className="text-blue-400" />}
+                {status === "quality_check" && <FaCheckCircle className="text-yellow-400" />}
+                {status === "ready_to_ship" && <FaShippingFast className="text-green-400" />}
+                {status === "completed" && <FaCheckCircle className="text-purple-400" />}
+                {STATUS_LABELS[status]}
+              </h3>
+              {ordersByStatus[status].length === 0 ? (
+                <div className="text-gray-400 text-sm">No orders</div>
+              ) : (
+                ordersByStatus[status].map(order => (
+                  <div key={order._id} className="border border-gray-200 rounded-lg p-3 mb-2 bg-white shadow-sm hover:shadow-md transition-shadow duration-200 flex flex-col gap-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      {getPriorityBadge(order.deliveryPriority)}
+                      <span className="text-xs text-gray-400">{order.reference}</span>
+                    </div>
+                    <div className="text-xs text-gray-700 font-semibold mb-1">{order.shippingDetails.firstName} {order.shippingDetails.lastName}</div>
+                    <div className="text-xs text-gray-500 mb-1">{order.shippingDetails.shippingMethod}</div>
+                    <div className="text-xs text-gray-500 mb-1">Placed: {formatPlacedDate(order.createdAt)}</div>
+                    <div className="text-xs text-gray-500 mb-1">Due: {getDueDate(order)}</div>
+                    <div className="text-xs text-gray-500 mb-1">{order.items.length} item(s)</div>
+                    <div className="text-xs text-gray-500 mb-1">Total: £{order.total?.toFixed(2) ?? 'N/A'}</div>
+                    <div className="mt-1">{getStatusBadge(order.productionStatus)}</div>
+                    <div className="mt-2">
+                      <div className="font-semibold text-xs text-gray-700 mb-1">Items:</div>
+                      <ul className="text-xs text-gray-600 list-disc list-inside">
+                        {order.items.map((item, idx) => (
+                          <li key={idx}>
+                            {item.name} ({item.size}) × {item.quantity}
+                            {item.customization?.isCustomized && (
+                              <div className="ml-2 text-[11px] text-purple-700 font-medium">
+                                {item.customization.name && <span>Name: {item.customization.name} </span>}
+                                {item.customization.number && <span>Number: {item.customization.number}</span>}
+                              </div>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    {/* Action buttons */}
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        className="px-2 py-1 rounded bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 flex items-center gap-1"
+                        onClick={() => openOrderDetails(order)}
+                      >
+                        <FaEye className="text-xs" />
+                        View Details
+                      </button>
+                      {getPrevStatus(order.productionStatus) && (
+                        <button
+                          className="px-2 py-1 rounded bg-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-300 disabled:opacity-50"
+                          onClick={() => handleStatusChange(order._id, getPrevStatus(order.productionStatus)!)}
+                          disabled={processing === order._id}
+                        >
+                          ← {STATUS_LABELS[getPrevStatus(order.productionStatus)!]}
+                        </button>
                       )}
-                    </p>
+                      {getNextStatus(order.productionStatus) && (
+                        <button
+                          className="px-2 py-1 rounded bg-purple-600 text-white text-xs font-semibold hover:bg-purple-700 disabled:opacity-50"
+                          onClick={() => handleStatusChange(order._id, getNextStatus(order.productionStatus)!)}
+                          disabled={processing === order._id}
+                        >
+                          {STATUS_LABELS[getNextStatus(order.productionStatus)!]} →
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  
-                  <div className="mb-2">
-                    {order.items.map((item, index) => (
-                      <div key={index} className="text-xs text-gray-600">
-                        {item.quantity}x {item.name} ({item.size})
+                ))
+              )}
+            </div>
+          ))}
+        </div>
+        {/* Completed Orders */}
+        <div className="mt-10 p-6 bg-gradient-to-r from-green-100 to-emerald-100 rounded-2xl shadow-lg border border-green-200">
+          <h2 className="text-xl font-bold mb-4 text-green-900 flex items-center gap-2">
+            <FaCheckCircle className="inline-block text-green-500" />
+            Completed Orders
+          </h2>
+          <div className="flex flex-wrap gap-4">
+            {orders.filter(o => o.productionStatus === "completed").length === 0 && (
+              <div className="text-gray-500">No completed orders</div>
+            )}
+            {orders
+              .filter(o => o.productionStatus === "completed")
+              .sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime())
+              .map(order => (
+                <div key={order._id} className="border-2 border-green-200 rounded-xl p-4 min-w-[260px] bg-white shadow hover:shadow-lg transition-shadow duration-200 flex flex-col gap-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    {getPriorityBadge(order.deliveryPriority)}
+                    <span className="text-xs text-gray-400">{order.reference}</span>
+                  </div>
+                  <div className="text-xs text-gray-700 font-semibold mb-1">{order.shippingDetails.firstName} {order.shippingDetails.lastName}</div>
+                  <div className="text-xs text-gray-500 mb-1">{order.shippingDetails.shippingMethod}</div>
+                  <div className="text-xs text-gray-500 mb-1">Placed: {formatPlacedDate(order.createdAt)}</div>
+                  <div className="text-xs text-gray-500 mb-1">Due: {getDueDate(order)}</div>
+                  <div className="text-xs text-gray-500 mb-1">{order.items.length} item(s)</div>
+                  <div className="text-xs text-gray-500 mb-1">Total: £{order.total?.toFixed(2) ?? 'N/A'}</div>
+                  <div className="mt-1">{getStatusBadge(order.productionStatus)}</div>
+                  <div className="mt-2">
+                    <div className="font-semibold text-xs text-gray-700 mb-1">Items:</div>
+                    <ul className="text-xs text-gray-600 list-disc list-inside">
+                      {order.items.map((item, idx) => (
+                        <li key={idx}>
+                          {item.name} ({item.size}) × {item.quantity}
+                          {item.customization?.isCustomized && (
+                            <div className="ml-2 text-[11px] text-purple-700 font-medium">
+                              {item.customization.name && <span>Name: {item.customization.name} </span>}
+                              {item.customization.number && <span>Number: {item.customization.number}</span>}
+                            </div>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  {/* Action buttons */}
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      className="px-2 py-1 rounded bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 flex items-center gap-1"
+                      onClick={() => openOrderDetails(order)}
+                    >
+                      <FaEye className="text-xs" />
+                      View Details
+                    </button>
+                    <button
+                      className="px-2 py-1 rounded bg-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-300 disabled:opacity-50"
+                      onClick={() => handleStatusChange(order._id, "ready_to_ship")}
+                      disabled={processing === order._id}
+                    >
+                      ← Move to Ready to Ship
+                    </button>
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
+        {/* Order Details Modal */}
+        {selectedOrder && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-gray-900">Order Details</h2>
+                  <button
+                    onClick={closeOrderDetails}
+                    className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                  >
+                    <FaTimes className="text-gray-500" />
+                  </button>
+                </div>
+                <div className="flex items-center gap-4 mt-2">
+                  <span className="text-sm text-gray-500">Order #{selectedOrder.reference}</span>
+                  {getPriorityBadge(selectedOrder.deliveryPriority)}
+                  {getStatusBadge(selectedOrder.productionStatus)}
+                </div>
+              </div>
+              <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* Customer Information */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Customer Information</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <span className="text-sm font-medium text-gray-500">Name:</span>
+                        <p className="text-gray-900">{selectedOrder.shippingDetails.firstName} {selectedOrder.shippingDetails.lastName}</p>
+                      </div>
+                      <div>
+                        <span className="text-sm font-medium text-gray-500">Email:</span>
+                        <p className="text-gray-900">{selectedOrder.shippingDetails.email}</p>
+                      </div>
+                      <div>
+                        <span className="text-sm font-medium text-gray-500">Phone:</span>
+                        <p className="text-gray-900">{selectedOrder.shippingDetails.phone}</p>
+                      </div>
+                      <div>
+                        <span className="text-sm font-medium text-gray-500">Shipping Method:</span>
+                        <p className="text-gray-900">{selectedOrder.shippingDetails.shippingMethod}</p>
+                      </div>
+                    </div>
+                  </div>
+                  {/* Order Information */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Order Information</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <span className="text-sm font-medium text-gray-500">Order Date:</span>
+                        <p className="text-gray-900">{formatPlacedDate(selectedOrder.createdAt)}</p>
+                      </div>
+                      <div>
+                        <span className="text-sm font-medium text-gray-500">Due Date:</span>
+                        <p className="text-gray-900">{getDueDate(selectedOrder)}</p>
+                      </div>
+                      <div>
+                        <span className="text-sm font-medium text-gray-500">Total:</span>
+                        <p className="text-gray-900">£{selectedOrder.total?.toFixed(2) ?? 'N/A'}</p>
+                      </div>
+                      <div>
+                        <span className="text-sm font-medium text-gray-500">Status:</span>
+                        <p className="text-gray-900">{STATUS_LABELS[selectedOrder.productionStatus]}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                {/* Shipping Address */}
+                <div className="mt-8">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Shipping Address</h3>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <p className="text-gray-900">{selectedOrder.shippingDetails.firstName} {selectedOrder.shippingDetails.lastName}</p>
+                    <p className="text-gray-900">{selectedOrder.shippingDetails.address}</p>
+                    {selectedOrder.shippingDetails.address2 && (
+                      <p className="text-gray-900">{selectedOrder.shippingDetails.address2}</p>
+                    )}
+                    <p className="text-gray-900">{selectedOrder.shippingDetails.city}, {selectedOrder.shippingDetails.state} {selectedOrder.shippingDetails.zipCode}</p>
+                    <p className="text-gray-900">{selectedOrder.shippingDetails.country}</p>
+                  </div>
+                </div>
+                {/* Order Items */}
+                <div className="mt-8">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Order Items</h3>
+                  <div className="space-y-6">
+                    {selectedOrder.items.map((item, idx) => (
+                      <div key={idx} className="border border-gray-200 rounded-lg p-4">
+                        <div className="flex justify-between items-start mb-4">
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-gray-900">{item.name}</h4>
+                            <p className="text-sm text-gray-500">Size: {item.size} | Quantity: {item.quantity}</p>
+                            <p className="text-sm text-gray-500">Price: £{item.price?.toFixed(2) ?? 'N/A'}</p>
+                          </div>
+                          <div className="text-right ml-4">
+                            <p className="font-semibold text-gray-900">£{((item.price || 0) * item.quantity).toFixed(2)}</p>
+                          </div>
+                        </div>
+                        
+                        {/* Product Image */}
+                        <div className="mb-4">
+                          <h5 className="text-sm font-medium text-gray-700 mb-2">Product Image:</h5>
+                          <div className="flex gap-4">
+                            {item.image ? (
+                              <img
+                                src={getImageUrl(item.image)}
+                                alt={item.name}
+                                className="w-24 h-24 object-cover rounded-lg border border-gray-200"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.src = getImageUrl('/images/logo.jpg');
+                                }}
+                              />
+                            ) : (
+                              <div className="w-24 h-24 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center">
+                                <span className="text-xs text-gray-400">No image</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Custom Design Details */}
                         {item.customization?.isCustomized && (
-                          <span className="ml-1 text-purple-600">• Custom</span>
+                          <div className="mt-4 p-4 bg-purple-50 rounded-lg border border-purple-200">
+                            <h5 className="font-semibold text-purple-900 text-sm mb-3">Custom Design Details</h5>
+                            <div className="space-y-2 text-sm">
+                              {item.customization.name && (
+                                <p><span className="font-medium text-purple-700">Name:</span> {item.customization.name}</p>
+                              )}
+                              {item.customization.number && (
+                                <p><span className="font-medium text-purple-700">Number:</span> {item.customization.number}</p>
+                              )}
+                              {item.customization.color && (
+                                <p><span className="font-medium text-purple-700">Color:</span> {item.customization.color}</p>
+                              )}
+                              {item.customization.instructions && (
+                                <p><span className="font-medium text-purple-700">Instructions:</span> {item.customization.instructions}</p>
+                              )}
+                            </div>
+                            
+                            {/* Custom Design Image */}
+                            {item.customization.customImage && (
+                              <div className="mt-3">
+                                <h6 className="text-sm font-medium text-purple-700 mb-2">Custom Design Image:</h6>
+                                <div className="flex gap-4">
+                                  <img
+                                    src={getImageUrl(item.customization.customImage)}
+                                    alt="Custom design"
+                                    className="w-32 h-32 object-cover rounded-lg border border-purple-200"
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement;
+                                      target.src = getImageUrl('/images/logo.jpg');
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         )}
                       </div>
                     ))}
                   </div>
-                  
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => handleProductionStatusChange(order._id, 'in_production')}
-                      className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-                    >
-                      Start Production
-                    </button>
-                    <Link
-                      href={`/admin/orders/${order._id}`}
-                      className="px-2 py-1 text-xs text-purple-600 hover:text-purple-900"
-                    >
-                      Details
-                    </Link>
-                  </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Production Schedule View */}
-        {viewMode === 'schedule' && (
-          <div className="mb-6">
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-medium text-gray-900">Production Schedule</h2>
-                <div className="flex items-center space-x-4">
-                  <span className="text-sm text-gray-600">
-                    Selected Date: {formatScheduleDate(selectedDate)}
-                  </span>
-                  <span className="text-sm text-gray-600">
-                    {generateProductionSchedule(orders, selectedDate).length} orders scheduled
-                  </span>
-                </div>
-              </div>
-
-              {/* Weekly Overview */}
-              <div className="mb-6">
-                <h3 className="text-md font-medium text-gray-900 mb-3">Next 7 Days Overview</h3>
-                <div className="grid grid-cols-7 gap-2">
-                  {getNextWeekDates().map((date) => {
-                    const scheduledOrders = generateProductionSchedule(orders, date);
-                    const isSelected = date === selectedDate;
-                    return (
-                      <div
-                        key={date}
-                        onClick={() => setSelectedDate(date)}
-                        className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                          isSelected
-                            ? 'bg-purple-100 border-purple-300'
-                            : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                        }`}
+                {/* Production Status Controls */}
+                <div className="mt-8 pt-6 border-t border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Production Status</h3>
+                  <div className="flex gap-3">
+                    {getPrevStatus(selectedOrder.productionStatus) && (
+                      <button
+                        className="px-4 py-2 rounded bg-gray-200 text-gray-700 font-semibold hover:bg-gray-300 disabled:opacity-50"
+                        onClick={() => {
+                          handleStatusChange(selectedOrder._id, getPrevStatus(selectedOrder.productionStatus)!);
+                          closeOrderDetails();
+                        }}
+                        disabled={processing === selectedOrder._id}
                       >
-                        <div className="text-xs font-medium text-gray-900">
-                          {formatScheduleDate(date)}
-                        </div>
-                        <div className="text-lg font-bold text-gray-900 mt-1">
-                          {scheduledOrders.length}
-                        </div>
-                        <div className="text-xs text-gray-500">orders</div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Selected Date Schedule */}
-              <div>
-                <h3 className="text-md font-medium text-gray-900 mb-3">
-                  Production Schedule for {formatScheduleDate(selectedDate)}
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {generateProductionSchedule(orders, selectedDate).map((order) => (
-                    <div key={order._id} className="border border-gray-200 rounded-lg p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className={`text-xs font-medium ${getPriorityColor(calculateOverduePriority(order))}`}>
-                          Priority: {calculateOverduePriority(order)}
-                          {isOrderOverdue(order) && <span className="ml-1 text-red-600">(OVERDUE)</span>}
-                        </span>
-                        <span className="text-xs font-medium text-gray-900">
-                          {order.reference}
-                        </span>
-                      </div>
-                      
-                      <div className="mb-2">
-                        <p className="text-sm font-medium text-gray-900">
-                          {order.shippingDetails.firstName} {order.shippingDetails.lastName}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {order.shippingDetails.shippingMethod}
-                        </p>
-                        <p className={`text-xs ${getDueDateColor(order)}`}>
-                          Due: {formatDueDate(order)}
-                          {!isOrderOverdue(order) && (
-                            <span className="ml-1">
-                              ({getDaysUntilDue(order)} days left)
-                            </span>
-                          )}
-                        </p>
-                      </div>
-                      
-                      <div className="mb-2">
-                        <p className="text-xs text-gray-600">
-                          <strong>Production Period:</strong>
-                        </p>
-                        <p className="text-xs text-gray-600">
-                          {getEstimatedProductionStart(order).toLocaleDateString('en-GB', {
-                            day: 'numeric',
-                            month: 'short',
-                          })} - {getEstimatedProductionCompletion(order).toLocaleDateString('en-GB', {
-                            day: 'numeric',
-                            month: 'short',
-                          })}
-                        </p>
-                      </div>
-                      
-                      <div className="mb-2">
-                        {order.items.map((item, index) => (
-                          <div key={index} className="text-xs text-gray-600">
-                            {item.quantity}x {item.name} ({item.size})
-                            {item.customization?.isCustomized && (
-                              <span className="ml-1 text-purple-600">• Custom</span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                      
-                      <div className="flex space-x-2">
-                        <Link
-                          href={`/admin/orders/${order._id}`}
-                          className="px-2 py-1 text-xs text-purple-600 hover:text-purple-900"
-                        >
-                          View Details
-                        </Link>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                
-                {generateProductionSchedule(orders, selectedDate).length === 0 && (
-                  <div className="text-center py-8">
-                    <p className="text-gray-500">No orders scheduled for this date</p>
+                        ← {STATUS_LABELS[getPrevStatus(selectedOrder.productionStatus)!]}
+                      </button>
+                    )}
+                    {getNextStatus(selectedOrder.productionStatus) && (
+                      <button
+                        className="px-4 py-2 rounded bg-purple-600 text-white font-semibold hover:bg-purple-700 disabled:opacity-50"
+                        onClick={() => {
+                          handleStatusChange(selectedOrder._id, getNextStatus(selectedOrder.productionStatus)!);
+                          closeOrderDetails();
+                        }}
+                        disabled={processing === selectedOrder._id}
+                      >
+                        {STATUS_LABELS[getNextStatus(selectedOrder.productionStatus)!]} →
+                      </button>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
             </div>
           </div>
         )}
-
-        {/* Production Statistics */}
-        {viewMode === 'current' && (
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-            {PRODUCTION_STATUSES.map(status => {
-              const count = getOrdersByStatus(status).length;
-              return (
-                <div key={status} className="bg-white rounded-lg shadow-sm p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">
-                        {status.replace('_', ' ').toUpperCase()}
-                      </p>
-                      <p className="text-2xl font-bold text-gray-900">{count}</p>
-                    </div>
-                    <span className={getStatusBadgeClass(status)}>
-                      {status.replace('_', ' ')}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Production Workflow */}
-        {viewMode === 'current' && (
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          {PRODUCTION_STATUSES.map(status => {
-            const statusOrders = getOrdersByStatus(status);
-            const sortedOrders = [...statusOrders].sort((a, b) => {
-              const priorityA = calculateOverduePriority(a);
-              const priorityB = calculateOverduePriority(b);
-              return priorityB - priorityA;
-            });
-            
-            return (
-              <div key={status} className="bg-white rounded-lg shadow-sm">
-                <div className="p-4 border-b border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-medium text-gray-900">
-                      {status.replace('_', ' ').toUpperCase()}
-                    </h3>
-                    <span className="text-sm font-medium text-gray-500">
-                      {statusOrders.length} orders
-                    </span>
-                  </div>
-                </div>
-                
-                <div className="p-4 space-y-3 max-h-96 overflow-y-auto">
-                  {sortedOrders.length === 0 ? (
-                    <p className="text-sm text-gray-500 text-center py-4">
-                      No orders in this stage
-                    </p>
-                  ) : (
-                    sortedOrders.map((order) => (
-                      <div key={order._id} className="border border-gray-200 rounded-lg p-3 hover:shadow-md transition-shadow">
-                        {/* Priority and Reference */}
-                        <div className="flex items-center justify-between mb-2">
-                          <span className={`text-xs font-medium ${getPriorityColor(calculateOverduePriority(order))}`}>
-                            Priority: {calculateOverduePriority(order)}
-                            {isOrderOverdue(order) && <span className="ml-1 text-red-600">(OVERDUE)</span>}
-                          </span>
-                          <span className="text-xs font-medium text-gray-900">
-                            {order.reference}
-                          </span>
-                        </div>
-
-                        {/* Customer Info */}
-                        <div className="mb-2">
-                          <p className="text-sm font-medium text-gray-900">
-                            {order.shippingDetails.firstName} {order.shippingDetails.lastName}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {order.shippingDetails.shippingMethod}
-                          </p>
-                          <p className={`text-xs ${getDueDateColor(order)}`}>
-                            Due: {formatDueDate(order)}
-                            {!isOrderOverdue(order) && (
-                              <span className="ml-1">
-                                ({getDaysUntilDue(order)} days left)
-                              </span>
-                            )}
-                          </p>
-                        </div>
-
-                        {/* Items */}
-                        <div className="mb-3">
-                          {order.items.map((item, index) => (
-                            <div key={index} className="text-xs text-gray-600">
-                              {item.quantity}x {item.name} ({item.size})
-                              {item.customization?.isCustomized && (
-                                <span className="ml-1 text-purple-600">• Custom</span>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Production Notes */}
-                        {order.productionNotes && (
-                          <div className="mb-3 p-2 bg-gray-50 rounded text-xs text-gray-600">
-                            <strong>Notes:</strong> {order.productionNotes}
-                          </div>
-                        )}
-
-                        {/* Actions */}
-                        <div className="space-y-2">
-                          {/* Production Status Actions */}
-                          <div>
-                            <div className="flex flex-wrap gap-1">
-                              {getNextProductionActions(order.productionStatus).map((nextStatus) => (
-                                <button
-                                  key={nextStatus}
-                                  onClick={() => handleProductionStatusChange(order._id, nextStatus)}
-                                  className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200"
-                                >
-                                  → {nextStatus.replace('_', ' ')}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Priority Update for Overdue Orders */}
-                          {isOrderOverdue(order) && (
-                            <div>
-                              <button
-                                onClick={() => handlePriorityUpdate(order._id, 150)}
-                                className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
-                              >
-                                Set Highest Priority
-                              </button>
-                            </div>
-                          )}
-
-                          {/* Notes Button */}
-                          <div>
-                            {editingNotes === order._id ? (
-                              <div className="space-y-1">
-                                <textarea
-                                  value={notesText}
-                                  onChange={(e) => setNotesText(e.target.value)}
-                                  className="w-full text-xs border rounded p-1"
-                                  rows={2}
-                                  placeholder="Add production notes..."
-                                />
-                                <div className="flex gap-1">
-                                  <button
-                                    onClick={() => handleNotesUpdate(order._id)}
-                                    className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200"
-                                  >
-                                    Save
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      setEditingNotes(null);
-                                      setNotesText('');
-                                    }}
-                                    className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
-                                  >
-                                    Cancel
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              <button
-                                onClick={() => {
-                                  setEditingNotes(order._id);
-                                  setNotesText(order.productionNotes || '');
-                                }}
-                                className="w-full px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
-                              >
-                                {order.productionNotes ? 'Edit Notes' : 'Add Notes'}
-                              </button>
-                            )}
-                          </div>
-
-                          {/* View Details Link */}
-                          <div>
-                            <Link
-                              href={`/admin/orders/${order._id}`}
-                              className="block w-full text-center px-2 py-1 text-xs text-purple-600 hover:text-purple-900 hover:bg-purple-50 rounded"
-                            >
-                              View Details
-                            </Link>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        )}
-
-        {/* Priority Guide */}
-        <div className="mt-6 bg-white rounded-lg shadow-sm p-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Production Priority Guide</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="font-medium text-gray-900 mb-2">Delivery Priority</h3>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-red-600 font-bold">150+</span>
-                  <span className="text-sm text-gray-600">Overdue Orders - Highest Priority</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-red-600 font-bold">100+</span>
-                  <span className="text-sm text-gray-600">Next Day Delivery - Process First</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-orange-600 font-semibold">50-99</span>
-                  <span className="text-sm text-gray-600">Express Delivery - High Priority</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">10-49</span>
-                  <span className="text-sm text-gray-600">Standard Delivery - Normal Priority</span>
-                </div>
-              </div>
-            </div>
-            <div>
-              <h3 className="font-medium text-gray-900 mb-2">Due Date Colors</h3>
-              <div className="space-y-2">
-                <div className="flex items-center">
-                  <span className="text-red-600 font-bold">Red</span>
-                  <span className="ml-2 text-sm text-gray-600">1 day or less until due / Overdue</span>
-                </div>
-                <div className="flex items-center">
-                  <span className="text-orange-600 font-semibold">Orange</span>
-                  <span className="ml-2 text-sm text-gray-600">2-3 days until due</span>
-                </div>
-                <div className="flex items-center">
-                  <span className="text-gray-800 font-medium">Black</span>
-                  <span className="ml-2 text-sm text-gray-600">4-5 days until due</span>
-                </div>
-                <div className="flex items-center">
-                  <span className="text-gray-600">Gray</span>
-                  <span className="ml-2 text-sm text-gray-600">More than 5 days until due</span>
-                </div>
-              </div>
-            </div>
-            <div>
-              <h3 className="font-medium text-gray-900 mb-2">Production Workflow</h3>
-              <div className="space-y-2">
-                <div className="flex items-center">
-                  <span className={getStatusBadgeClass('not_started')}>NOT STARTED</span>
-                  <span className="ml-2 text-sm text-gray-600">→ Ready for production</span>
-                </div>
-                <div className="flex items-center">
-                  <span className={getStatusBadgeClass('in_production')}>IN PRODUCTION</span>
-                  <span className="ml-2 text-sm text-gray-600">→ Currently being made</span>
-                </div>
-                <div className="flex items-center">
-                  <span className={getStatusBadgeClass('quality_check')}>QUALITY CHECK</span>
-                  <span className="ml-2 text-sm text-gray-600">→ Final inspection</span>
-                </div>
-                <div className="flex items-center">
-                  <span className={getStatusBadgeClass('ready_to_ship')}>READY TO SHIP</span>
-                  <span className="ml-2 text-sm text-gray-600">→ Packaged and ready</span>
-                </div>
-                <div className="flex items-center">
-                  <span className={getStatusBadgeClass('completed')}>COMPLETED</span>
-                  <span className="ml-2 text-sm text-gray-600">→ Production finished</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        {loading && <div className="mt-6 text-center text-gray-500">Loading...</div>}
+        {error && <div className="mt-6 text-center text-red-500">{error}</div>}
       </div>
     </div>
   );
