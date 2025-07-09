@@ -111,6 +111,23 @@ export default function CartPage() {
                                     {item.name}
                                   </Link>
                                 </h3>
+                                {/* Show base product info for custom designs */}
+                                {item.baseProductName && (
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    Base Product: {item.baseProductName}
+                                  </p>
+                                )}
+                                {/* Optionally show base product image for custom designs */}
+                                {item.baseProductImage && (
+                                  <div className="relative h-8 w-8 mt-1 mb-1 flex-shrink-0 overflow-hidden rounded border border-gray-200">
+                                    <Image
+                                      src={item.baseProductImage}
+                                      alt={item.baseProductName || 'Base Product'}
+                                      fill
+                                      className="object-contain object-center"
+                                    />
+                                  </div>
+                                )}
                                 <div className="mt-1 space-y-1">
                                   <p className="text-sm text-gray-500">
                                     Size: {item.size}

@@ -36,6 +36,8 @@ const OrderSchema = new mongoose.Schema({
     },
     color: String,
     image: String,
+    baseProductName: String,
+    baseProductImage: String,
     customization: {
       name: String,
       number: String,
@@ -139,6 +141,10 @@ const OrderSchema = new mongoose.Schema({
   productionCompletedDate: {
     type: Date,
     default: null,
+  },
+  orderSource: {
+    type: String,
+    default: '',
   },
   transactionId: {
     type: mongoose.Schema.Types.ObjectId,

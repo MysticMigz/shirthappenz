@@ -158,6 +158,22 @@ export default function CheckoutPage() {
                         {/* Product Details */}
                         <div className="flex-1">
                           <h3 className="font-medium text-gray-900 text-sm lg:text-base">{item.name}</h3>
+                          {/* Show base product info for custom designs */}
+                          {item.baseProductName && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              Base Product: {item.baseProductName}
+                            </p>
+                          )}
+                          {item.baseProductImage && (
+                            <div className="relative h-8 w-8 mt-1 mb-1 flex-shrink-0 overflow-hidden rounded border border-gray-200">
+                              <Image
+                                src={item.baseProductImage}
+                                alt={item.baseProductName || 'Base Product'}
+                                fill
+                                className="object-contain object-center"
+                              />
+                            </div>
+                          )}
                           <p className="text-xs text-gray-500">Size: {item.size}</p>
                           <p className="text-xs text-gray-500">Quantity: {item.quantity}</p>
                         </div>

@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Header from '@/app/components/Header';
 import Footer from '@/app/components/Footer';
 import { useCart } from '@/context/CartContext';
+import { saveAs } from 'file-saver';
 
 interface DesignSideData {
   uploadedImage: string | null;
@@ -59,7 +60,7 @@ export default function CustomDesignPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [selectedSize, setSelectedSize] = useState('M');
+  const [selectedSize, setSelectedSize] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [uploading, setUploading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('tshirts');
@@ -72,8 +73,13 @@ export default function CustomDesignPage() {
       try {
         const res = await fetch(`/api/products?category=${selectedCategory}&limit=100`);
         const data = await res.json();
-        setProducts(data.products || []);
-        setSelectedProduct(data.products?.[0] || null);
+        
+        const allProducts = data.products || [];
+        const customizableProducts = allProducts.filter((p: any) => p.customizable);
+        const firstCustomizable = customizableProducts[0] || null;
+        
+        setProducts(allProducts);
+        setSelectedProduct(firstCustomizable);
       } catch (err) {
         setProducts([]);
         setSelectedProduct(null);
@@ -82,9 +88,25 @@ export default function CustomDesignPage() {
     fetchProducts();
   }, [selectedCategory]);
 
+  useEffect(() => {
+    if (selectedProduct && Array.isArray(selectedProduct.sizes) && selectedProduct.sizes.length > 0) {
+      setSelectedSize(selectedProduct.sizes[0]);
+    }
+  }, [selectedProduct]);
+
   const sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
   const customizationFee = 12.50;
   const basePrice = selectedProduct?.basePrice ?? 24.99;
+  // Normalize stock keys and selectedSize
+  const normalizedStock: Record<string, number> = {};
+  if (selectedProduct?.stock) {
+    Object.keys(selectedProduct.stock).forEach(
+      k => normalizedStock[k.trim().toUpperCase()] = selectedProduct.stock[k]
+    );
+  }
+  const normalizedSize = selectedSize.trim().toUpperCase();
+  const availableQty = Number(normalizedStock[normalizedSize] ?? 0);
+  console.log('selectedSize:', selectedSize, 'normalizedSize:', normalizedSize, 'normalizedStock:', normalizedStock, 'availableQty:', availableQty);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -196,23 +218,20 @@ export default function CustomDesignPage() {
       return;
     }
 
-    if (!designData.designName.trim()) {
-      setError('Please enter a design name');
-      return;
-    }
-
     try {
       setLoading(true);
       
       const cartItem = {
         productId: 'custom-design',
-        name: `Custom Design: ${designData.designName}`,
+        name: 'Custom Design',
         size: selectedSize,
         quantity: quantity,
         price: basePrice + customizationFee,
         image: (designData.front.uploadedImage || designData.back.uploadedImage) ?? '',
+        baseProductName: selectedProduct?.name || '',
+        baseProductImage: selectedProduct?.images?.[0]?.url || '',
+        orderSource: 'online-design',
         customization: {
-          name: designData.designName,
           isCustomized: true,
           customizationCost: customizationFee,
           frontImage: designData.front.uploadedImage || undefined,
@@ -235,6 +254,66 @@ export default function CustomDesignPage() {
     }
   };
 
+  const exportForDTF = async () => {
+    const PRINT_WIDTH = 2480; // A4 at 300 DPI
+    const PRINT_HEIGHT = 3508;
+    const PREVIEW_ASPECT = 3 / 4; // matches aspect-[3/4] in preview
+    // We'll assume the preview area is mapped to the full A4 area
+
+    const side = activeSide;
+    const design = designData[side];
+    if (!design.uploadedImage) {
+      setError('No image uploaded to export.');
+      return;
+    }
+
+    // Load the image
+    const img = new window.Image();
+    img.crossOrigin = 'anonymous';
+    img.src = design.uploadedImage;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = PRINT_WIDTH;
+      canvas.height = PRINT_HEIGHT;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      // Fill white background
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, PRINT_WIDTH, PRINT_HEIGHT);
+
+      // Map preview controls to print area
+      // Assume preview area is centered, and image is max 200x200px in preview (see <Image width={200} height={200} ... />)
+      const previewWidth = 600; // estimate, adjust if you know exact px
+      const previewHeight = 800; // estimate, adjust if you know exact px
+      const scaleFactor = PRINT_WIDTH / previewWidth;
+
+      // Center of print area
+      const centerX = PRINT_WIDTH / 2;
+      const centerY = PRINT_HEIGHT / 2;
+
+      // Calculate image position in print area
+      const imgPreviewW = 200 * design.imageScale;
+      const imgPreviewH = 200 * design.imageScale;
+      const imgPrintW = imgPreviewW * scaleFactor;
+      const imgPrintH = imgPreviewH * scaleFactor;
+      const offsetX = design.imagePosition.x * scaleFactor;
+      const offsetY = design.imagePosition.y * scaleFactor;
+
+      ctx.save();
+      ctx.translate(centerX + offsetX, centerY + offsetY);
+      ctx.rotate((design.imageRotation * Math.PI) / 180);
+      ctx.drawImage(img, -imgPrintW / 2, -imgPrintH / 2, imgPrintW, imgPrintH);
+      ctx.restore();
+
+      // Export as PNG
+      canvas.toBlob(blob => {
+        if (blob) {
+          saveAs(blob, `${designData.designName || 'dtf-design'}-${side}.png`);
+        }
+      }, 'image/png');
+    };
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Header />
@@ -254,29 +333,40 @@ export default function CustomDesignPage() {
             ))}
           </div>
 
-          {/* Product Selector: Only show for jerseys */}
-          {selectedCategory === 'jerseys' && (
+          {/* Product Selector: Show for customizable categories */}
+          {(selectedCategory === 'jerseys' || selectedCategory === 'tshirts') && (
             <div className="mb-8">
-              <h2 className="text-xl font-semibold mb-2 text-center">Choose a Jersey</h2>
+              <h2 className="text-xl font-semibold mb-2 text-center">
+                Choose a {selectedCategory === 'jerseys' ? 'Jersey' : 'T-Shirt'}
+              </h2>
               <div className="flex flex-wrap gap-4 justify-center">
-                {products.map(product => (
-                  <div
-                    key={product._id}
-                    className={`border rounded-lg p-2 cursor-pointer w-32 h-48 flex flex-col items-center justify-between ${selectedProduct?._id === product._id ? 'border-blue-600 ring-2 ring-blue-400' : 'border-gray-200'}`}
-                    onClick={() => setSelectedProduct(product)}
-                  >
-                    <div className="relative w-24 h-24 mb-2">
-                      <Image
-                        src={product.images?.[0]?.url || '/images/no-image.png'}
-                        alt={product.name}
-                        fill
-                        className="object-contain"
-                      />
+                {(() => {
+                  const customizableProducts = products.filter((p: any) => p.customizable);
+                  
+                  if (customizableProducts.length === 0) {
+                    return <div className="text-gray-500 text-center w-full py-8">No customizable {selectedCategory} available.</div>;
+                  }
+                  
+                  return customizableProducts.map(product => (
+                    <div
+                      key={product._id}
+                      className={`border rounded-lg p-2 cursor-pointer w-32 h-48 flex flex-col items-center justify-between ${selectedProduct?._id === product._id ? 'border-blue-600 ring-2 ring-blue-400' : 'border-gray-200'}`}
+                      onClick={() => setSelectedProduct(product)}
+                    >
+                      <div className="relative w-24 h-24 mb-2">
+                        <Image
+                          src={product.images?.[0]?.url || '/images/no-image.png'}
+                          alt={product.name}
+                          fill
+                          sizes="(max-width: 768px) 100vw, 192px"
+                          className="object-contain"
+                        />
+                      </div>
+                      <div className="text-xs text-center font-medium text-gray-700 line-clamp-2">{product.name}</div>
+                      <div className="text-xs text-gray-500">£{product.basePrice?.toFixed(2)}</div>
                     </div>
-                    <div className="text-xs text-center font-medium text-gray-700 line-clamp-2">{product.name}</div>
-                    <div className="text-xs text-gray-500">£{product.basePrice?.toFixed(2)}</div>
-                  </div>
-                ))}
+                  ));
+                })()}
               </div>
             </div>
           )}
@@ -309,27 +399,29 @@ export default function CustomDesignPage() {
                 <div className="relative w-full aspect-[3/4] bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200">
                   {/* Shirt Template */}
                   <div className="absolute inset-0">
-                    <Image
-                      src={
-                        selectedCategory === 'hoodies'
-                          ? (activeSide === 'front'
-                              ? '/images/hoody-front.png'
-                              : '/images/hoody-back.png')
-                          : selectedCategory === 'tshirts'
-                            ? (activeSide === 'front'
-                                ? '/images/front-tshirt.png'
-                                : '/images/back-tshirt.png')
-                            : selectedCategory === 'jerseys'
-                              ? (activeSide === 'front'
-                                  ? '/images/jersey-front.png'
-                                  : '/images/jersey-back.png')
-                              : selectedProduct?.images?.[0]?.url || '/images/front-tshirt.png'
+                    {(() => {
+                      let templateSrc = '';
+                      if (selectedCategory === 'hoodies') {
+                        templateSrc = activeSide === 'front' ? '/images/hoody-front.png' : '/images/hoody-back.png';
+                      } else if (selectedCategory === 'tshirts') {
+                        templateSrc = activeSide === 'front' ? '/images/front-tshirt.png' : '/images/back-tshirt.png';
+                      } else if (selectedCategory === 'jerseys') {
+                        templateSrc = activeSide === 'front' ? '/images/jersey-front.png' : '/images/jersey-back.png';
+                      } else {
+                        templateSrc = selectedProduct?.images?.[0]?.url || '/images/front-tshirt.png';
                       }
-                      alt="Shirt template"
-                      fill
-                      className="object-contain"
-                      priority
-                    />
+                      
+                      return (
+                        <Image
+                          src={templateSrc}
+                          alt={selectedProduct?.name || 'Shirt template'}
+                          fill
+                          sizes="(max-width: 768px) 100vw, 50vw"
+                          className="object-contain"
+                          priority
+                        />
+                      );
+                    })()}
                   </div>
                   
                   {/* Uploaded Design Overlay */}
@@ -350,6 +442,25 @@ export default function CustomDesignPage() {
                           filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
                         }}
                       />
+                      {/* Remove button */}
+                      <button
+                        type="button"
+                        aria-label="Remove uploaded image"
+                        className="absolute top-2 right-2 bg-white bg-opacity-80 hover:bg-red-500 hover:text-white text-red-600 rounded-full p-1 shadow transition-colors z-10 border border-red-200"
+                        onClick={() => setDesignData(prev => ({
+                          ...prev,
+                          [activeSide]: {
+                            uploadedImage: null,
+                            imagePosition: { x: 0, y: 0 },
+                            imageScale: 1,
+                            imageRotation: 0
+                          }
+                        }))}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
                     </div>
                   )}
                   
@@ -485,31 +596,9 @@ export default function CustomDesignPage() {
                 <div className="space-y-4 mb-6">
                   <h3 className="text-lg font-medium text-gray-900">Design Information</h3>
                   
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Design Name *
-                    </label>
-                    <input
-                      type="text"
-                      value={designData.designName}
-                      onChange={(e) => setDesignData(prev => ({ ...prev, designName: e.target.value }))}
-                      placeholder="Enter a name for your design"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Description (Optional)
-                    </label>
-                    <textarea
-                      value={designData.description}
-                      onChange={(e) => setDesignData(prev => ({ ...prev, description: e.target.value }))}
-                      placeholder="Describe your design..."
-                      rows={3}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
+                  {/* Remove the Design Name and Description fields from the Design Information section */}
+                  {/* Remove the designName and description from the designData state and validation */}
+                  {/* Update the Add to Cart button to not require designName */}
                 </div>
 
                 {/* Product Options */}
@@ -523,10 +612,16 @@ export default function CustomDesignPage() {
                       </label>
                       <select
                         value={selectedSize}
-                        onChange={(e) => setSelectedSize(e.target.value)}
+                        onChange={(e) => {
+                          const newSize = e.target.value;
+                          setSelectedSize(newSize);
+                          // Reset quantity to 1 if new size has less stock than current quantity
+                          const maxQty = selectedProduct?.stock?.[newSize] || 0;
+                          if (quantity > maxQty) setQuantity(1);
+                        }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       >
-                        {sizes.map(size => (
+                        {sizes.filter(size => selectedProduct?.stock?.[size] > 0).map(size => (
                           <option key={size} value={size}>{size}</option>
                         ))}
                       </select>
@@ -540,10 +635,14 @@ export default function CustomDesignPage() {
                         value={quantity}
                         onChange={(e) => setQuantity(parseInt(e.target.value))}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        disabled={availableQty === 0}
                       >
-                        {[1, 2, 3, 4, 5].map(qty => (
-                          <option key={qty} value={qty}>{qty}</option>
-                        ))}
+                        {availableQty > 0
+                          ? Array.from({ length: Math.min(5, availableQty) }, (_, i) => i + 1).map(qty => (
+                              <option key={qty} value={qty}>{qty}</option>
+                            ))
+                          : <option value="">Out of stock</option>
+                        }
                       </select>
                     </div>
                   </div>
@@ -552,28 +651,32 @@ export default function CustomDesignPage() {
                 {/* Pricing */}
                 <div className="bg-gray-50 rounded-lg p-4 mb-6">
                   <h3 className="text-lg font-medium text-gray-900 mb-3">Pricing</h3>
-                                      <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span>Base Price:</span>
-                        <span>£{basePrice.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Custom Design Fee:</span>
-                        <span>£{customizationFee.toFixed(2)}</span>
-                      </div>
-                      <div className="border-t pt-2">
-                        <div className="flex justify-between font-semibold">
-                          <span>Total:</span>
-                          <span>£{(basePrice + customizationFee).toFixed(2)}</span>
-                        </div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span>Base Price:</span>
+                      <span>£{basePrice.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Custom Design Fee:</span>
+                      <span>£{customizationFee.toFixed(2)}</span>
+                    </div>
+                    <div className="border-t pt-2">
+                      <div className="flex justify-between font-semibold">
+                        <span>Total:</span>
+                        <span>£{((basePrice + customizationFee) * quantity).toFixed(2)}</span>
                       </div>
                     </div>
+                  </div>
                 </div>
 
                 {/* Add to Cart Button */}
                 <button
                   onClick={addToCart}
-                  disabled={loading || !designData.front.uploadedImage || !designData.back.uploadedImage || !designData.designName.trim()}
+                  disabled={
+                    loading ||
+                    !selectedProduct ||
+                    (!designData.front.uploadedImage && !designData.back.uploadedImage)
+                  }
                   className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-medium py-3 px-6 rounded-lg transition-colors"
                 >
                   {loading ? 'Adding to Cart...' : 'Add to Cart'}

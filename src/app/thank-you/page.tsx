@@ -28,6 +28,8 @@ interface OrderDetails {
     };
     rrp?: number;
     productId?: string;
+    baseProductName?: string; // Added for custom designs
+    baseProductImage?: string; // Added for custom designs
   }>;
   shippingDetails: {
     firstName: string;
@@ -207,54 +209,46 @@ export default function ThankYouPage() {
 
             <h3 className="text-lg font-semibold mb-4">Items</h3>
             <div className="space-y-4">
-              {order.items.map((item, index) => (
-                <div
-                  key={index}
-                  className="flex justify-between items-start border-b border-gray-200 pb-4 gap-4"
-                >
-                  <div className="flex items-center gap-4">
-                    <Image
-                      src={getImageUrl(item.image || '/images/logo.jpg')}
-                      alt={item.name}
-                      width={64}
-                      height={64}
-                      className="rounded-md border border-gray-200 object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = getImageUrl('/images/logo.jpg');
-                      }}
-                    />
-                    <div>
-                      <h4 className="font-medium">{item.name}</h4>
-                      <p className="text-sm text-gray-600">Size: {item.size}</p>
-                      {item.color && <p className="text-sm text-gray-600">Color: {item.color}</p>}
-                      {item.customization && (
-                        <div className="text-sm text-gray-600">
-                          {item.customization.name && (
-                            <p>Name: {item.customization.name}</p>
-                          )}
-                          {item.customization.number && (
-                            <p>Number: {item.customization.number}</p>
-                          )}
-                        </div>
-                      )}
-                      <p className="text-sm text-gray-600">
-                        Quantity: {item.quantity}
-                      </p>
-                      {/* RRP and Offer Price */}
-                      {item.rrp && item.rrp > item.price ? (
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs text-gray-400 line-through">RRP: £{item.rrp.toFixed(2)}</span>
-                          <span className="text-sm font-bold text-green-700">Offer: £{item.price.toFixed(2)}</span>
-                        </div>
-                      ) : (
-                        <span className="text-sm font-bold text-gray-900 mt-1">Price: £{item.price.toFixed(2)}</span>
-                      )}
-                    </div>
+              {order.items.map((item, idx) => (
+                <div key={idx} className="flex items-center py-4 border-b border-gray-200 last:border-0 gap-4">
+                  {/* Product Image */}
+                  <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border border-gray-200 bg-white">
+                    {item.image ? (
+                      <Image
+                        src={item.image}
+                        alt={item.name}
+                        fill
+                        className="object-cover object-center"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                        <span className="text-gray-400 text-xs">No image</span>
+                      </div>
+                    )}
                   </div>
-                  <p className="font-medium">
-                    £{(item.quantity * item.price).toFixed(2)}
-                  </p>
+                  {/* Product Details */}
+                  <div className="flex-1">
+                    <h3 className="font-medium text-gray-900 text-sm lg:text-base">{item.name}</h3>
+                    {/* Show base product info for custom designs */}
+                    {item.baseProductName && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Base Product: {item.baseProductName}
+                      </p>
+                    )}
+                    {item.baseProductImage && (
+                      <div className="relative h-8 w-8 mt-1 mb-1 flex-shrink-0 overflow-hidden rounded border border-gray-200">
+                        <Image
+                          src={item.baseProductImage}
+                          alt={item.baseProductName || 'Base Product'}
+                          fill
+                          className="object-contain object-center"
+                        />
+                      </div>
+                    )}
+                    <p className="text-xs text-gray-500">Size: {item.size}</p>
+                    <p className="text-xs text-gray-500">Quantity: {item.quantity}</p>
+                  </div>
+                  <span className="font-semibold text-gray-900 text-sm lg:text-base">£{(item.price * item.quantity).toFixed(2)}</span>
                 </div>
               ))}
             </div>

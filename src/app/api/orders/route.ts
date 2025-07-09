@@ -57,6 +57,8 @@ interface OrderItemDB {
     numberCharacters?: number;
     customizationCost?: number;
   };
+  baseProductName?: string;
+  baseProductImage?: string;
 }
 
 export async function GET(request: Request) {
@@ -203,20 +205,7 @@ export async function POST(request: Request) {
         }
       }
 
-      // Check stock availability
-      const success = await updateProductStock(
-        item.productId.toString(),
-        item.size,
-        -item.quantity
-      );
-
-      if (!success) {
-        return NextResponse.json(
-          { error: 'Insufficient stock' },
-          { status: 400 }
-        );
-      }
-
+      // Always include baseProductName and baseProductImage if present
       processedItems.push({
         productId: item.productId.toString(),
         name: item.name,
@@ -225,6 +214,8 @@ export async function POST(request: Request) {
         size: item.size,
         color: item.color,
         image: item.image,
+        baseProductName: item.baseProductName || undefined,
+        baseProductImage: item.baseProductImage || undefined,
         customization: item.customization ? {
           name: item.customization.name,
           number: item.customization.number,
@@ -235,6 +226,9 @@ export async function POST(request: Request) {
         } : undefined
       });
     }
+
+    // Determine order source from first item (if present)
+    const orderSource = items?.[0]?.orderSource || undefined;
 
     // Calculate VAT (UK VAT 20%) on subtotal + shipping cost
     const vatBase = total + shippingDetails.shippingCost;
@@ -263,7 +257,8 @@ export async function POST(request: Request) {
           shippingDetails,
           total: backendTotal,
           vat,
-          status: 'pending'
+          status: 'pending',
+          orderSource,
         });
 
         await order.save();

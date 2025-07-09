@@ -10,6 +10,9 @@ interface CartItem {
   price: number;
   image?: string;
   color?: string;
+  baseProductName?: string;
+  baseProductImage?: string;
+  orderSource?: string;
   customization?: {
     name?: string;
     number?: string;

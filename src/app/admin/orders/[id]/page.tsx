@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { saveAs } from 'file-saver';
 
 interface OrderItem {
   productId: string;
@@ -12,6 +13,17 @@ interface OrderItem {
   quantity: number;
   size: string;
   color?: string;
+  customization?: {
+    frontImage?: string;
+    backImage?: string;
+    frontPosition: { x: number; y: number };
+    backPosition: { x: number; y: number };
+    frontScale: number;
+    backScale: number;
+    frontRotation?: number;
+    backRotation?: number;
+    name?: string;
+  };
 }
 
 interface Order {
@@ -146,6 +158,54 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update production notes');
     }
+  };
+
+  const exportOrderItemForDTF = (customization: OrderItem['customization'], side = 'front', designName = 'dtf-design') => {
+    if (!customization) return;
+    const PRINT_WIDTH = 2480; // A4 at 300 DPI
+    const PRINT_HEIGHT = 3508;
+    const scaleFactor = PRINT_WIDTH / 600; // assuming previewWidth = 600
+
+    const design = customization;
+    const imageUrl = side === 'front' ? design.frontImage : design.backImage;
+    if (!imageUrl) return;
+
+    const img = new window.Image();
+    img.crossOrigin = 'anonymous';
+    img.src = imageUrl;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = PRINT_WIDTH;
+      canvas.height = PRINT_HEIGHT;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, PRINT_WIDTH, PRINT_HEIGHT);
+
+      // Use stored customization controls
+      const imgPreviewW = 200 * (side === 'front' ? design.frontScale ?? 1 : design.backScale ?? 1);
+      const imgPreviewH = 200 * (side === 'front' ? design.frontScale ?? 1 : design.backScale ?? 1);
+      const imgPrintW = imgPreviewW * scaleFactor;
+      const imgPrintH = imgPreviewH * scaleFactor;
+      const offsetX = (side === 'front' ? design.frontPosition?.x ?? 0 : design.backPosition?.x ?? 0) * scaleFactor;
+      const offsetY = (side === 'front' ? design.frontPosition?.y ?? 0 : design.backPosition?.y ?? 0) * scaleFactor;
+      const rotation = (side === 'front' ? design.frontRotation ?? 0 : design.backRotation ?? 0);
+
+      const centerX = PRINT_WIDTH / 2;
+      const centerY = PRINT_HEIGHT / 2;
+
+      ctx.save();
+      ctx.translate(centerX + offsetX, centerY + offsetY);
+      ctx.rotate((rotation * Math.PI) / 180);
+      ctx.drawImage(img, -imgPrintW / 2, -imgPrintH / 2, imgPrintW, imgPrintH);
+      ctx.restore();
+
+      canvas.toBlob(blob => {
+        if (blob) {
+          saveAs(blob, `${designName}-${side}.png`);
+        }
+      }, 'image/png');
+    };
   };
 
   if (loading) {
@@ -401,6 +461,28 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             £{(item.price * item.quantity).toFixed(2)}
                           </td>
+                          {item.customization && (
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              <div className="mt-2 flex flex-col gap-1">
+                                {item.customization?.frontImage && (
+                                  <button
+                                    className="px-2 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 text-xs"
+                                    onClick={() => exportOrderItemForDTF(item.customization, 'front', item.customization?.name || item.name)}
+                                  >
+                                    Export Front for DTF
+                                  </button>
+                                )}
+                                {item.customization?.backImage && (
+                                  <button
+                                    className="px-2 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 text-xs"
+                                    onClick={() => exportOrderItemForDTF(item.customization, 'back', item.customization?.name || item.name)}
+                                  >
+                                    Export Back for DTF
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          )}
                         </tr>
                       ))
                     ) : (
