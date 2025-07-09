@@ -245,7 +245,7 @@ export default function OrdersPage() {
                           </p>
                         </div>
                         <div className="text-sm font-medium text-gray-900 text-right">
-                          <p>Base: £80.00</p>
+                          <p>RRP: £80.00</p>
                           {item.customization?.isCustomized && (
                             <p>Customization: £16.00</p>
                           )}
