@@ -17,6 +17,8 @@ interface CartItem {
     nameCharacters?: number;
     numberCharacters?: number;
     customizationCost?: number;
+    frontImage?: string;
+    backImage?: string;
   };
 }
 

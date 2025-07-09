@@ -64,7 +64,7 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
           throw new Error('Failed to fetch order details');
         }
         const data = await response.json();
-        setOrder(data);
+        setOrder(data.order);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch order details');
       } finally {
@@ -93,7 +93,7 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
       }
 
       const updatedOrder = await response.json();
-      setOrder(updatedOrder);
+      setOrder(updatedOrder.order);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update order status');
     } finally {
@@ -140,7 +140,7 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
       }
 
       const updatedOrder = await response.json();
-      setOrder(updatedOrder);
+      setOrder(updatedOrder.order);
       setEditingNotes(false);
       setNotesText('');
     } catch (err) {
@@ -224,15 +224,17 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
                 <div className="bg-gray-50 rounded-lg p-4">
                   <p className="text-sm text-gray-600">
                     <span className="font-medium">Name:</span>{' '}
-                    {order.shippingDetails.firstName} {order.shippingDetails.lastName}
+                    {order.shippingDetails
+                      ? `${order.shippingDetails.firstName ?? ''} ${order.shippingDetails.lastName ?? ''}`.trim() || 'N/A'
+                      : 'N/A'}
                   </p>
                   <p className="text-sm text-gray-600 mt-2">
                     <span className="font-medium">Email:</span>{' '}
-                    {order.shippingDetails.email}
+                    {order.shippingDetails?.email || 'N/A'}
                   </p>
                   <p className="text-sm text-gray-600 mt-2">
                     <span className="font-medium">Phone:</span>{' '}
-                    {order.shippingDetails.phone}
+                    {order.shippingDetails?.phone || 'N/A'}
                   </p>
                 </div>
               </div>
@@ -241,13 +243,13 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
                 <h2 className="text-lg font-medium text-gray-900 mb-4">Shipping Address</h2>
                 <div className="bg-gray-50 rounded-lg p-4">
                   <p className="text-sm text-gray-600">
-                    {order.shippingDetails.address}
+                    {order.shippingDetails?.address || 'N/A'}
                   </p>
                   <p className="text-sm text-gray-600 mt-2">
-                    {order.shippingDetails.city}
+                    {order.shippingDetails?.city || 'N/A'}
                   </p>
                   <p className="text-sm text-gray-600 mt-2">
-                    {order.shippingDetails.postcode}
+                    {order.shippingDetails?.postcode || 'N/A'}
                   </p>
                 </div>
               </div>
@@ -266,7 +268,7 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
                     {order.deliveryPriority}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
-                    {order.shippingDetails.shippingMethod}
+                    {order.shippingDetails?.shippingMethod || 'N/A'}
                   </p>
                 </div>
                 
@@ -378,28 +380,36 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {order.items.map((item, index) => (
-                      <tr key={index}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {item.name}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {item.size}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {item.color || '-'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {item.quantity}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          £{item.price.toFixed(2)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          £{(item.price * item.quantity).toFixed(2)}
+                    {Array.isArray(order.items) && order.items.length > 0 ? (
+                      order.items.map((item, index) => (
+                        <tr key={index}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {item.name}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {item.size}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {item.color || '-'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {item.quantity}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            £{item.price.toFixed(2)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            £{(item.price * item.quantity).toFixed(2)}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={6} className="text-center text-gray-500 py-4">
+                          No items found.
                         </td>
                       </tr>
-                    ))}
+                    )}
                     <tr className="bg-gray-50">
                       <td colSpan={5} className="px-6 py-4 text-sm font-medium text-gray-900 text-right">
                         Total

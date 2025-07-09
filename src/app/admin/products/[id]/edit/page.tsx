@@ -199,7 +199,7 @@ export default function EditProduct({ params }: { params: { id: string } }) {
 
           const data = await response.json();
           return {
-            url: data.url,
+            url: data.url, // Use Cloudinary URL as-is
             alt: image.file.name
           };
         })

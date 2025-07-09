@@ -108,11 +108,75 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const data = await request.json() as ProductData;
-    console.log('Received product data:', data);
+    // Check if the request is multipart/form-data
+    const contentType = request.headers.get('content-type') || '';
+    let productData: any = {};
+    let uploadedImageUrls: Array<{ url: string; alt: string }> = [];
+    let urlImages: Array<{ url: string; alt: string }> = [];
+
+    if (contentType.includes('multipart/form-data')) {
+      // Handle FormData with file uploads and URL images
+      const formData = await request.formData();
+      
+      // Extract basic product data
+      productData = {
+        name: formData.get('name') as string,
+        description: formData.get('description') as string,
+        price: Number(formData.get('price')),
+        basePrice: Number(formData.get('basePrice')),
+        category: formData.get('category') as string,
+        gender: formData.get('gender') as string,
+        featured: formData.get('featured') === 'true',
+        customizable: formData.get('customizable') === 'true',
+        sizes: JSON.parse(formData.get('sizes') as string || '[]'),
+        colors: JSON.parse(formData.get('colors') as string || '[]'),
+        stock: JSON.parse(formData.get('stock') as string || '{}')
+      };
+
+      // Handle uploaded images
+      const imageFiles = formData.getAll('images') as File[];
+      if (imageFiles.length > 0) {
+        uploadedImageUrls = await Promise.all(
+          imageFiles.map(async (file) => {
+            const uploadFormData = new FormData();
+            uploadFormData.append('file', file);
+
+            try {
+              const uploadResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/upload`, {
+                method: 'POST',
+                body: uploadFormData,
+              });
+
+              if (!uploadResponse.ok) {
+                throw new Error(`Failed to upload ${file.name}`);
+              }
+
+              const uploadData = await uploadResponse.json();
+              return {
+                url: uploadData.url,
+                alt: uploadData.alt || file.name
+              };
+            } catch (error) {
+              console.error(`Error uploading ${file.name}:`, error);
+              throw new Error(`Failed to upload ${file.name}`);
+            }
+          })
+        );
+      }
+
+      // Handle URL images
+      const urlImagesData = formData.get('urlImages');
+      if (urlImagesData) {
+        urlImages = JSON.parse(urlImagesData as string);
+      }
+    } else {
+      // Handle JSON data (fallback for existing functionality)
+      productData = await request.json();
+      uploadedImageUrls = productData.images || [];
+    }
 
     // Validate required fields
-    if (!data.name || !data.description || !data.price || !data.category || !data.basePrice) {
+    if (!productData.name || !productData.description || !productData.price || !productData.category || !productData.basePrice) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -120,7 +184,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate stock data
-    if (typeof data.stock !== 'object' || data.stock === null) {
+    if (typeof productData.stock !== 'object' || productData.stock === null) {
       return NextResponse.json(
         { error: 'Invalid stock data format' },
         { status: 400 }
@@ -128,8 +192,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Ensure all stock quantities are non-negative integers
-    for (const [size, quantity] of Object.entries(data.stock)) {
-      if (!Number.isInteger(quantity) || quantity < 0) {
+    for (const [size, quantity] of Object.entries(productData.stock)) {
+      const numQuantity = Number(quantity);
+      if (!Number.isInteger(numQuantity) || numQuantity < 0) {
         return NextResponse.json(
           { error: `Invalid stock quantity for size ${size}. Must be a non-negative integer.` },
           { status: 400 }
@@ -137,23 +202,26 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Combine uploaded images and URL images
+    const allImages = [...uploadedImageUrls, ...urlImages];
+
     // Create product with properly formatted data
-    const productData = {
-      name: data.name.trim(),
-      description: data.description.trim(),
-      price: Number(data.price),
-      basePrice: Number(data.basePrice),
-      category: data.category,
-      gender: data.gender,
-      sizes: Array.isArray(data.sizes) ? data.sizes : [],
-      colors: Array.isArray(data.colors) ? data.colors : [],
-      images: Array.isArray(data.images) ? data.images : [],
-      stock: data.stock,
-      featured: Boolean(data.featured),
-      customizable: data.customizable ?? true
+    const finalProductData = {
+      name: productData.name.trim(),
+      description: productData.description.trim(),
+      price: Number(productData.price),
+      basePrice: Number(productData.basePrice),
+      category: productData.category,
+      gender: productData.gender,
+      sizes: Array.isArray(productData.sizes) ? productData.sizes : [],
+      colors: Array.isArray(productData.colors) ? productData.colors : [],
+      images: allImages,
+      stock: productData.stock,
+      featured: Boolean(productData.featured),
+      customizable: productData.customizable ?? true
     };
 
-    const product = await Product.create(productData);
+    const product = await Product.create(finalProductData);
     
     return NextResponse.json(product, { status: 201 });
   } catch (error) {

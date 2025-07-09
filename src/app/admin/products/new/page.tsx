@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { FaUpload, FaTrash } from 'react-icons/fa';
+import { FaUpload, FaTrash, FaLink, FaPlus } from 'react-icons/fa';
 
 interface ProductFormData {
   name: string;
@@ -40,6 +40,10 @@ export default function NewProduct() {
   const [fieldErrors, setFieldErrors] = useState<FormErrors>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadedImages, setUploadedImages] = useState<Array<{ file: File; preview: string }>>([]);
+  const [urlImages, setUrlImages] = useState<Array<{ url: string; alt: string }>>([]);
+  const [imageUrl, setImageUrl] = useState('');
+  const [imageAlt, setImageAlt] = useState('');
+  const [showUrlInput, setShowUrlInput] = useState(false);
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
     description: '',
@@ -175,6 +179,19 @@ export default function NewProduct() {
     });
   };
 
+  const handleUrlImageAdd = () => {
+    if (imageUrl.trim() && imageAlt.trim()) {
+      setUrlImages(prev => [...prev, { url: imageUrl.trim(), alt: imageAlt.trim() }]);
+      setImageUrl('');
+      setImageAlt('');
+      setShowUrlInput(false);
+    }
+  };
+
+  const handleUrlImageRemove = (index: number) => {
+    setUrlImages(prev => prev.filter((_, i) => i !== index));
+  };
+
   const validateForm = (): boolean => {
     const errors: FormErrors = {};
     let isValid = true;
@@ -199,23 +216,23 @@ export default function NewProduct() {
       isValid = false;
     }
 
-    if (!formData.gender) {
-      errors.gender = 'Please select a gender';
+    if (!formData.category) {
+      errors.category = 'Category is required';
       isValid = false;
     }
 
-    if (!formData.category) {
-      errors.category = 'Please select a category';
+    if (!formData.gender) {
+      errors.gender = 'Gender is required';
       isValid = false;
     }
 
     if (formData.sizes.length === 0) {
-      errors.sizes = 'Please select at least one size';
+      errors.sizes = 'At least one size is required';
       isValid = false;
     }
 
-    if (uploadedImages.length === 0) {
-      errors.images = 'Please upload at least one image';
+    if (uploadedImages.length === 0 && urlImages.length === 0) {
+      errors.images = 'At least one product image is required';
       isValid = false;
     }
 
@@ -225,71 +242,52 @@ export default function NewProduct() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError('');
-    setFieldErrors({});
-
+    
     if (!validateForm()) {
-      setLoading(false);
       return;
     }
 
+    setLoading(true);
+    setError('');
+
     try {
-      // First, upload all images
-      const uploadedImageUrls = await Promise.all(
-        uploadedImages.map(async (image) => {
-          const formData = new FormData();
-          formData.append('file', image.file);
+      const formDataToSend = new FormData();
+      
+      // Add basic product data
+      formDataToSend.append('name', formData.name);
+      formDataToSend.append('description', formData.description);
+      formDataToSend.append('price', formData.price);
+      formDataToSend.append('basePrice', formData.basePrice);
+      formDataToSend.append('category', formData.category);
+      formDataToSend.append('gender', formData.gender);
+      formDataToSend.append('featured', formData.featured.toString());
+      formDataToSend.append('customizable', formData.customizable.toString());
+      formDataToSend.append('sizes', JSON.stringify(formData.sizes));
+      formDataToSend.append('colors', JSON.stringify(formData.colors));
+      formDataToSend.append('stock', JSON.stringify(formData.stock));
 
-          try {
-            const response = await fetch('/api/upload', {
-              method: 'POST',
-              body: formData,
-            });
+      // Add uploaded images
+      uploadedImages.forEach((image, index) => {
+        formDataToSend.append('images', image.file);
+      });
 
-            if (!response.ok) {
-              const errorData = await response.json();
-              throw new Error(errorData.error || `Failed to upload ${image.file.name}`);
-            }
-
-            const data = await response.json();
-            return {
-              url: data.url,
-              alt: data.alt || image.file.name
-            };
-          } catch (error) {
-            throw new Error(`Failed to upload ${image.file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-          }
-        })
-      );
-
-      // Then create the product with the image URLs and required fields
-      const productData = {
-        ...formData,
-        images: uploadedImageUrls,
-        stock: formData.stock, // Use the stock object directly
-        price: Number(formData.price),
-        basePrice: Number(formData.basePrice),
-        category: formData.category ? formData.category.toLowerCase() : '',
-        gender: formData.gender ? formData.gender.toLowerCase() : '',
-      };
+      // Add URL images
+      if (urlImages.length > 0) {
+        formDataToSend.append('urlImages', JSON.stringify(urlImages));
+      }
 
       const response = await fetch('/api/admin/products', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(productData)
+        body: formDataToSend,
       });
 
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to create product');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create product');
       }
 
       router.push('/admin/products');
     } catch (err) {
-      console.error('Error:', err);
       setError(err instanceof Error ? err.message : 'Failed to create product');
     } finally {
       setLoading(false);
@@ -341,8 +339,9 @@ export default function NewProduct() {
               <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 ${
                 fieldErrors.images ? 'border border-red-300 rounded-lg p-4' : ''
               }`}>
+                {/* Uploaded Images */}
                 {uploadedImages.map((image, index) => (
-                  <div key={index} className="relative group">
+                  <div key={`upload-${index}`} className="relative group">
                     <div className="aspect-square relative rounded-lg overflow-hidden border border-gray-200">
                       <Image
                         src={image.preview}
@@ -360,6 +359,33 @@ export default function NewProduct() {
                     </button>
                   </div>
                 ))}
+                
+                {/* URL Images */}
+                {urlImages.map((image, index) => (
+                  <div key={`url-${index}`} className="relative group">
+                    <div className="aspect-square relative rounded-lg overflow-hidden border border-gray-200">
+                      <Image
+                        src={image.url}
+                        alt={image.alt}
+                        fill
+                        className="object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = '/images/logo.jpg';
+                        }}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleUrlImageRemove(index)}
+                      className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <FaTrash size={12} />
+                    </button>
+                  </div>
+                ))}
+
+                {/* Add Image Buttons */}
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
@@ -367,10 +393,78 @@ export default function NewProduct() {
                 >
                   <div className="text-center">
                     <FaUpload className="mx-auto h-8 w-8 text-gray-400" />
-                    <span className="mt-2 block text-sm font-medium text-gray-600">Add Image</span>
+                    <span className="mt-2 block text-sm font-medium text-gray-600">Upload Image</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowUrlInput(true)}
+                  className="aspect-square flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg hover:border-purple-500 transition-colors"
+                >
+                  <div className="text-center">
+                    <FaLink className="mx-auto h-8 w-8 text-gray-400" />
+                    <span className="mt-2 block text-sm font-medium text-gray-600">Add URL</span>
                   </div>
                 </button>
               </div>
+              
+              {/* URL Input Modal */}
+              {showUrlInput && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                  <div className="bg-white rounded-lg p-6 max-w-md w-full">
+                    <h3 className="text-lg font-semibold mb-4">Add Image URL</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Image URL
+                        </label>
+                        <input
+                          type="url"
+                          value={imageUrl}
+                          onChange={(e) => setImageUrl(e.target.value)}
+                          placeholder="https://example.com/image.jpg"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Alt Text
+                        </label>
+                        <input
+                          type="text"
+                          value={imageAlt}
+                          onChange={(e) => setImageAlt(e.target.value)}
+                          placeholder="Product image description"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end space-x-3 mt-6">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowUrlInput(false);
+                          setImageUrl('');
+                          setImageAlt('');
+                        }}
+                        className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleUrlImageAdd}
+                        disabled={!imageUrl.trim() || !imageAlt.trim()}
+                        className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50"
+                      >
+                        Add Image
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {fieldErrors.images && (
                 <p className="mt-1 text-sm text-red-600">{fieldErrors.images}</p>
               )}
@@ -382,7 +476,7 @@ export default function NewProduct() {
                 multiple
                 className="hidden"
               />
-              <p className="text-xs text-gray-500">Upload product images (PNG, JPG up to 5MB)</p>
+              <p className="text-xs text-gray-500">Upload product images (PNG, JPG up to 5MB) or add image URLs</p>
             </div>
 
             {/* Basic Information */}

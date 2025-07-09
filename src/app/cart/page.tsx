@@ -57,17 +57,47 @@ export default function CartPage() {
                       <li key={`${item.productId}-${item.size}`} className="p-6">
                         <div className="flex items-center space-x-6">
                           {/* Product Image */}
-                          <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-md border border-gray-200">
-                            {item.image ? (
-                              <Image
-                                src={item.image}
-                                alt={item.name}
-                                fill
-                                className="object-cover object-center"
-                              />
+                          <div className="flex gap-2">
+                            {/* Custom Design: Show front and back if available */}
+                            {item.customization?.isCustomized && (item.customization.frontImage || item.customization.backImage) ? (
+                              <>
+                                {item.customization.frontImage && (
+                                  <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-md border border-gray-200">
+                                    <Image
+                                      src={item.customization.frontImage}
+                                      alt={item.name + ' (Front)'}
+                                      fill
+                                      className="object-cover object-center"
+                                    />
+                                    <span className="absolute bottom-1 left-1 bg-white bg-opacity-80 text-xs px-1 rounded">Front</span>
+                                  </div>
+                                )}
+                                {item.customization.backImage && (
+                                  <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-md border border-gray-200">
+                                    <Image
+                                      src={item.customization.backImage}
+                                      alt={item.name + ' (Back)'}
+                                      fill
+                                      className="object-cover object-center"
+                                    />
+                                    <span className="absolute bottom-1 left-1 bg-white bg-opacity-80 text-xs px-1 rounded">Back</span>
+                                  </div>
+                                )}
+                              </>
                             ) : (
-                              <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-                                <span className="text-gray-400">No image</span>
+                              <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-md border border-gray-200">
+                                {item.image ? (
+                                  <Image
+                                    src={item.image}
+                                    alt={item.name}
+                                    fill
+                                    className="object-cover object-center"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                                    <span className="text-gray-400">No image</span>
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>

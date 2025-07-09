@@ -206,7 +206,7 @@ export default function SuppliesPage() {
         
         if (!uploadResponse.ok) throw new Error('Failed to upload image');
         const { url } = await uploadResponse.json();
-        imageUrlToUse = url;
+        imageUrlToUse = url; // Use Cloudinary URL as-is
       } else if (imageInputType === 'url' && imageUrl) {
         imageUrlToUse = imageUrl;
       }
@@ -398,7 +398,7 @@ export default function SuppliesPage() {
         
         if (!uploadResponse.ok) throw new Error('Failed to upload image');
         const { url } = await uploadResponse.json();
-        imageUrlToUse = url;
+        imageUrlToUse = url; // Use Cloudinary URL as-is
       } else if (imageInputType === 'url' && imageUrl) {
         imageUrlToUse = imageUrl;
       }

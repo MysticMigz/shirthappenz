@@ -72,18 +72,7 @@ export async function GET(request: NextRequest) {
       .limit(limit);
 
     // Format image URLs
-    const formattedProducts = products.map(product => {
-      const formattedProduct = product.toObject();
-      if (formattedProduct.images && formattedProduct.images.length > 0) {
-        formattedProduct.images = formattedProduct.images.map((image: { url: string; alt: string }) => ({
-          ...image,
-          url: image.url.startsWith('/') || image.url.startsWith('http') 
-            ? image.url 
-            : `/uploads/${image.url}`
-        }));
-      }
-      return formattedProduct;
-    });
+    const formattedProducts = products.map(product => product.toObject());
     
     return NextResponse.json({
       products: formattedProducts,
