@@ -27,6 +27,7 @@ interface OrderDetails {
       number?: string;
     };
     rrp?: number;
+    productId?: string;
   }>;
   shippingDetails: {
     firstName: string;
@@ -52,22 +53,28 @@ export default function ThankYouPage() {
   const { clearCart } = useCart();
   const [order, setOrder] = useState<OrderDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const orderId = searchParams.get('orderId');
     if (!orderId) {
       setError('No order ID provided.');
+      setLoading(false);
       return;
     }
 
     async function fetchOrder() {
       try {
+        console.log('Fetching order:', orderId);
         const response = await fetch(`/api/orders/${orderId}?public=1`);
+        console.log('Response status:', response.status);
+        
         if (!response.ok) {
           throw new Error('Failed to fetch order details');
         }
 
         const orderData = await response.json();
+        console.log('Order data:', orderData);
         setOrder(orderData);
         
         // Clear the cart only if the order is paid
@@ -75,12 +82,23 @@ export default function ThankYouPage() {
           clearCart();
         }
       } catch (err: any) {
+        console.error('Error fetching order:', err);
         setError(err.message);
+      } finally {
+        setLoading(false);
       }
     }
 
     fetchOrder();
   }, [searchParams, clearCart]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
 
   if (error) {
     return (
@@ -108,7 +126,10 @@ export default function ThankYouPage() {
   if (!order) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading order details...</p>
+        </div>
       </div>
     );
   }
@@ -117,8 +138,6 @@ export default function ThankYouPage() {
   const subtotal = order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const shipping = order.shippingDetails.shippingCost;
   const total = subtotal + shipping;
-  const vatRate = 0.2;
-  // Prefer backend VAT if available, otherwise calculate
   const vatIncluded = typeof order.vat === 'number'
     ? order.vat
     : Number(((subtotal + shipping) * 0.2).toFixed(2));
@@ -194,19 +213,17 @@ export default function ThankYouPage() {
                   className="flex justify-between items-start border-b border-gray-200 pb-4 gap-4"
                 >
                   <div className="flex items-center gap-4">
-                    {item.image ? (
-                      <Image
-                        src={item.image}
-                        alt={item.name}
-                        width={64}
-                        height={64}
-                        className="rounded-md border border-gray-200 object-cover"
-                      />
-                    ) : (
-                      <div className="w-16 h-16 bg-gray-100 flex items-center justify-center rounded-md border border-gray-200">
-                        <span className="text-gray-400 text-xs">No image</span>
-                      </div>
-                    )}
+                    <Image
+                      src={getImageUrl(item.image || '/images/logo.jpg')}
+                      alt={item.name}
+                      width={64}
+                      height={64}
+                      className="rounded-md border border-gray-200 object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = getImageUrl('/images/logo.jpg');
+                      }}
+                    />
                     <div>
                       <h4 className="font-medium">{item.name}</h4>
                       <p className="text-sm text-gray-600">Size: {item.size}</p>
@@ -263,10 +280,6 @@ export default function ThankYouPage() {
               <div className="flex justify-between mt-2 text-xs text-gray-500 italic">
                 <span>Includes VAT (20%)</span>
                 <span>£{vatIncluded.toFixed(2)}</span>
-              </div>
-              <div>
-                <p className="text-gray-600">VAT (20%):</p>
-                <p className="font-medium">£{vatIncluded.toFixed(2)}</p>
               </div>
             </div>
 

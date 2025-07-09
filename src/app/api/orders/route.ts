@@ -6,7 +6,7 @@ import Order from '@/backend/models/Order';
 import User from '@/backend/models/User';
 import Product from '@/backend/models/Product';
 import mongoose from 'mongoose';
-import { updateProductStock } from '@/lib/utils';
+import { updateProductStock } from '@/lib/server-utils';
 import { sendOrderConfirmationEmail } from '@/lib/email';
 
 interface ProductImage {

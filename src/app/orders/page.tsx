@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import Header from '@/app/components/Header';
 import Footer from '@/app/components/Footer';
+import { getImageUrl } from '@/lib/utils';
 
 interface OrderItem {
   productId: string;
@@ -209,12 +210,14 @@ export default function OrdersPage() {
                       <div key={`${order._id}-${index}`} className="flex items-center space-x-4">
                         <div className="relative h-20 w-20 flex-shrink-0">
                           {item.image ? (
-                            <Image
-                              src={item.image}
+                            <img
+                              src={getImageUrl(item.image)}
                               alt={item.name}
-                              fill
-                              className="object-cover rounded-md"
-                              sizes="80px"
+                              className="object-cover rounded-md w-full h-full"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.src = getImageUrl('/images/logo.jpg');
+                              }}
                             />
                           ) : (
                             <div className="w-full h-full bg-gray-100 rounded-md flex items-center justify-center">
