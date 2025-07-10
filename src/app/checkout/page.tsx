@@ -87,6 +87,10 @@ export default function CheckoutPage() {
   };
 
   if (error) {
+    let friendlyError = error;
+    if (error.toLowerCase().includes('insufficient stock')) {
+      friendlyError = 'Sorry, one or more items in your cart are no longer available in the requested quantity. Please review your cart and try again.';
+    }
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 flex flex-col items-center justify-center p-4">
         <div className="bg-white p-8 rounded-xl shadow-lg max-w-md w-full border border-red-100">
@@ -96,7 +100,7 @@ export default function CheckoutPage() {
             </svg>
             <h2 className="text-red-600 text-xl font-semibold">Error Occurred</h2>
           </div>
-          <p className="text-gray-600 mb-6">{error}</p>
+          <p className="text-gray-600 mb-6">{friendlyError}</p>
           <button
             onClick={() => router.push('/cart')}
             className="w-full bg-red-600 text-white py-3 px-4 rounded-lg hover:bg-red-700 transition-all duration-200 flex items-center justify-center space-x-2"

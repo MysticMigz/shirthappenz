@@ -33,6 +33,12 @@ const CATEGORIES = [
   { key: 'accessories', label: 'Accessories' },
 ];
 
+const GENDERS = [
+  { key: 'men', label: 'Men' },
+  { key: 'women', label: 'Women' },
+  { key: 'unisex', label: 'Unisex' },
+];
+
 export default function CustomDesignPage() {
   const router = useRouter();
   const { addItem } = useCart();
@@ -66,6 +72,8 @@ export default function CustomDesignPage() {
   const [selectedCategory, setSelectedCategory] = useState('tshirts');
   const [products, setProducts] = useState<any[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
+  const [selectedGender, setSelectedGender] = useState('men'); // Default to Men
+  const [detailsProduct, setDetailsProduct] = useState<any | null>(null);
 
   useEffect(() => {
     // Fetch products for the selected category
@@ -76,7 +84,7 @@ export default function CustomDesignPage() {
         
         const allProducts = data.products || [];
         const customizableProducts = allProducts.filter((p: any) => p.customizable);
-        const firstCustomizable = customizableProducts[0] || null;
+        const firstCustomizable = customizableProducts.find((p: any) => p.gender === selectedGender) || customizableProducts[0] || null;
         
         setProducts(allProducts);
         setSelectedProduct(firstCustomizable);
@@ -86,7 +94,7 @@ export default function CustomDesignPage() {
       }
     };
     fetchProducts();
-  }, [selectedCategory]);
+  }, [selectedCategory, selectedGender]);
 
   useEffect(() => {
     if (selectedProduct && Array.isArray(selectedProduct.sizes) && selectedProduct.sizes.length > 0) {
@@ -320,6 +328,18 @@ export default function CustomDesignPage() {
       
       <main className="flex-grow container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
+          {/* Gender Selector */}
+          <div className="flex flex-wrap gap-2 justify-center mb-4">
+            {GENDERS.map(gender => (
+              <button
+                key={gender.key}
+                className={`px-4 py-2 rounded-lg font-semibold border ${selectedGender === gender.key ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-blue-600 border-blue-300'}`}
+                onClick={() => setSelectedGender(gender.key)}
+              >
+                {gender.label}
+              </button>
+            ))}
+          </div>
           {/* Category Selector */}
           <div className="flex flex-wrap gap-2 justify-center mb-8">
             {CATEGORIES.map(cat => (
@@ -341,16 +361,16 @@ export default function CustomDesignPage() {
               </h2>
               <div className="flex flex-wrap gap-4 justify-center">
                 {(() => {
-                  const customizableProducts = products.filter((p: any) => p.customizable);
+                  const customizableProducts = products.filter((p: any) => p.customizable && p.gender === selectedGender);
                   
                   if (customizableProducts.length === 0) {
-                    return <div className="text-gray-500 text-center w-full py-8">No customizable {selectedCategory} available.</div>;
+                    return <div className="text-gray-500 text-center w-full py-8">No customizable {selectedCategory} available for {selectedGender.charAt(0).toUpperCase() + selectedGender.slice(1)}.</div>;
                   }
                   
                   return customizableProducts.map(product => (
                     <div
                       key={product._id}
-                      className={`border rounded-lg p-2 cursor-pointer w-32 h-48 flex flex-col items-center justify-between ${selectedProduct?._id === product._id ? 'border-blue-600 ring-2 ring-blue-400' : 'border-gray-200'}`}
+                      className={`border rounded-lg p-2 cursor-pointer w-32 h-56 flex flex-col items-center justify-between ${selectedProduct?._id === product._id ? 'border-blue-600 ring-2 ring-blue-400' : 'border-gray-200'}`}
                       onClick={() => setSelectedProduct(product)}
                     >
                       <div className="relative w-24 h-24 mb-2">
@@ -364,6 +384,13 @@ export default function CustomDesignPage() {
                       </div>
                       <div className="text-xs text-center font-medium text-gray-700 line-clamp-2">{product.name}</div>
                       <div className="text-xs text-gray-500">£{product.basePrice?.toFixed(2)}</div>
+                      <button
+                        className="mt-1 px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition"
+                        type="button"
+                        onClick={e => { e.stopPropagation(); setDetailsProduct(product); }}
+                      >
+                        View Details
+                      </button>
                     </div>
                   ));
                 })()}
@@ -391,6 +418,11 @@ export default function CustomDesignPage() {
             {/* Design Preview Section */}
             <div className="space-y-6">
               <div className="bg-white rounded-lg shadow-lg p-6">
+                {/* Upload Tip */}
+                <div className="mb-4 flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 text-sm">
+                  <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 20a8 8 0 100-16 8 8 0 000 16z" /></svg>
+                  <span>Please upload images with transparent backgrounds if you want a more clean design!</span>
+                </div>
                 <h2 className="text-2xl font-semibold text-gray-900 mb-4">
                   Design Preview ({activeSide.charAt(0).toUpperCase() + activeSide.slice(1)})
                 </h2>
@@ -709,6 +741,67 @@ export default function CustomDesignPage() {
           )}
         </div>
       </main>
+
+      {/* Product Details Modal */}
+      {detailsProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 transition-opacity duration-200">
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full p-0 overflow-hidden animate-fadeIn">
+            {/* Close Button */}
+            <button
+              className="absolute top-4 right-4 text-gray-400 hover:text-red-500 text-2xl font-bold transition-colors z-10"
+              onClick={() => setDetailsProduct(null)}
+              aria-label="Close"
+              tabIndex={0}
+            >
+              ×
+            </button>
+            <div className="flex flex-col md:flex-row gap-0 md:gap-6 p-6">
+              {/* Product Image */}
+              <div className="flex-shrink-0 flex items-center justify-center w-full md:w-48 mb-4 md:mb-0">
+                <div className="relative w-40 h-40 md:w-48 md:h-48 rounded-xl overflow-hidden border border-gray-200 bg-gray-50 shadow-sm">
+                  <Image
+                    src={detailsProduct.images?.[0]?.url || '/images/no-image.png'}
+                    alt={detailsProduct.name}
+                    fill
+                    className="object-contain"
+                  />
+                </div>
+              </div>
+              {/* Product Details */}
+              <div className="flex-1 flex flex-col justify-center">
+                <h3 className="text-2xl font-bold mb-2 text-gray-900 text-center md:text-left">{detailsProduct.name}</h3>
+                <div className="text-base text-gray-600 mb-3 text-center md:text-left">{detailsProduct.description}</div>
+                <div className="flex flex-wrap items-center gap-2 mb-3 justify-center md:justify-start">
+                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-sm font-semibold">
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+                    £{detailsProduct.basePrice?.toFixed(2)}
+                  </span>
+                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-medium">
+                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5.121 17.804A13.937 13.937 0 0112 15c2.485 0 4.797.657 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    {detailsProduct.gender?.charAt(0).toUpperCase() + detailsProduct.gender?.slice(1)}
+                  </span>
+                </div>
+                <div className="mb-3">
+                  <span className="block text-xs text-gray-500 mb-1 font-medium">Available Sizes:</span>
+                  <div className="flex flex-wrap gap-2">
+                    {detailsProduct.sizes?.map((size: string, idx: number) => (
+                      <span key={idx} className="inline-block px-2 py-1 rounded bg-gray-200 text-xs font-semibold text-gray-700 border border-gray-300">{size}</span>
+                    ))}
+                  </div>
+                </div>
+                <div className="mb-3">
+                  <span className="block text-xs text-gray-500 mb-1 font-medium">Colors:</span>
+                  <div className="flex flex-wrap gap-1 items-center">
+                    {detailsProduct.colors?.map((color: any, idx: number) => (
+                      <span key={idx} className="inline-block w-5 h-5 rounded-full border border-gray-300" style={{ backgroundColor: color.hexCode }} title={color.name}></span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>

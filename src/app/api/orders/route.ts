@@ -227,6 +227,17 @@ export async function POST(request: Request) {
       });
     }
 
+    // Decrement stock for each item atomically before saving the order
+    for (const item of processedItems) {
+      const stockUpdated = await updateProductStock(item.productId, item.size, -item.quantity);
+      if (!stockUpdated) {
+        return NextResponse.json(
+          { error: `Insufficient stock for ${item.name} (size ${item.size})` },
+          { status: 400 }
+        );
+      }
+    }
+
     // Determine order source from first item (if present)
     const orderSource = items?.[0]?.orderSource || undefined;
 
