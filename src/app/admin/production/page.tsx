@@ -547,15 +547,24 @@ export default function ProductionDashboard() {
                           <h5 className="text-sm font-medium text-gray-700 mb-2">Product Image:</h5>
                           <div className="flex gap-4">
                             {item.image ? (
-                              <img
-                                src={getImageUrl(item.image)}
-                                alt={item.name}
-                                className="w-24 h-24 object-cover rounded-lg border border-gray-200"
-                                onError={(e) => {
-                                  const target = e.target as HTMLImageElement;
-                                  target.src = getImageUrl('/images/logo.jpg');
-                                }}
-                              />
+                              <div className="flex flex-col items-center gap-2">
+                                <img
+                                  src={getImageUrl(item.image)}
+                                  alt={item.name}
+                                  className="w-24 h-24 object-cover rounded-lg border border-gray-200"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.src = getImageUrl('/images/logo.jpg');
+                                  }}
+                                />
+                                <a
+                                  href={getImageUrl(item.image)}
+                                  download
+                                  className="mt-1 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-semibold hover:bg-blue-200 border border-blue-200"
+                                >
+                                  Export Image
+                                </a>
+                              </div>
                             ) : (
                               <div className="w-24 h-24 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center">
                                 <span className="text-xs text-gray-400">No image</span>
@@ -588,15 +597,24 @@ export default function ProductionDashboard() {
                               <div className="mt-3">
                                 <h6 className="text-sm font-medium text-purple-700 mb-2">Custom Design Image:</h6>
                                 <div className="flex gap-4">
-                                  <img
-                                    src={getImageUrl(item.customization.customImage)}
-                                    alt="Custom design"
-                                    className="w-32 h-32 object-cover rounded-lg border border-purple-200"
-                                    onError={(e) => {
-                                      const target = e.target as HTMLImageElement;
-                                      target.src = getImageUrl('/images/logo.jpg');
-                                    }}
-                                  />
+                                  <div className="flex flex-col items-center gap-2">
+                                    <img
+                                      src={getImageUrl(item.customization.customImage)}
+                                      alt="Custom design"
+                                      className="w-32 h-32 object-cover rounded-lg border border-purple-200"
+                                      onError={(e) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.src = getImageUrl('/images/logo.jpg');
+                                      }}
+                                    />
+                                    <a
+                                      href={getImageUrl(item.customization.customImage)}
+                                      download
+                                      className="mt-1 px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-semibold hover:bg-purple-200 border border-purple-200"
+                                    >
+                                      Export Image
+                                    </a>
+                                  </div>
                                 </div>
                               </div>
                             )}

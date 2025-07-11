@@ -47,70 +47,58 @@ export default function ProductsPage() {
     { key: 'men', label: 'Men' },
     { key: 'women', label: 'Women' },
     { key: 'unisex', label: 'Unisex' },
+    { key: 'kids', label: 'Kids' },
   ];
 
-  const jerseyIcon = (
-    <svg width="48" height="48" fill="none" viewBox="0 0 48 48">
-      <rect x="10" y="8" width="28" height="32" rx="4" stroke="#888" strokeWidth="2" fill="#fff"/>
-      <path d="M10 8l6 6v26h16V14l6-6" stroke="#888" strokeWidth="2" fill="none"/>
-      <path d="M24 8v8" stroke="#888" strokeWidth="2"/>
-    </svg>
-  );
+  // Icons8 monochrome icon URLs (confirmed working as of June 2024)
+  // t-shirt: https://img.icons8.com/ios-filled/50/000000/t-shirt--v1.png
+  // jersey: https://img.icons8.com/ios-filled/50/000000/sports-jersey.png
+  // tank top: https://img.icons8.com/ios-filled/50/000000/singlet.png
+  // long sleeve: https://img.icons8.com/ios-filled/50/000000/jumper.png
+  // hoodie: https://img.icons8.com/ios-filled/50/000000/hoodie--v2.png
+  // sweatshirt: https://img.icons8.com/ios-filled/50/000000/sweater.png
+  // sweatpants: https://img.icons8.com/ios-filled/50/000000/trousers.png
+  const icons8 = {
+    tshirts: 'https://img.icons8.com/ios-filled/50/000000/t-shirt--v1.png', // T-Shirt
+    jerseys: 'https://img.icons8.com/?size=100&id=9Vy3icZB7N2U&format=png&color=000000', // Jersey (user-provided PNG)
+    tanktops: 'https://img.icons8.com/?size=100&id=wABv7LDcLWpW&format=png&color=000000', // Tank Top (user-provided PNG)
+    longsleeve: 'https://img.icons8.com/ios-filled/50/000000/jumper.png', // Long Sleeve (Jumper)
+    hoodies: 'https://img.icons8.com/?size=100&id=MKsXeFPktvxv&format=png&color=000000', // Hoodie (user-provided PNG)
+    sweatshirts: 'https://img.icons8.com/ios-filled/50/000000/sweater.png', // Sweater (Sweatshirt)
+    sweatpants: 'https://img.icons8.com/ios-filled/50/000000/trousers.png', // Trousers (Sweatpants)
+  };
 
   const allCategories: Record<string, Category[]> = {
     men: [
-      { key: 'tshirts', label: 'T-Shirts', icon: (
-        <svg width="48" height="48" fill="none" viewBox="0 0 48 48"><rect x="8" y="8" width="32" height="32" rx="4" stroke="#888" strokeWidth="2" fill="#fff"/><path d="M12 8l4 8v24h16V16l4-8" stroke="#888" strokeWidth="2" fill="none"/></svg>
-      ) },
-      { key: 'jerseys', label: 'Jerseys', icon: jerseyIcon },
-      { key: 'tanktops', label: 'Tank Tops', icon: (
-        <svg width="48" height="48" fill="none" viewBox="0 0 48 48"><rect x="12" y="8" width="24" height="32" rx="4" stroke="#888" strokeWidth="2" fill="#fff"/><path d="M16 8v8m16-8v8" stroke="#888" strokeWidth="2"/></svg>
-      ) },
-      { key: 'longsleeve', label: 'Long Sleeve Shirts', icon: (
-        <svg width="48" height="48" fill="none" viewBox="0 0 48 48"><rect x="8" y="8" width="32" height="32" rx="4" stroke="#888" strokeWidth="2" fill="#fff"/><path d="M8 16l8 8v16m24-24l-8 8v16" stroke="#888" strokeWidth="2"/></svg>
-      ) },
-      { key: 'hoodies', label: 'Hoodies', icon: (
-        <svg width="48" height="48" fill="none" viewBox="0 0 48 48"><rect x="8" y="12" width="32" height="28" rx="4" stroke="#888" strokeWidth="2" fill="#fff"/><ellipse cx="24" cy="16" rx="8" ry="4" stroke="#888" strokeWidth="2" fill="#fff"/></svg>
-      ) },
-      { key: 'sweatshirts', label: 'Sweatshirts', icon: (
-        <svg width="48" height="48" fill="none" viewBox="0 0 48 48"><rect x="8" y="12" width="32" height="24" rx="4" stroke="#888" strokeWidth="2" fill="#fff"/><path d="M8 24h32" stroke="#888" strokeWidth="2"/></svg>
-      ) },
-      { key: 'sweatpants', label: 'Sweatpants', icon: (
-        <svg width="48" height="48" fill="none" viewBox="0 0 48 48"><rect x="16" y="8" width="16" height="32" rx="4" stroke="#888" strokeWidth="2" fill="#fff"/><path d="M16 32v8m16-8v8" stroke="#888" strokeWidth="2"/></svg>
-      ) },
+      { key: 'tshirts', label: 'T-Shirts', icon: <img src={icons8.tshirts} alt="T-Shirts" width={40} height={40} /> },
+      { key: 'jerseys', label: 'Jerseys', icon: <img src={icons8.jerseys} alt="Jerseys" width={40} height={40} /> },
+      { key: 'tanktops', label: 'Tank Tops', icon: <img src={icons8.tanktops} alt="Tank Tops" width={40} height={40} /> },
+      { key: 'longsleeve', label: 'Long Sleeve Shirts', icon: <img src={icons8.longsleeve} alt="Long Sleeve Shirts" width={40} height={40} /> },
+      { key: 'hoodies', label: 'Hoodies', icon: <img src={icons8.hoodies} alt="Hoodies" width={40} height={40} /> },
+      { key: 'sweatshirts', label: 'Sweatshirts', icon: <img src={icons8.sweatshirts} alt="Sweatshirts" width={40} height={40} /> },
+      { key: 'sweatpants', label: 'Sweatpants', icon: <img src={icons8.sweatpants} alt="Sweatpants" width={40} height={40} /> },
     ],
     women: [
-      { key: 'tshirts', label: 'T-Shirts', icon: (
-        <svg width="48" height="48" fill="none" viewBox="0 0 48 48"><rect x="8" y="8" width="32" height="32" rx="4" stroke="#888" strokeWidth="2" fill="#fff"/><path d="M12 8l4 8v24h16V16l4-8" stroke="#888" strokeWidth="2" fill="none"/></svg>
-      ) },
-      { key: 'jerseys', label: 'Jerseys', icon: jerseyIcon },
-      { key: 'tanktops', label: 'Tank Tops', icon: (
-        <svg width="48" height="48" fill="none" viewBox="0 0 48 48"><rect x="12" y="8" width="24" height="32" rx="4" stroke="#888" strokeWidth="2" fill="#fff"/><path d="M16 8v8m16-8v8" stroke="#888" strokeWidth="2"/></svg>
-      ) },
-      { key: 'longsleeve', label: 'Long Sleeve Shirts', icon: (
-        <svg width="48" height="48" fill="none" viewBox="0 0 48 48"><rect x="8" y="8" width="32" height="32" rx="4" stroke="#888" strokeWidth="2" fill="#fff"/><path d="M8 16l8 8v16m24-24l-8 8v16" stroke="#888" strokeWidth="2"/></svg>
-      ) },
-      { key: 'hoodies', label: 'Hoodies', icon: (
-        <svg width="48" height="48" fill="none" viewBox="0 0 48 48"><rect x="8" y="12" width="32" height="28" rx="4" stroke="#888" strokeWidth="2" fill="#fff"/><ellipse cx="24" cy="16" rx="8" ry="4" stroke="#888" strokeWidth="2" fill="#fff"/></svg>
-      ) },
-      { key: 'sweatshirts', label: 'Sweatshirts', icon: (
-        <svg width="48" height="48" fill="none" viewBox="0 0 48 48"><rect x="8" y="12" width="32" height="24" rx="4" stroke="#888" strokeWidth="2" fill="#fff"/><path d="M8 24h32" stroke="#888" strokeWidth="2"/></svg>
-      ) },
-      { key: 'sweatpants', label: 'Sweatpants', icon: (
-        <svg width="48" height="48" fill="none" viewBox="0 0 48 48"><rect x="16" y="8" width="16" height="32" rx="4" stroke="#888" strokeWidth="2" fill="#fff"/><path d="M16 32v8m16-8v8" stroke="#888" strokeWidth="2"/></svg>
-      ) },
+      { key: 'tshirts', label: 'T-Shirts', icon: <img src={icons8.tshirts} alt="T-Shirts" width={40} height={40} /> },
+      { key: 'jerseys', label: 'Jerseys', icon: <img src={icons8.jerseys} alt="Jerseys" width={40} height={40} /> },
+      { key: 'tanktops', label: 'Tank Tops', icon: <img src={icons8.tanktops} alt="Tank Tops" width={40} height={40} /> },
+      { key: 'longsleeve', label: 'Long Sleeve Shirts', icon: <img src={icons8.longsleeve} alt="Long Sleeve Shirts" width={40} height={40} /> },
+      { key: 'hoodies', label: 'Hoodies', icon: <img src={icons8.hoodies} alt="Hoodies" width={40} height={40} /> },
+      { key: 'sweatshirts', label: 'Sweatshirts', icon: <img src={icons8.sweatshirts} alt="Sweatshirts" width={40} height={40} /> },
+      { key: 'sweatpants', label: 'Sweatpants', icon: <img src={icons8.sweatpants} alt="Sweatpants" width={40} height={40} /> },
     ],
     unisex: [
-      { key: 'tshirts', label: 'T-Shirts', icon: (
-        <svg width="48" height="48" fill="none" viewBox="0 0 48 48"><rect x="8" y="8" width="32" height="32" rx="4" stroke="#888" strokeWidth="2" fill="#fff"/><path d="M12 8l4 8v24h16V16l4-8" stroke="#888" strokeWidth="2" fill="none"/></svg>
-      ) },
-      { key: 'jerseys', label: 'Jerseys', icon: jerseyIcon },
-      { key: 'hoodies', label: 'Hoodies', icon: (
-        <svg width="48" height="48" fill="none" viewBox="0 0 48 48"><rect x="8" y="12" width="32" height="28" rx="4" stroke="#888" strokeWidth="2" fill="#fff"/><ellipse cx="24" cy="16" rx="8" ry="4" stroke="#888" strokeWidth="2" fill="#fff"/></svg>
-      ) },
-      { key: 'sweatshirts', label: 'Sweatshirts', icon: (
-        <svg width="48" height="48" fill="none" viewBox="0 0 48 48"><rect x="8" y="12" width="32" height="24" rx="4" stroke="#888" strokeWidth="2" fill="#fff"/><path d="M8 24h32" stroke="#888" strokeWidth="2"/></svg>
-      ) },
+      { key: 'tshirts', label: 'T-Shirts', icon: <img src={icons8.tshirts} alt="T-Shirts" width={40} height={40} /> },
+      { key: 'jerseys', label: 'Jerseys', icon: <img src={icons8.jerseys} alt="Jerseys" width={40} height={40} /> },
+      { key: 'hoodies', label: 'Hoodies', icon: <img src={icons8.hoodies} alt="Hoodies" width={40} height={40} /> },
+      { key: 'sweatshirts', label: 'Sweatshirts', icon: <img src={icons8.sweatshirts} alt="Sweatshirts" width={40} height={40} /> },
+    ],
+    kids: [
+      { key: 'tshirts', label: 'T-Shirts', icon: <img src={icons8.tshirts} alt="T-Shirts" width={40} height={40} /> },
+      { key: 'jerseys', label: 'Jerseys', icon: <img src={icons8.jerseys} alt="Jerseys" width={40} height={40} /> },
+      { key: 'hoodies', label: 'Hoodies', icon: <img src={icons8.hoodies} alt="Hoodies" width={40} height={40} /> },
+      { key: 'sweatshirts', label: 'Sweatshirts', icon: <img src={icons8.sweatshirts} alt="Sweatshirts" width={40} height={40} /> },
+      { key: 'sweatpants', label: 'Sweatpants', icon: <img src={icons8.sweatpants} alt="Sweatpants" width={40} height={40} /> },
     ],
   };
 
@@ -250,6 +238,11 @@ export default function ProductsPage() {
               <span className="text-sm font-medium text-gray-700">{cat.label}</span>
             </button>
           ))}
+        </div>
+
+        {/* Add attribution for Icons8 below the categories section */}
+        <div className="text-xs text-gray-400 text-center mt-2">
+          Icons by <a href="https://icons8.com" target="_blank" rel="noopener noreferrer" className="underline">Icons8</a>
         </div>
 
         {/* Search and Filter Controls */}

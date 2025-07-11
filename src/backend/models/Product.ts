@@ -40,13 +40,23 @@ const productSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Product gender is required'],
     enum: {
-      values: ['men', 'women', 'unisex'],
+      values: ['men', 'women', 'unisex', 'kids'],
       message: '{VALUE} is not a valid gender'
     }
   },
   sizes: [{
     type: String,
-    enum: ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL']
+    enum: [
+      // Baby sizes
+      'NB', '0-3M', '3-6M', '6-12M', '12-18M', '18-24M',
+      // Toddler sizes
+      '2T', '3T', '4T', '5T',
+      // Youth sizes
+      'YXS', 'YS', 'YM', 'YL', 'YXL',
+      '6', '7', '8', '10', '12', '14', '16',
+      // Adult sizes
+      'XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', '3XL', '4XL', '5XL'
+    ]
   }],
   colors: [{
     name: String,

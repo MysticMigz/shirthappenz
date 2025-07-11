@@ -37,6 +37,7 @@ const GENDERS = [
   { key: 'men', label: 'Men' },
   { key: 'women', label: 'Women' },
   { key: 'unisex', label: 'Unisex' },
+  { key: 'kids', label: 'Kids' },
 ];
 
 export default function CustomDesignPage() {

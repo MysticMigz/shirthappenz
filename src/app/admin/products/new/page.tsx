@@ -310,6 +310,10 @@ export default function NewProduct() {
     return null;
   }
 
+  // Size options
+  const ADULT_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
+  const KID_SIZES = ['2T', '3T', '4T', '5T', '6', '7', '8', '10', '12', '14', '16'];
+
   return (
     <div className="min-h-screen bg-gray-100 p-8">
       <div className="max-w-4xl mx-auto">
@@ -580,27 +584,21 @@ export default function NewProduct() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 required-field">
-                  Gender
-                </label>
+                <label htmlFor="gender" className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
                 <select
+                  id="gender"
                   name="gender"
                   value={formData.gender}
                   onChange={handleInputChange}
-                  className={`mt-1 block w-full rounded-md shadow-sm sm:text-sm ${
-                    fieldErrors.gender 
-                      ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
-                      : 'border-gray-300 focus:border-purple-500 focus:ring-purple-500'
-                  }`}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
                 >
-                  <option value="">Select a gender</option>
+                  <option value="">Select gender</option>
                   <option value="men">Men</option>
                   <option value="women">Women</option>
                   <option value="unisex">Unisex</option>
+                  <option value="kids">Kids</option>
                 </select>
-                {fieldErrors.gender && (
-                  <p className="mt-1 text-sm text-red-600">{fieldErrors.gender}</p>
-                )}
               </div>
 
               <div>
@@ -637,46 +635,36 @@ export default function NewProduct() {
                 <label className={`block text-sm font-medium text-gray-700 mb-4 required-field`}>
                   Sizes and Stock
                 </label>
-                <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 ${
-                  fieldErrors.sizes ? 'border border-red-300 rounded-lg p-4' : ''
-                }`}>
-                  {['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'].map((size) => (
-                    <div 
-                      key={size} 
-                      className={`p-4 rounded-lg border ${
-                        formData.sizes.includes(size) 
-                          ? 'border-purple-300 bg-purple-50' 
-                          : 'border-gray-200'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <label className="inline-flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={formData.sizes.includes(size)}
-                            onChange={() => handleSizeChange(size)}
-                            className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                          />
-                          <span className="ml-2 font-medium">{size}</span>
-                        </label>
-                      </div>
-                      {formData.sizes.includes(size) && (
-                        <div className="mt-2">
-                          <div className="flex items-center">
-                            <input
-                              type="number"
-                              value={formData.stock[size]}
-                              onChange={(e) => handleStockChange(size, e.target.value)}
-                              min="0"
-                              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm"
-                              placeholder="Quantity"
-                            />
-                            <span className="ml-2 text-sm text-gray-500 whitespace-nowrap">in stock</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Sizes</label>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    <span className="text-xs font-semibold text-gray-500 mr-2">Kid Sizes:</span>
+                    {KID_SIZES.map(size => (
+                      <label key={size} className="inline-flex items-center gap-1">
+                        <input
+                          type="checkbox"
+                          checked={formData.sizes.includes(size)}
+                          onChange={() => handleSizeChange(size)}
+                          className="form-checkbox rounded text-blue-600"
+                        />
+                        <span className="text-xs">{size}</span>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="text-xs font-semibold text-gray-500 mr-2">Adult Sizes:</span>
+                    {ADULT_SIZES.map(size => (
+                      <label key={size} className="inline-flex items-center gap-1">
+                        <input
+                          type="checkbox"
+                          checked={formData.sizes.includes(size)}
+                          onChange={() => handleSizeChange(size)}
+                          className="form-checkbox rounded text-blue-600"
+                        />
+                        <span className="text-xs">{size}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
                 {fieldErrors.sizes && (
                   <p className="mt-1 text-sm text-red-600">{fieldErrors.sizes}</p>
