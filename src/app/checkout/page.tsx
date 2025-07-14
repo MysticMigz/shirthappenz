@@ -16,7 +16,11 @@ interface CheckoutStep {
 }
 
 const DEFAULT_SHIPPING_METHOD = 'Standard Delivery';
-const SHIPPING_COSTS = { 'Standard Delivery': 5.99, 'Express Delivery': 12.99 };
+const SHIPPING_COSTS = { 
+  'Standard Delivery': 5.99, 
+  'Express Delivery': 12.99,
+  'Next Day Delivery': 19.99 
+};
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -24,12 +28,17 @@ export default function CheckoutPage() {
   const [step, setStep] = useState<CheckoutStep>({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>();
+  const [currentShippingMethod, setCurrentShippingMethod] = useState<keyof typeof SHIPPING_COSTS>(DEFAULT_SHIPPING_METHOD);
 
   useEffect(() => {
     if (!items.length) {
       router.push('/cart');
     }
   }, [items, router]);
+
+  const handleShippingMethodChange = (shippingMethod: keyof typeof SHIPPING_COSTS) => {
+    setCurrentShippingMethod(shippingMethod);
+  };
 
   const handleShippingSubmit = async (shippingDetails: ShippingDetails & { shippingCost: number }) => {
     setIsLoading(true);
@@ -121,8 +130,7 @@ export default function CheckoutPage() {
 
   // Calculate subtotal, VAT (included), and total for display
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const shippingCost = step.shippingDetails ? step.shippingDetails.shippingCost : SHIPPING_COSTS[DEFAULT_SHIPPING_METHOD];
-  const shippingMethod = step.shippingDetails ? step.shippingDetails.shippingMethod : DEFAULT_SHIPPING_METHOD;
+  const shippingCost = SHIPPING_COSTS[currentShippingMethod];
   const vatRate = 0.2;
   const total = subtotal + shippingCost;
   // VAT is 20% of (subtotal + shippingCost)
@@ -191,7 +199,7 @@ export default function CheckoutPage() {
                         <span>£{subtotal.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between mb-2 text-sm text-gray-500">
-                        <span>Shipping ({shippingMethod})</span>
+                        <span>Shipping ({currentShippingMethod})</span>
                         <span>£{shippingCost.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between text-lg font-bold text-gray-900 mt-4">
@@ -224,7 +232,11 @@ export default function CheckoutPage() {
                     </StripeProvider>
                   </div>
                 ) : (
-                  <ShippingForm onSubmit={handleShippingSubmit} />
+                  <ShippingForm 
+                    onSubmit={handleShippingSubmit}
+                    onShippingMethodChange={handleShippingMethodChange}
+                    currentShippingMethod={currentShippingMethod}
+                  />
                 )}
               </div>
             </div>

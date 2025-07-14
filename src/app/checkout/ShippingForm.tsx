@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export interface ShippingDetails {
   firstName: string;
@@ -16,6 +16,8 @@ export interface ShippingDetails {
 
 interface ShippingFormProps {
   onSubmit: (shippingDetails: ShippingDetails & { shippingCost: number }) => void;
+  onShippingMethodChange?: (shippingMethod: keyof typeof SHIPPING_COSTS) => void;
+  currentShippingMethod?: keyof typeof SHIPPING_COSTS;
 }
 
 const SHIPPING_COSTS = {
@@ -24,7 +26,7 @@ const SHIPPING_COSTS = {
   'Next Day Delivery': 19.99
 };
 
-export default function ShippingForm({ onSubmit }: ShippingFormProps) {
+export default function ShippingForm({ onSubmit, onShippingMethodChange, currentShippingMethod }: ShippingFormProps) {
   const [formData, setFormData] = useState<ShippingDetails>({
     firstName: '',
     lastName: '',
@@ -34,8 +36,15 @@ export default function ShippingForm({ onSubmit }: ShippingFormProps) {
     city: '',
     county: '',
     postcode: '',
-    shippingMethod: 'Standard Delivery'
+    shippingMethod: currentShippingMethod || 'Standard Delivery'
   });
+
+  // Update form data when currentShippingMethod prop changes
+  useEffect(() => {
+    if (currentShippingMethod && currentShippingMethod !== formData.shippingMethod) {
+      setFormData(prev => ({ ...prev, shippingMethod: currentShippingMethod }));
+    }
+  }, [currentShippingMethod]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,6 +57,11 @@ export default function ShippingForm({ onSubmit }: ShippingFormProps) {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // If shipping method changed, notify parent component
+    if (name === 'shippingMethod' && onShippingMethodChange) {
+      onShippingMethodChange(value as keyof typeof SHIPPING_COSTS);
+    }
   };
 
   return (
