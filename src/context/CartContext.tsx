@@ -22,6 +22,12 @@ interface CartItem {
     customizationCost?: number;
     frontImage?: string;
     backImage?: string;
+    frontPosition?: { x: number; y: number };
+    backPosition?: { x: number; y: number };
+    frontScale?: number;
+    backScale?: number;
+    frontRotation?: number;
+    backRotation?: number;
   };
 }
 

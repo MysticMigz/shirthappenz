@@ -47,7 +47,22 @@ const OrderSchema = new mongoose.Schema({
       },
       nameCharacters: Number,
       numberCharacters: Number,
-      customizationCost: Number
+      customizationCost: Number,
+      // Custom design fields
+      frontImage: String,
+      backImage: String,
+      frontPosition: {
+        x: Number,
+        y: Number
+      },
+      backPosition: {
+        x: Number,
+        y: Number
+      },
+      frontScale: Number,
+      backScale: Number,
+      frontRotation: Number,
+      backRotation: Number
     }
   }],
   shippingDetails: {

@@ -330,24 +330,40 @@ export default function CustomDesignPage() {
       <main className="flex-grow container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
           {/* Gender Selector */}
-          <div className="flex flex-wrap gap-2 justify-center mb-4">
+          <div className="flex flex-wrap gap-6 justify-center mb-4">
             {GENDERS.map(gender => (
               <button
                 key={gender.key}
-                className={`px-4 py-2 rounded-lg font-semibold border ${selectedGender === gender.key ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-blue-600 border-blue-300'}`}
+                className={`px-8 py-2 rounded-full font-semibold transition-all duration-300 ease-in-out
+                  focus-visible:ring-2 focus-visible:ring-[#a259ff] focus-visible:ring-offset-2
+                  ${selectedGender === gender.key
+                    ? 'bg-white text-[#232946] shadow-[0_2px_0_0_#a259ff] border-none outline-none'
+                    : 'bg-[#f4f4f6] text-[#232946] border-none outline-none hover:bg-white hover:shadow-[0_2px_0_0_#a259ff]'}
+                  hover:scale-105 focus:scale-105 hover:shadow-[0_4px_0_0_#a259ff] focus:shadow-[0_4px_0_0_#a259ff] active:scale-100'
+                `}
+                style={selectedGender === gender.key ? { boxShadow: '0 2px 0 0 #a259ff' } : {}}
                 onClick={() => setSelectedGender(gender.key)}
+                tabIndex={0}
               >
                 {gender.label}
               </button>
             ))}
           </div>
           {/* Category Selector */}
-          <div className="flex flex-wrap gap-2 justify-center mb-8">
+          <div className="flex flex-wrap gap-6 justify-center mb-8">
             {CATEGORIES.map(cat => (
               <button
                 key={cat.key}
-                className={`px-4 py-2 rounded-lg font-semibold border ${selectedCategory === cat.key ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-blue-600 border-blue-300'}`}
+                className={`px-8 py-2 rounded-full font-semibold transition-all duration-300 ease-in-out
+                  focus-visible:ring-2 focus-visible:ring-[#a259ff] focus-visible:ring-offset-2
+                  ${selectedCategory === cat.key
+                    ? 'bg-white text-[#232946] shadow-[0_2px_0_0_#a259ff] border-none outline-none'
+                    : 'bg-[#f4f4f6] text-[#232946] border-none outline-none hover:bg-white hover:shadow-[0_2px_0_0_#a259ff]'}
+                  hover:scale-105 focus:scale-105 hover:shadow-[0_4px_0_0_#a259ff] focus:shadow-[0_4px_0_0_#a259ff] active:scale-100'
+                `}
+                style={selectedCategory === cat.key ? { boxShadow: '0 2px 0 0 #a259ff' } : {}}
                 onClick={() => setSelectedCategory(cat.key)}
+                tabIndex={0}
               >
                 {cat.label}
               </button>
@@ -400,16 +416,32 @@ export default function CustomDesignPage() {
           )}
 
           {/* Side Toggle */}
-          <div className="flex justify-center mb-6 gap-4">
+          <div className="flex justify-center mb-6 gap-6">
             <button
-              className={`px-6 py-2 rounded-lg font-semibold border ${activeSide === 'front' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-blue-600 border-blue-300'}`}
+              className={`px-8 py-2 rounded-full font-semibold transition-all duration-300 ease-in-out
+                focus-visible:ring-2 focus-visible:ring-[#a259ff] focus-visible:ring-offset-2
+                ${activeSide === 'front'
+                  ? 'bg-white text-[#232946] shadow-[0_2px_0_0_#a259ff] border-none outline-none'
+                  : 'bg-[#f4f4f6] text-[#232946] border-none outline-none hover:bg-white hover:shadow-[0_2px_0_0_#a259ff]'}
+                hover:scale-105 focus:scale-105 hover:shadow-[0_4px_0_0_#a259ff] focus:shadow-[0_4px_0_0_#a259ff] active:scale-100'
+              `}
+              style={activeSide === 'front' ? { boxShadow: '0 2px 0 0 #a259ff' } : {}}
               onClick={() => setActiveSide('front')}
+              tabIndex={0}
             >
               Front
             </button>
             <button
-              className={`px-6 py-2 rounded-lg font-semibold border ${activeSide === 'back' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-blue-600 border-blue-300'}`}
+              className={`px-8 py-2 rounded-full font-semibold transition-all duration-300 ease-in-out
+                focus-visible:ring-2 focus-visible:ring-[#a259ff] focus-visible:ring-offset-2
+                ${activeSide === 'back'
+                  ? 'bg-white text-[#232946] shadow-[0_2px_0_0_#a259ff] border-none outline-none'
+                  : 'bg-[#f4f4f6] text-[#232946] border-none outline-none hover:bg-white hover:shadow-[0_2px_0_0_#a259ff]'}
+                hover:scale-105 focus:scale-105 hover:shadow-[0_4px_0_0_#a259ff] focus:shadow-[0_4px_0_0_#a259ff] active:scale-100'
+              `}
+              style={activeSide === 'back' ? { boxShadow: '0 2px 0 0 #a259ff' } : {}}
               onClick={() => setActiveSide('back')}
+              tabIndex={0}
             >
               Back
             </button>

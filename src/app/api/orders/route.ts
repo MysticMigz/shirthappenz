@@ -56,6 +56,15 @@ interface OrderItemDB {
     nameCharacters?: number;
     numberCharacters?: number;
     customizationCost?: number;
+    // Custom design fields
+    frontImage?: string;
+    backImage?: string;
+    frontPosition?: { x: number; y: number };
+    backPosition?: { x: number; y: number };
+    frontScale?: number;
+    backScale?: number;
+    frontRotation?: number;
+    backRotation?: number;
   };
   baseProductName?: string;
   baseProductImage?: string;
@@ -222,7 +231,16 @@ export async function POST(request: Request) {
           isCustomized: item.customization.isCustomized,
           nameCharacters: item.customization.name?.length || 0,
           numberCharacters: item.customization.number?.length || 0,
-          customizationCost: item.customization.customizationCost
+          customizationCost: item.customization.customizationCost,
+          // Custom design fields
+          frontImage: item.customization.frontImage,
+          backImage: item.customization.backImage,
+          frontPosition: item.customization.frontPosition,
+          backPosition: item.customization.backPosition,
+          frontScale: item.customization.frontScale,
+          backScale: item.customization.backScale,
+          frontRotation: item.customization.frontRotation,
+          backRotation: item.customization.backRotation
         } : undefined
       });
     }

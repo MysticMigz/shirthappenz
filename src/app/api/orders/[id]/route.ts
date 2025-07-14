@@ -26,6 +26,15 @@ interface OrderDocument {
       nameCharacters?: number;
       numberCharacters?: number;
       customizationCost?: number;
+      // Custom design fields
+      frontImage?: string;
+      backImage?: string;
+      frontPosition?: { x: number; y: number };
+      backPosition?: { x: number; y: number };
+      frontScale?: number;
+      backScale?: number;
+      frontRotation?: number;
+      backRotation?: number;
     };
   }>;
   shippingDetails: {
@@ -109,7 +118,16 @@ export async function GET(
           isCustomized: item.customization.isCustomized,
           nameCharacters: item.customization.nameCharacters,
           numberCharacters: item.customization.numberCharacters,
-          customizationCost: item.customization.customizationCost
+          customizationCost: item.customization.customizationCost,
+          // Custom design fields
+          frontImage: item.customization.frontImage,
+          backImage: item.customization.backImage,
+          frontPosition: item.customization.frontPosition,
+          backPosition: item.customization.backPosition,
+          frontScale: item.customization.frontScale,
+          backScale: item.customization.backScale,
+          frontRotation: item.customization.frontRotation,
+          backRotation: item.customization.backRotation
         } : undefined
       })),
       shippingDetails: {
