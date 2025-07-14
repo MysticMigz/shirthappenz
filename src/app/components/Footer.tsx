@@ -70,26 +70,6 @@ const Footer = () => {
                 </Link>
               </li>
               <li>
-                <Link href="/services/charity" className="text-gray-300 hover:text-purple-400 transition-colors">
-                  Charity T-Shirts
-                </Link>
-              </li>
-              <li>
-                <Link href="/services/events" className="text-gray-300 hover:text-purple-400 transition-colors">
-                  Event T-Shirts
-                </Link>
-              </li>
-              <li>
-                <Link href="/printing/dtf" className="text-gray-300 hover:text-purple-400 transition-colors">
-                  DTF Printing
-                </Link>
-              </li>
-              <li>
-                <Link href="/printing/sublimation" className="text-gray-300 hover:text-purple-400 transition-colors">
-                  Sublimation Printing
-                </Link>
-              </li>
-              <li>
                 <Link href="/accessories/swing-tags" className="text-gray-300 hover:text-purple-400 transition-colors">
                   Personalised Swing Tags
                 </Link>
@@ -139,32 +119,7 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/* Services */}
-          <div>
-            <h3 className="text-white text-lg font-semibold mb-4">Services</h3>
-            <ul className="space-y-2">
-              <li>
-                <Link href="/printing/dtf" className="text-gray-300 hover:text-purple-400 transition-colors">
-                  DTF Printing
-                </Link>
-              </li>
-              <li>
-                <Link href="/printing/sublimation" className="text-gray-300 hover:text-purple-400 transition-colors">
-                  Sublimation Printing
-                </Link>
-              </li>
-              <li>
-                <Link href="/design" className="text-gray-300 hover:text-purple-400 transition-colors">
-                  Custom Design
-                </Link>
-              </li>
-              <li>
-                <Link href="/bulk-orders" className="text-gray-300 hover:text-purple-400 transition-colors">
-                  Bulk Orders
-                </Link>
-              </li>
-            </ul>
-          </div>
+          {/* Remove Services section and all printing-related links */}
         </div>
       </div>
 

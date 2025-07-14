@@ -191,17 +191,14 @@ const Header = () => {
               <Link href="/design" className="text-gray-700 hover:text-purple-600 font-medium">
                 Online Design
               </Link>
-              <Link href="/services" className="text-gray-700 hover:text-purple-600 font-medium">
-                Services
-              </Link>
-              <Link href="/printing" className="text-gray-700 hover:text-purple-600 font-medium">
-                Printing
-              </Link>
               <Link href="/help" className="text-gray-700 hover:text-purple-600 font-medium">
                 Help
               </Link>
               <Link href="/contact" className="text-gray-700 hover:text-purple-600 font-medium">
                 Contact
+              </Link>
+              <Link href="/about" className="text-gray-700 hover:text-purple-600 font-medium">
+                About
               </Link>
             </div>
           </nav>
@@ -250,10 +247,9 @@ const Header = () => {
               <Link href="/products" className="block text-gray-700 hover:text-purple-600 font-medium">Products</Link>
               <Link href="/design/jersey" className="block text-gray-700 hover:text-purple-600 font-medium">Design Jersey</Link>
               <Link href="/design" className="block text-gray-700 hover:text-purple-600 font-medium">Design Online</Link>
-              <Link href="/services" className="block text-gray-700 hover:text-purple-600 font-medium">Services</Link>
-              <Link href="/printing" className="block text-gray-700 hover:text-purple-600 font-medium">Printing</Link>
               <Link href="/help" className="block text-gray-700 hover:text-purple-600 font-medium">Help</Link>
               <Link href="/contact" className="block text-gray-700 hover:text-purple-600 font-medium">Contact</Link>
+              <Link href="/about" className="block text-gray-700 hover:text-purple-600 font-medium">About</Link>
             </div>
           </div>
         )}
