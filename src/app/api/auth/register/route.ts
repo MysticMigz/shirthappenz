@@ -1,23 +1,26 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import User from '@/backend/models/User';
+import { userRegistrationSchema, validateAndSanitize } from '@/lib/validation';
 
 export async function POST(request: Request) {
   try {
     await connectToDatabase();
     const data = await request.json();
 
-    // Basic validation
-    if (!data.email || !data.password || !data.firstName || !data.lastName || !data.phoneNumber ||
-        !data.address?.street || !data.address?.city || !data.address?.county || !data.address?.postcode) {
+    // Validate and sanitize input using Zod
+    const validation = validateAndSanitize(userRegistrationSchema, data);
+    if (!validation.success) {
       return NextResponse.json(
-        { error: 'All required fields must be provided' },
+        { error: validation.errors[0] },
         { status: 400 }
       );
     }
 
+    const validatedData = validation.data;
+
     // Check if user already exists
-    const existingUser = await User.findOne({ email: data.email });
+    const existingUser = await User.findOne({ email: validatedData.email });
     if (existingUser) {
       return NextResponse.json(
         { error: 'Email already registered' },
@@ -25,20 +28,14 @@ export async function POST(request: Request) {
       );
     }
 
-    // Create new user
+    // Create new user with validated data
     const user = await User.create({
-      email: data.email,
-      password: data.password, // Will be hashed by the User model pre-save hook
-      firstName: data.firstName,
-      lastName: data.lastName,
-      phoneNumber: data.phoneNumber,
-      address: {
-        street: data.address.street,
-        city: data.address.city,
-        county: data.address.county,
-        postcode: data.address.postcode,
-        country: data.address.country || 'United Kingdom'
-      },
+      email: validatedData.email,
+      password: validatedData.password, // Will be hashed by the User model pre-save hook
+      firstName: validatedData.firstName,
+      lastName: validatedData.lastName,
+      phoneNumber: validatedData.phoneNumber,
+      address: validatedData.address,
       isAdmin: false // Default value for new registrations
     });
 

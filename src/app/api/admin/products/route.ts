@@ -4,6 +4,7 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { connectToDatabase } from '@/backend/utils/database';
 import Product from '@/backend/models/Product';
 import User from '@/backend/models/User';
+import { productSchema, validateAndSanitize } from '@/lib/validation';
 
 interface ProductData {
   name: string;
@@ -175,50 +176,34 @@ export async function POST(request: NextRequest) {
       uploadedImageUrls = productData.images || [];
     }
 
-    // Validate required fields
-    if (!productData.name || !productData.description || !productData.price || !productData.category || !productData.basePrice) {
+    // Validate and sanitize input using Zod
+    const validation = validateAndSanitize(productSchema, productData);
+    if (!validation.success) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: validation.errors[0] },
         { status: 400 }
       );
     }
 
-    // Validate stock data
-    if (typeof productData.stock !== 'object' || productData.stock === null) {
-      return NextResponse.json(
-        { error: 'Invalid stock data format' },
-        { status: 400 }
-      );
-    }
-
-    // Ensure all stock quantities are non-negative integers
-    for (const [size, quantity] of Object.entries(productData.stock)) {
-      const numQuantity = Number(quantity);
-      if (!Number.isInteger(numQuantity) || numQuantity < 0) {
-        return NextResponse.json(
-          { error: `Invalid stock quantity for size ${size}. Must be a non-negative integer.` },
-          { status: 400 }
-        );
-      }
-    }
+    const validatedData = validation.data;
 
     // Combine uploaded images and URL images
     const allImages = [...uploadedImageUrls, ...urlImages];
 
-    // Create product with properly formatted data
+    // Create product with validated data
     const finalProductData = {
-      name: productData.name.trim(),
-      description: productData.description.trim(),
-      price: Number(productData.price),
-      basePrice: Number(productData.basePrice),
-      category: productData.category,
-      gender: productData.gender,
-      sizes: Array.isArray(productData.sizes) ? productData.sizes : [],
-      colors: Array.isArray(productData.colors) ? productData.colors : [],
+      name: validatedData.name.trim(),
+      description: validatedData.description.trim(),
+      price: validatedData.price,
+      basePrice: validatedData.basePrice,
+      category: validatedData.category,
+      gender: validatedData.gender,
+      sizes: validatedData.sizes,
+      colors: validatedData.colors || [],
       images: allImages,
-      stock: productData.stock,
-      featured: Boolean(productData.featured),
-      customizable: productData.customizable ?? true
+      stock: validatedData.stock,
+      featured: validatedData.featured,
+      customizable: validatedData.customizable
     };
 
     const product = await Product.create(finalProductData);
