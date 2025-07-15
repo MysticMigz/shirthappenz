@@ -65,7 +65,7 @@ export default function HelpPage() {
             <Link href="/contact" className="inline-block mt-4 px-6 py-2 bg-purple-600 text-white rounded-lg font-semibold shadow hover:bg-purple-700 transition">Contact Us</Link>
           </div>
           <div className="flex-shrink-0">
-            <Image src="/images/logo5.png" alt="ShirtHappenZ Logo" width={120} height={60} className="h-20 w-auto" />
+            <Image src="/images/logo.png" alt="ShirtHappenZ Logo" width={120} height={60} className="h-20 w-auto" />
           </div>
         </div>
       </main>

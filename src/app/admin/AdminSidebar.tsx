@@ -74,13 +74,13 @@ export default function AdminSidebar() {
   return (
     <>
       {/* Admin Header */}
-      <header className="fixed top-0 right-0 left-0 bg-white shadow-sm border-b border-purple-100 z-50">
+      <header className="fixed top-0 right-0 left-0 bg-[var(--brand-white)] shadow-sm border-b border-[var(--brand-blue)] z-50">
         <div className="px-6">
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center">
               <Link href="/" className="flex items-center group">
                 <Image
-                  src="/images/logo5.png"
+                  src="/images/logo.png"
                   alt="ShirtHappenZ Logo"
                   width={200}
                   height={80}
@@ -88,8 +88,8 @@ export default function AdminSidebar() {
                   priority
                 />
               </Link>
-              <div className="h-8 w-px bg-purple-200 mx-4" />
-              <h2 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 text-transparent bg-clip-text">Admin Dashboard</h2>
+              <div className="h-8 w-px bg-[var(--brand-red)] mx-4" />
+              <h2 className="text-xl font-bold bg-gradient-to-r from-[var(--brand-red)] to-[var(--brand-blue)] text-transparent bg-clip-text">Admin Dashboard</h2>
             </div>
             <div className="flex items-center gap-6">
               <span className="text-sm text-gray-600">Welcome, Admin</span>

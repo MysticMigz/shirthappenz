@@ -3,11 +3,17 @@
 :root {
   --font-inter: 'Inter', sans-serif;
   --font-fredoka: 'Fredoka', sans-serif;
+  --brand-red: #FF1744;
+  --brand-blue: #2979FF;
+  --brand-black: #000000;
+  --brand-white: #FFFFFF;
 }
 
 body {
   font-family: var(--font-inter);
   line-height: 1.6;
+  background: var(--brand-white);
+  color: var(--brand-black);
 }
 
 .brand-text {
@@ -18,7 +24,7 @@ body {
 /* Required field indicator */
 .required-field::after {
   content: "*";
-  color: #EF4444;
+  color: var(--brand-red);
   margin-left: 4px;
 }
 

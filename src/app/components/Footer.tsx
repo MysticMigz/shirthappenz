@@ -3,7 +3,7 @@ import Image from 'next/image';
 
 const Footer = () => {
   return (
-    <footer className="bg-gray-900 text-white">
+    <footer className="bg-[var(--brand-blue)] text-[var(--brand-white)]">
       {/* Main footer content */}
       <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -11,18 +11,18 @@ const Footer = () => {
           <div className="col-span-2 lg:col-span-1">
             <Link href="/" className="inline-block mb-6">
               <Image
-                src="/images/logo5.png"
+                src="/images/logo.png"
                 alt="ShirtHappenZ Logo"
                 width={320}
                 height={120}
                 className="h-24 w-auto brightness-110"
               />
             </Link>
-            <p className="text-gray-300 mb-4">
+            <p className="text-[var(--brand-white)] mb-4">
               Your one-stop shop for custom apparel printing.
               DTF & Sublimation services for brand owners, individuals, and businesses.
             </p>
-            <div className="space-y-2 text-sm text-gray-400">
+            <div className="space-y-2 text-sm text-blue-100">
               <p>123 Design Street</p>
               <p>Creative City, CC 12345</p>
               <p>United States</p>
@@ -124,23 +124,23 @@ const Footer = () => {
       </div>
 
       {/* Bottom footer */}
-      <div className="border-t border-gray-800">
+      <div className="border-t border-blue-700">
         <div className="container mx-auto px-4 py-6">
           <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="text-sm text-gray-400 mb-4 md:mb-0">
-              © ShirtHappenZ 2025. All rights reserved. | Created with ❤️ for custom printing.
+            <div className="text-sm text-blue-100 mb-4 md:mb-0">
+              © ShirtHappenZ 2025. All rights reserved. | Created with <span className="text-[var(--brand-red)]">❤️</span> for custom printing.
             </div>
             <div className="flex space-x-6 text-sm">
-              <Link href="/privacy" className="text-gray-400 hover:text-purple-400 transition-colors">
+              <Link href="/privacy" className="text-blue-100 hover:text-[var(--brand-red)] transition-colors">
                 Privacy Policy
               </Link>
-              <Link href="/terms" className="text-gray-400 hover:text-purple-400 transition-colors">
+              <Link href="/terms" className="text-blue-100 hover:text-[var(--brand-red)] transition-colors">
                 Terms of Service
               </Link>
-              <Link href="/cookies" className="text-gray-400 hover:text-purple-400 transition-colors">
+              <Link href="/cookies" className="text-blue-100 hover:text-[var(--brand-red)] transition-colors">
                 Cookie Policy
               </Link>
-              <Link href="/faq" className="text-gray-400 hover:text-purple-400 transition-colors">
+              <Link href="/faq" className="text-blue-100 hover:text-[var(--brand-red)] transition-colors">
                 FAQs
               </Link>
             </div>

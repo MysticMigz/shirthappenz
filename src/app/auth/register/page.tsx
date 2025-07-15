@@ -102,7 +102,7 @@ export default function RegisterPage() {
         <div className="container mx-auto px-4 py-4">
           <Link href="/" className="flex items-center">
             <Image
-              src="/images/logo5.png"
+              src="/images/logo.png"
               alt="ShirtHappenZ Logo"
               width={300}
               height={120}

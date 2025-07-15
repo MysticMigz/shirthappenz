@@ -215,11 +215,15 @@ export default function ProductsPage() {
             <button
               key={gender.key}
               onClick={() => handleGenderClick(gender.key)}
-              className={`px-8 py-2 rounded-full font-semibold text-lg transition border-b-4 focus:outline-none ${
-                selectedGender === gender.key ? 'border-purple-600 text-purple-700 bg-purple-50' : 'border-transparent text-gray-700 bg-white hover:bg-gray-50'
-              }`}
+              className={`px-8 py-2 rounded-full font-semibold text-lg transition border-b-4 focus:outline-none bg-white text-black ${
+                selectedGender === gender.key
+                  ? 'border-[var(--brand-red)]'
+                  : 'border-transparent'
+              } group`}
             >
-              {gender.label}
+              <span className="transition text-black group-hover:bg-gradient-to-r group-hover:from-[var(--brand-red)] group-hover:to-[var(--brand-blue)] group-hover:bg-clip-text group-hover:text-transparent">
+                {gender.label}
+              </span>
             </button>
           ))}
         </div>
@@ -230,12 +234,16 @@ export default function ProductsPage() {
             <button
               key={cat.key}
               onClick={() => handleCategoryClick(cat.key)}
-              className={`flex flex-col items-center px-6 py-4 rounded-lg border transition shadow-sm bg-white hover:bg-gray-50 focus:outline-none ${
-                selectedCategory === cat.key ? 'border-purple-500 shadow-md' : 'border-gray-200'
-              }`}
+              className={`flex flex-col items-center px-6 py-4 rounded-lg border transition shadow-sm bg-white text-black focus:outline-none ${
+                selectedCategory === cat.key
+                  ? 'border-[var(--brand-red)] shadow-md'
+                  : 'border-gray-200'
+              } group hover:border-[var(--brand-blue)]`}
             >
               <span className="mb-2">{cat.icon}</span>
-              <span className="text-sm font-medium text-gray-700">{cat.label}</span>
+              <span className="text-sm font-medium transition text-black group-hover:bg-gradient-to-r group-hover:from-[var(--brand-red)] group-hover:to-[var(--brand-blue)] group-hover:bg-clip-text group-hover:text-transparent">
+                {cat.label}
+              </span>
             </button>
           ))}
         </div>
@@ -254,22 +262,22 @@ export default function ProductsPage() {
                 placeholder="Search products..."
                 value={searchQuery}
                 onChange={(e) => handleFilterChange('search', e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--brand-red)] focus:border-transparent"
               />
               <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             </div>
             <div className="flex gap-2 items-center">
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                className="flex items-center px-4 py-2 bg-white border border-gray-300 text-black rounded-lg transition hover:border-[var(--brand-blue)] group"
               >
-                <FaFilter className="mr-2" />
-                Filters
+                <FaFilter className="mr-2 group-hover:bg-gradient-to-r group-hover:from-[var(--brand-red)] group-hover:to-[var(--brand-blue)] group-hover:bg-clip-text group-hover:text-transparent" />
+                <span className="transition text-black group-hover:bg-gradient-to-r group-hover:from-[var(--brand-red)] group-hover:to-[var(--brand-blue)] group-hover:bg-clip-text group-hover:text-transparent">Filters</span>
               </button>
               <select
                 value={sortBy}
                 onChange={e => setSortBy(e.target.value as any)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--brand-red)] focus:border-transparent"
               >
                 <option value="bestsellers">Best Sellers</option>
                 <option value="price-asc">Lowest Price</option>

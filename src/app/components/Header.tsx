@@ -29,7 +29,7 @@ const Header = () => {
   return (
     <>
       {/* Top announcement bar */}
-      <div className="bg-gradient-to-r from-purple-600 to-blue-600 text-white text-center py-2 px-4">
+      <div className="bg-gradient-to-r from-[var(--brand-red)] to-[var(--brand-blue)] text-white text-center py-2 px-4">
         <p className="text-sm">
           <strong>Important information:</strong> Orders created on or after today will be processed within 3-5 working days. 
           Fast turnaround available!
@@ -44,7 +44,7 @@ const Header = () => {
             {/* Logo */}
             <Link href="/" className="flex items-center group">
               <Image
-                src="/images/logo5.png"
+                src="/images/logo.png"
                 alt="ShirtHappenZ Logo"
                 width={600}
                 height={240}
@@ -55,28 +55,18 @@ const Header = () => {
             </Link>
 
             {/* Search bar - hidden on mobile */}
-            <div className="hidden md:flex flex-1 max-w-md mx-8">
-              <div className="relative w-full">
-                <input
-                  type="text"
-                  placeholder="Search for products..."
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  value={searchInput}
-                  onChange={e => setSearchInput(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') {
-                      router.push(`/products?search=${encodeURIComponent(searchInput)}`);
-                    }
-                  }}
-                />
-                <button
-                  className="absolute right-2 top-2 text-gray-500 hover:text-purple-600"
-                  onClick={() => router.push(`/products?search=${encodeURIComponent(searchInput)}`)}
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            <div className="hidden md:flex flex-1 justify-center mx-8">
+              <div className="p-[2px] rounded-lg bg-gradient-to-r from-[var(--brand-red)] to-[var(--brand-blue)]">
+                <div className="bg-white rounded-lg flex items-center px-4 py-2">
+                  <input
+                    type="text"
+                    placeholder="Search for products..."
+                    className="bg-transparent outline-none border-none w-80 text-gray-700 placeholder-gray-400"
+                  />
+                  <svg className="w-5 h-5 text-gray-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
                   </svg>
-                </button>
+                </div>
               </div>
             </div>
 
@@ -179,25 +169,25 @@ const Header = () => {
           {/* Navigation menu */}
           <nav className="hidden md:block border-t border-gray-200">
             <div className="flex items-center space-x-8 py-4">
-              <Link href="/" className="text-gray-700 hover:text-purple-600 font-medium">
+              <Link href="/" className="text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium transition">
                 Home
               </Link>
-              <Link href="/products" className="text-gray-700 hover:text-purple-600 font-medium">
+              <Link href="/products" className="text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium transition">
                 Products
               </Link>
-              <Link href="/design/jersey" className="text-gray-700 hover:text-purple-600 font-medium">
+              <Link href="/design/jersey" className="text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium transition">
                 Design Jersey
               </Link>
-              <Link href="/design" className="text-gray-700 hover:text-purple-600 font-medium">
+              <Link href="/design" className="text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium transition">
                 Online Design
               </Link>
-              <Link href="/help" className="text-gray-700 hover:text-purple-600 font-medium">
+              <Link href="/help" className="text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium transition">
                 Help
               </Link>
-              <Link href="/contact" className="text-gray-700 hover:text-purple-600 font-medium">
+              <Link href="/contact" className="text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium transition">
                 Contact
               </Link>
-              <Link href="/about" className="text-gray-700 hover:text-purple-600 font-medium">
+              <Link href="/about" className="text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium transition">
                 About
               </Link>
             </div>
