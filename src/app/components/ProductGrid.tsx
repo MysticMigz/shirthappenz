@@ -150,7 +150,7 @@ const ProductGrid = () => {
                         £{product.price.toFixed(2)}
                       </span>
                     )}
-                    <span className="text-sm text-purple-600 group-hover:translate-x-1 transition-transform duration-200">
+                    <span className="text-sm text-purple-600 group-hover:translate-x-1 transition-transform duration-200 group-hover:bg-gradient-to-r group-hover:from-[var(--brand-red)] group-hover:to-[var(--brand-blue)] group-hover:bg-clip-text group-hover:text-transparent">
                       View Details →
                     </span>
                   </div>
@@ -163,7 +163,7 @@ const ProductGrid = () => {
         <div className="text-center mt-12">
           <Link
             href="/products"
-            className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700"
+            className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-black bg-white hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent"
           >
             View All Products
           </Link>

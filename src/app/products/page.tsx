@@ -215,11 +215,11 @@ export default function ProductsPage() {
             <button
               key={gender.key}
               onClick={() => handleGenderClick(gender.key)}
-              className={`px-8 py-2 rounded-full font-semibold text-lg transition border-b-4 focus:outline-none bg-white text-black ${
-                selectedGender === gender.key
-                  ? 'border-[var(--brand-red)]'
-                  : 'border-transparent'
-              } group`}
+              className={`px-8 py-2 rounded-full font-semibold border border-black bg-white text-black transition-all duration-300 ease-in-out
+                focus-visible:ring-2 focus-visible:ring-[var(--brand-red)] focus-visible:ring-offset-2
+                ${selectedGender === gender.key ? 'shadow-[0_2px_0_0_var(--brand-red)]' : ''}
+                group hover:scale-105 focus:scale-105 hover:shadow-[0_4px_0_0_var(--brand-red)] focus:shadow-[0_4px_0_0_var(--brand-red)] active:scale-100`
+              }
             >
               <span className="transition text-black group-hover:bg-gradient-to-r group-hover:from-[var(--brand-red)] group-hover:to-[var(--brand-blue)] group-hover:bg-clip-text group-hover:text-transparent">
                 {gender.label}
@@ -234,11 +234,11 @@ export default function ProductsPage() {
             <button
               key={cat.key}
               onClick={() => handleCategoryClick(cat.key)}
-              className={`flex flex-col items-center px-6 py-4 rounded-lg border transition shadow-sm bg-white text-black focus:outline-none ${
-                selectedCategory === cat.key
-                  ? 'border-[var(--brand-red)] shadow-md'
-                  : 'border-gray-200'
-              } group hover:border-[var(--brand-blue)]`}
+              className={`flex flex-col items-center px-6 py-4 rounded-lg border border-black bg-white text-black transition-all duration-300 ease-in-out
+                focus-visible:ring-2 focus-visible:ring-[var(--brand-red)] focus-visible:ring-offset-2
+                ${selectedCategory === cat.key ? 'shadow-[0_2px_0_0_var(--brand-red)]' : ''}
+                group hover:scale-105 focus:scale-105 hover:shadow-[0_4px_0_0_var(--brand-red)] focus:shadow-[0_4px_0_0_var(--brand-red)] active:scale-100`
+              }
             >
               <span className="mb-2">{cat.icon}</span>
               <span className="text-sm font-medium transition text-black group-hover:bg-gradient-to-r group-hover:from-[var(--brand-red)] group-hover:to-[var(--brand-blue)] group-hover:bg-clip-text group-hover:text-transparent">
@@ -269,9 +269,9 @@ export default function ProductsPage() {
             <div className="flex gap-2 items-center">
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center px-4 py-2 bg-white border border-gray-300 text-black rounded-lg transition hover:border-[var(--brand-blue)] group"
+                className="flex items-center px-4 py-2 border border-black bg-white text-black rounded-lg transition-all duration-300 ease-in-out group focus-visible:ring-2 focus-visible:ring-[var(--brand-red)] focus-visible:ring-offset-2 hover:scale-105 focus:scale-105 hover:shadow-[0_4px_0_0_var(--brand-red)] focus:shadow-[0_4px_0_0_var(--brand-red)] active:scale-100"
               >
-                <FaFilter className="mr-2 group-hover:bg-gradient-to-r group-hover:from-[var(--brand-red)] group-hover:to-[var(--brand-blue)] group-hover:bg-clip-text group-hover:text-transparent" />
+                <FaFilter className="mr-2 text-black" />
                 <span className="transition text-black group-hover:bg-gradient-to-r group-hover:from-[var(--brand-red)] group-hover:to-[var(--brand-blue)] group-hover:bg-clip-text group-hover:text-transparent">Filters</span>
               </button>
               <select
@@ -397,7 +397,7 @@ export default function ProductsPage() {
                       £{product.price.toFixed(2)}
                     </span>
                   )}
-                  <span className="text-sm text-purple-600 group-hover:translate-x-1 transition-transform duration-200">
+                  <span className="text-sm text-purple-600 group-hover:translate-x-1 transition-transform duration-200 group-hover:bg-gradient-to-r group-hover:from-[var(--brand-red)] group-hover:to-[var(--brand-blue)] group-hover:bg-clip-text group-hover:text-transparent">
                     View Details →
                   </span>
                 </div>

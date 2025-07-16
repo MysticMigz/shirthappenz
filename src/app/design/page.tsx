@@ -334,18 +334,16 @@ export default function CustomDesignPage() {
             {GENDERS.map(gender => (
               <button
                 key={gender.key}
-                className={`px-8 py-2 rounded-full font-semibold transition-all duration-300 ease-in-out
-                  focus-visible:ring-2 focus-visible:ring-[#a259ff] focus-visible:ring-offset-2
-                  ${selectedGender === gender.key
-                    ? 'bg-white text-[#232946] shadow-[0_2px_0_0_#a259ff] border-none outline-none'
-                    : 'bg-[#f4f4f6] text-[#232946] border-none outline-none hover:bg-white hover:shadow-[0_2px_0_0_#a259ff]'}
-                  hover:scale-105 focus:scale-105 hover:shadow-[0_4px_0_0_#a259ff] focus:shadow-[0_4px_0_0_#a259ff] active:scale-100'
-                `}
-                style={selectedGender === gender.key ? { boxShadow: '0 2px 0 0 #a259ff' } : {}}
+                className={`px-8 py-2 rounded-full font-semibold border border-black bg-white text-black transition-all duration-300 ease-in-out
+                  focus-visible:ring-2 focus-visible:ring-[var(--brand-red)] focus-visible:ring-offset-2
+                  ${selectedGender === gender.key ? 'shadow-[0_2px_0_0_var(--brand-red)]' : ''}
+                  group hover:scale-105 focus:scale-105 hover:shadow-[0_4px_0_0_var(--brand-red)] focus:shadow-[0_4px_0_0_var(--brand-red)] active:scale-100`
+                }
+                style={selectedGender === gender.key ? { boxShadow: '0 2px 0 0 var(--brand-red)' } : {}}
                 onClick={() => setSelectedGender(gender.key)}
                 tabIndex={0}
               >
-                {gender.label}
+                <span className="transition text-black group-hover:bg-gradient-to-r group-hover:from-[var(--brand-red)] group-hover:to-[var(--brand-blue)] group-hover:bg-clip-text group-hover:text-transparent">{gender.label}</span>
               </button>
             ))}
           </div>
@@ -354,18 +352,16 @@ export default function CustomDesignPage() {
             {CATEGORIES.map(cat => (
               <button
                 key={cat.key}
-                className={`px-8 py-2 rounded-full font-semibold transition-all duration-300 ease-in-out
-                  focus-visible:ring-2 focus-visible:ring-[#a259ff] focus-visible:ring-offset-2
-                  ${selectedCategory === cat.key
-                    ? 'bg-white text-[#232946] shadow-[0_2px_0_0_#a259ff] border-none outline-none'
-                    : 'bg-[#f4f4f6] text-[#232946] border-none outline-none hover:bg-white hover:shadow-[0_2px_0_0_#a259ff]'}
-                  hover:scale-105 focus:scale-105 hover:shadow-[0_4px_0_0_#a259ff] focus:shadow-[0_4px_0_0_#a259ff] active:scale-100'
-                `}
-                style={selectedCategory === cat.key ? { boxShadow: '0 2px 0 0 #a259ff' } : {}}
+                className={`px-8 py-2 rounded-full font-semibold border border-black bg-white text-black transition-all duration-300 ease-in-out
+                  focus-visible:ring-2 focus-visible:ring-[var(--brand-red)] focus-visible:ring-offset-2
+                  ${selectedCategory === cat.key ? 'shadow-[0_2px_0_0_var(--brand-red)]' : ''}
+                  group hover:scale-105 focus:scale-105 hover:shadow-[0_4px_0_0_var(--brand-red)] focus:shadow-[0_4px_0_0_var(--brand-red)] active:scale-100`
+                }
+                style={selectedCategory === cat.key ? { boxShadow: '0 2px 0 0 var(--brand-red)' } : {}}
                 onClick={() => setSelectedCategory(cat.key)}
                 tabIndex={0}
               >
-                {cat.label}
+                <span className="transition text-black group-hover:bg-gradient-to-r group-hover:from-[var(--brand-red)] group-hover:to-[var(--brand-blue)] group-hover:bg-clip-text group-hover:text-transparent">{cat.label}</span>
               </button>
             ))}
           </div>
@@ -402,7 +398,7 @@ export default function CustomDesignPage() {
                       <div className="text-xs text-center font-medium text-gray-700 line-clamp-2">{product.name}</div>
                       <div className="text-xs text-gray-500">£{product.basePrice?.toFixed(2)}</div>
                       <button
-                        className="mt-1 px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition"
+                        className="mt-1 px-2 py-1 text-xs border border-black bg-white text-black rounded group hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent transition"
                         type="button"
                         onClick={e => { e.stopPropagation(); setDetailsProduct(product); }}
                       >
@@ -418,32 +414,28 @@ export default function CustomDesignPage() {
           {/* Side Toggle */}
           <div className="flex justify-center mb-6 gap-6">
             <button
-              className={`px-8 py-2 rounded-full font-semibold transition-all duration-300 ease-in-out
-                focus-visible:ring-2 focus-visible:ring-[#a259ff] focus-visible:ring-offset-2
-                ${activeSide === 'front'
-                  ? 'bg-white text-[#232946] shadow-[0_2px_0_0_#a259ff] border-none outline-none'
-                  : 'bg-[#f4f4f6] text-[#232946] border-none outline-none hover:bg-white hover:shadow-[0_2px_0_0_#a259ff]'}
-                hover:scale-105 focus:scale-105 hover:shadow-[0_4px_0_0_#a259ff] focus:shadow-[0_4px_0_0_#a259ff] active:scale-100'
-              `}
-              style={activeSide === 'front' ? { boxShadow: '0 2px 0 0 #a259ff' } : {}}
+              className={`px-8 py-2 rounded-full font-semibold border border-black bg-white text-black transition-all duration-300 ease-in-out
+                focus-visible:ring-2 focus-visible:ring-[var(--brand-red)] focus-visible:ring-offset-2
+                ${activeSide === 'front' ? 'shadow-[0_2px_0_0_var(--brand-red)]' : ''}
+                group hover:scale-105 focus:scale-105 hover:shadow-[0_4px_0_0_var(--brand-red)] focus:shadow-[0_4px_0_0_var(--brand-red)] active:scale-100`
+              }
+              style={activeSide === 'front' ? { boxShadow: '0 2px 0 0 var(--brand-red)' } : {}}
               onClick={() => setActiveSide('front')}
               tabIndex={0}
             >
-              Front
+              <span className="transition text-black group-hover:bg-gradient-to-r group-hover:from-[var(--brand-red)] group-hover:to-[var(--brand-blue)] group-hover:bg-clip-text group-hover:text-transparent">Front</span>
             </button>
             <button
-              className={`px-8 py-2 rounded-full font-semibold transition-all duration-300 ease-in-out
-                focus-visible:ring-2 focus-visible:ring-[#a259ff] focus-visible:ring-offset-2
-                ${activeSide === 'back'
-                  ? 'bg-white text-[#232946] shadow-[0_2px_0_0_#a259ff] border-none outline-none'
-                  : 'bg-[#f4f4f6] text-[#232946] border-none outline-none hover:bg-white hover:shadow-[0_2px_0_0_#a259ff]'}
-                hover:scale-105 focus:scale-105 hover:shadow-[0_4px_0_0_#a259ff] focus:shadow-[0_4px_0_0_#a259ff] active:scale-100'
-              `}
-              style={activeSide === 'back' ? { boxShadow: '0 2px 0 0 #a259ff' } : {}}
+              className={`px-8 py-2 rounded-full font-semibold border border-black bg-white text-black transition-all duration-300 ease-in-out
+                focus-visible:ring-2 focus-visible:ring-[var(--brand-red)] focus-visible:ring-offset-2
+                ${activeSide === 'back' ? 'shadow-[0_2px_0_0_var(--brand-red)]' : ''}
+                group hover:scale-105 focus:scale-105 hover:shadow-[0_4px_0_0_var(--brand-red)] focus:shadow-[0_4px_0_0_var(--brand-red)] active:scale-100`
+              }
+              style={activeSide === 'back' ? { boxShadow: '0 2px 0 0 var(--brand-red)' } : {}}
               onClick={() => setActiveSide('back')}
               tabIndex={0}
             >
-              Back
+              <span className="transition text-black group-hover:bg-gradient-to-r group-hover:from-[var(--brand-red)] group-hover:to-[var(--brand-blue)] group-hover:bg-clip-text group-hover:text-transparent">Back</span>
             </button>
           </div>
 
@@ -555,7 +547,7 @@ export default function CustomDesignPage() {
                   <button
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploading}
-                    className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-3 px-6 rounded-lg transition-colors"
+                    className="w-full bg-white text-black hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent disabled:bg-gray-400 font-medium py-3 px-6 rounded-lg transition-colors"
                   >
                     {uploading ? 'Uploading...' : 'Upload Image'}
                   </button>
@@ -742,7 +734,7 @@ export default function CustomDesignPage() {
                     !selectedProduct ||
                     (!designData.front.uploadedImage && !designData.back.uploadedImage)
                   }
-                  className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-medium py-3 px-6 rounded-lg transition-colors"
+                  className="w-full bg-white text-black hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent disabled:bg-gray-400 font-medium py-3 px-6 rounded-lg transition-colors"
                 >
                   {loading ? 'Adding to Cart...' : 'Add to Cart'}
                 </button>

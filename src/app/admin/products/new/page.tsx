@@ -751,7 +751,7 @@ export default function NewProduct() {
               <button
                 type="submit"
                 disabled={loading}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent disabled:opacity-50"
               >
                 {loading ? 'Creating...' : 'Create Product'}
               </button>

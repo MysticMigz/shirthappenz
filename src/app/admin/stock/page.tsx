@@ -352,7 +352,7 @@ export default function StockManagement() {
                             className={`
                               inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md
                               ${hasChanges[product._id]
-                                ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                                ? 'bg-white text-black hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent'
                                 : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                               }
                               focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500

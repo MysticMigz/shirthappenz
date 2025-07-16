@@ -12,7 +12,7 @@ const Footer = () => {
             <Link href="/" className="inline-block mb-6">
               <Image
                 src="/images/logo.png"
-                alt="ShirtHappenZ Logo"
+                alt="Mr SHIRT PERSONALISATION Logo"
                 width={320}
                 height={120}
                 className="h-24 w-auto brightness-110"

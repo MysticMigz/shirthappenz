@@ -45,7 +45,7 @@ const Header = () => {
             <Link href="/" className="flex items-center group">
               <Image
                 src="/images/logo.png"
-                alt="ShirtHappenZ Logo"
+                alt="Mr SHIRT PERSONALISATION Logo"
                 width={600}
                 height={240}
                 className="h-28 w-auto md:h-32 lg:h-36 brightness-110 transition-transform duration-300 ease-in-out group-hover:scale-110"
@@ -76,14 +76,16 @@ const Header = () => {
                 <div className="relative">
                   <button
                     onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                    className="flex items-center space-x-2 text-gray-700 hover:text-purple-600"
+                    className="flex items-center space-x-2 text-gray-700 group border border-black rounded-md px-3 py-1"
                   >
-                    <span className="hidden md:inline-block font-medium">
+                    <span className="hidden md:inline-block font-medium group-hover:bg-gradient-to-r group-hover:from-[var(--brand-red)] group-hover:to-[var(--brand-blue)] group-hover:bg-clip-text group-hover:text-transparent">
                       Welcome, {user.firstName}
                     </span>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
+                    <span className="flex items-center">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </span>
                   </button>
 
                   {/* User dropdown menu */}
@@ -91,27 +93,27 @@ const Header = () => {
                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-50">
                       <Link
                         href="/profile"
-                        className="block px-4 py-2 text-gray-700 hover:bg-purple-50 hover:text-purple-600"
+                        className="block px-4 py-2 text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent"
                       >
                         My Profile
                       </Link>
                       <Link
                         href="/orders"
-                        className="block px-4 py-2 text-gray-700 hover:bg-purple-50 hover:text-purple-600"
+                        className="block px-4 py-2 text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent"
                       >
                         My Orders
                       </Link>
                       {user.isAdmin && (
                         <Link
                           href="/admin/dashboard"
-                          className="block px-4 py-2 text-gray-700 hover:bg-purple-50 hover:text-purple-600"
+                          className="block px-4 py-2 text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent"
                         >
                           Admin Dashboard
                         </Link>
                       )}
                       <button
                         onClick={handleLogout}
-                        className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-purple-50 hover:text-purple-600"
+                        className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent"
                       >
                         Logout
                       </button>
@@ -122,13 +124,13 @@ const Header = () => {
                 <>
                   <Link 
                     href="/auth/register" 
-                    className="hidden md:inline-flex items-center px-4 py-2 border border-purple-600 text-purple-600 rounded-lg hover:bg-purple-50 transition-colors"
+                    className="hidden md:inline-flex items-center px-4 py-2 border border-black text-black rounded-lg hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent transition-colors"
                   >
                     Register
                   </Link>
                   <Link 
                     href="/auth/login" 
-                    className="hidden md:inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                    className="hidden md:inline-flex items-center px-4 py-2 bg-white text-black rounded-lg hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent transition-colors"
                   >
                     Login
                   </Link>
@@ -137,7 +139,7 @@ const Header = () => {
               
               <Link 
                 href="/cart" 
-                className="group flex items-center bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all"
+                className="group flex items-center bg-white text-black px-4 py-2 rounded-lg hover:shadow-lg transition-all"
               >
                 <div className="relative">
                   <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -149,7 +151,7 @@ const Header = () => {
                     </span>
                   )}
                 </div>
-                <span className="group-hover:translate-x-1 transition-transform duration-200">
+                <span className="group-hover:translate-x-1 transition-transform duration-200 group-hover:bg-gradient-to-r group-hover:from-[var(--brand-red)] group-hover:to-[var(--brand-blue)] group-hover:bg-clip-text group-hover:text-transparent">
                   £{getTotal().toFixed(2)} ({getItemCount()})
                 </span>
               </Link>
@@ -157,7 +159,7 @@ const Header = () => {
               {/* Mobile menu button */}
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className="md:hidden p-2 text-gray-700 hover:text-purple-600"
+                className="md:hidden p-2 text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -214,32 +216,32 @@ const Header = () => {
               </div>
               {user ? (
                 <>
-                  <div className="text-purple-600 font-medium">Welcome, {user.firstName}!</div>
-                  <Link href="/profile" className="block text-gray-700 hover:text-purple-600 font-medium">My Profile</Link>
-                  <Link href="/orders" className="block text-gray-700 hover:text-purple-600 font-medium">My Orders</Link>
+                  <div className="text-black font-medium">Welcome, {user.firstName}!</div>
+                  <Link href="/profile" className="block text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium">My Profile</Link>
+                  <Link href="/orders" className="block text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium">My Orders</Link>
                   {user.isAdmin && (
-                    <Link href="/admin/dashboard" className="block text-gray-700 hover:text-purple-600 font-medium">Admin Dashboard</Link>
+                    <Link href="/admin/dashboard" className="block text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium">Admin Dashboard</Link>
                   )}
                   <button
                     onClick={handleLogout}
-                    className="block text-gray-700 hover:text-purple-600 font-medium"
+                    className="block text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium"
                   >
                     Logout
                   </button>
                 </>
               ) : (
                 <>
-                  <Link href="/auth/register" className="block text-purple-600 hover:text-purple-700 font-medium">Register</Link>
-                  <Link href="/auth/login" className="block text-purple-600 hover:text-purple-700 font-medium">Login</Link>
+                  <Link href="/auth/register" className="block text-black hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium">Register</Link>
+                  <Link href="/auth/login" className="block text-black hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium">Login</Link>
                 </>
               )}
-              <Link href="/" className="block text-gray-700 hover:text-purple-600 font-medium">Home</Link>
-              <Link href="/products" className="block text-gray-700 hover:text-purple-600 font-medium">Products</Link>
-              <Link href="/design/jersey" className="block text-gray-700 hover:text-purple-600 font-medium">Design Jersey</Link>
-              <Link href="/design" className="block text-gray-700 hover:text-purple-600 font-medium">Design Online</Link>
-              <Link href="/help" className="block text-gray-700 hover:text-purple-600 font-medium">Help</Link>
-              <Link href="/contact" className="block text-gray-700 hover:text-purple-600 font-medium">Contact</Link>
-              <Link href="/about" className="block text-gray-700 hover:text-purple-600 font-medium">About</Link>
+              <Link href="/" className="block text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium">Home</Link>
+              <Link href="/products" className="block text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium">Products</Link>
+              <Link href="/design/jersey" className="block text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium">Design Jersey</Link>
+              <Link href="/design" className="block text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium">Design Online</Link>
+              <Link href="/help" className="block text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium">Help</Link>
+              <Link href="/contact" className="block text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium">Contact</Link>
+              <Link href="/about" className="block text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium">About</Link>
             </div>
           </div>
         )}

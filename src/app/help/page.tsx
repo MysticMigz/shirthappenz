@@ -62,10 +62,10 @@ export default function HelpPage() {
               <li><FaEnvelope className="inline mr-2 text-purple-400" /> Email: <a href="mailto:hello@shirthappenz.com" className="text-blue-600 underline">hello@shirthappenz.com</a></li>
               <li><FaPhone className="inline mr-2 text-purple-400" /> Phone: <a href="tel:5551234567" className="text-blue-600 underline">(555) 123-4567</a></li>
             </ul>
-            <Link href="/contact" className="inline-block mt-4 px-6 py-2 bg-purple-600 text-white rounded-lg font-semibold shadow hover:bg-purple-700 transition">Contact Us</Link>
+            <Link href="/contact" className="inline-block mt-4 px-6 py-2 bg-white text-black rounded-lg font-semibold shadow hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent transition">Contact Us</Link>
           </div>
           <div className="flex-shrink-0">
-            <Image src="/images/logo.png" alt="ShirtHappenZ Logo" width={120} height={60} className="h-20 w-auto" />
+            <Image src="/images/logo.png" alt="Mr SHIRT PERSONALISATION Logo" width={120} height={60} className="h-20 w-auto" />
           </div>
         </div>
       </main>

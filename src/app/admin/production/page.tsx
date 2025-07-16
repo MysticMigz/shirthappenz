@@ -368,7 +368,7 @@ export default function ProductionDashboard() {
                       )}
                       {getNextStatus(order.productionStatus) && (
                         <button
-                          className="px-2 py-1 rounded bg-purple-600 text-white text-xs font-semibold hover:bg-purple-700 disabled:opacity-50"
+                          className="px-2 py-1 rounded bg-white text-black text-xs font-semibold hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent disabled:opacity-50"
                           onClick={() => handleStatusChange(order._id, getNextStatus(order.productionStatus)!)}
                           disabled={processing === order._id}
                         >
@@ -642,7 +642,7 @@ export default function ProductionDashboard() {
                     )}
                     {getNextStatus(selectedOrder.productionStatus) && (
                       <button
-                        className="px-4 py-2 rounded bg-purple-600 text-white font-semibold hover:bg-purple-700 disabled:opacity-50"
+                        className="px-4 py-2 rounded bg-white text-black font-semibold hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent disabled:opacity-50"
                         onClick={() => {
                           handleStatusChange(selectedOrder._id, getNextStatus(selectedOrder.productionStatus)!);
                           closeOrderDetails();

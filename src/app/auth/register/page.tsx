@@ -103,7 +103,7 @@ export default function RegisterPage() {
           <Link href="/" className="flex items-center">
             <Image
               src="/images/logo.png"
-              alt="ShirtHappenZ Logo"
+              alt="Mr SHIRT PERSONALISATION Logo"
               width={300}
               height={120}
               className="h-16 w-auto brightness-110"
@@ -318,9 +318,9 @@ export default function RegisterPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 ${
-                  loading ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
+                              className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-black bg-white hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--brand-red)] ${
+                loading ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
               >
                 {loading ? 'Creating account...' : 'Create account'}
               </button>

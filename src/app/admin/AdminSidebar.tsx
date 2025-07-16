@@ -81,7 +81,7 @@ export default function AdminSidebar() {
               <Link href="/" className="flex items-center group">
                 <Image
                   src="/images/logo.png"
-                  alt="ShirtHappenZ Logo"
+                  alt="Mr SHIRT PERSONALISATION Logo"
                   width={200}
                   height={80}
                   className="h-10 w-auto brightness-110 transition-transform duration-300 ease-in-out group-hover:scale-105"

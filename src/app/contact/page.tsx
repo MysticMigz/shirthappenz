@@ -101,7 +101,7 @@ export default function ContactPage() {
               </div>
               <button
                 type="submit"
-                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-4 px-4 rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all font-bold text-xl shadow-md hover:shadow-xl"
+                className="w-full bg-white text-black py-4 px-4 rounded-lg hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent transition-all font-bold text-xl shadow-md hover:shadow-xl"
               >
                 Send Message
               </button>
