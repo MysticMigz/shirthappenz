@@ -108,6 +108,64 @@ export async function GET(request: NextRequest) {
       }
     ]);
 
+    // Unique Visitors (by visitorId in orders)
+    const uniqueVisitorsSet = new Set(orders.map(o => o.visitorId).filter(Boolean));
+    const uniqueVisitors = uniqueVisitorsSet.size;
+
+    // Visitor-to-Registered Conversion (visitorIds that became users)
+    const usersWithVisitorId = await User.find({ visitorId: { $in: Array.from(uniqueVisitorsSet) } }, 'visitorId');
+    const convertedVisitors = new Set(usersWithVisitorId.map(u => u.visitorId).filter(Boolean));
+    const visitorToRegistered = convertedVisitors.size;
+
+    // Guest Orders vs. Registered Orders
+    let guestOrders = 0, registeredOrders = 0;
+    orders.forEach(order => {
+      if (order.userId && order.userId.includes('@')) registeredOrders++;
+      else if (order.visitorId) guestOrders++;
+    });
+
+    // LTV Distribution (histogram)
+    const ltvBuckets: Record<string, number> = { '0-50': 0, '51-200': 0, '201-500': 0, '501+': 0 };
+    customerSpending.forEach(total => {
+      if (total <= 50) ltvBuckets['0-50']++;
+      else if (total <= 200) ltvBuckets['51-200']++;
+      else if (total <= 500) ltvBuckets['201-500']++;
+      else ltvBuckets['501+']++;
+    });
+
+    // Orders per Customer Distribution
+    const ordersPerCustomerBuckets: Record<string, number> = { '1': 0, '2': 0, '3-5': 0, '6+': 0 };
+    customerOrders.forEach(count => {
+      if (count === 1) ordersPerCustomerBuckets['1']++;
+      else if (count === 2) ordersPerCustomerBuckets['2']++;
+      else if (count >= 3 && count <= 5) ordersPerCustomerBuckets['3-5']++;
+      else if (count >= 6) ordersPerCustomerBuckets['6+']++;
+    });
+
+    // Top 5 Customers by Revenue
+    const topCustomers = Array.from(customerSpending.entries())
+      .filter(([userId]) => userId && userId.includes('@'))
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([userId, total]) => ({ userId, total }));
+
+    // Geographic Distribution (by city/county from orders)
+    const geoCounts: Record<string, number> = {};
+    orders.forEach(order => {
+      const city = order.shippingDetails?.city || 'Unknown';
+      geoCounts[city] = (geoCounts[city] || 0) + 1;
+    });
+
+    // Average Order Value Over Time (by day)
+    const aovByDay: Record<string, { total: number; count: number }> = {};
+    orders.forEach(order => {
+      const date = order.createdAt.toISOString().split('T')[0];
+      if (!aovByDay[date]) aovByDay[date] = { total: 0, count: 0 };
+      aovByDay[date].total += order.total;
+      aovByDay[date].count++;
+    });
+    const aovTrend = Object.entries(aovByDay).map(([date, value]) => ({ date, aov: value.count ? value.total / value.count : 0 }));
+
     return NextResponse.json({
       summary: {
         totalCustomers,
@@ -122,7 +180,16 @@ export async function GET(request: NextRequest) {
       dailyNewCustomers: dailyNewCustomers.map(day => ({
         date: day._id,
         count: day.count
-      }))
+      })),
+      uniqueVisitors,
+      visitorToRegistered,
+      guestOrders,
+      registeredOrders,
+      ltvBuckets,
+      ordersPerCustomerBuckets,
+      topCustomers,
+      geoCounts,
+      aovTrend
     });
   } catch (error) {
     console.error('Error fetching customer analytics:', error);

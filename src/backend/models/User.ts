@@ -82,6 +82,11 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  visitorId: {
+    type: String,
+    default: '',
+    index: true,
+  },
   createdAt: {
     type: Date,
     default: Date.now

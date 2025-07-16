@@ -12,6 +12,11 @@ const OrderSchema = new mongoose.Schema({
     required: true,
     index: true,
   },
+  visitorId: {
+    type: String,
+    default: '',
+    index: true,
+  },
   items: [{
     productId: {
       type: String,
@@ -184,7 +189,7 @@ OrderSchema.pre('save', function(next) {
 
   // Calculate delivery priority based on shipping method and order date
   OrderSchema.pre('save', function(next) {
-    if (this.isModified('shippingDetails.shippingMethod') || this.isModified('createdAt')) {
+    if ((this.isModified('shippingDetails.shippingMethod') || this.isModified('createdAt')) && this.shippingDetails && this.shippingDetails.shippingMethod) {
       const priorityMap = {
         'Next Day Delivery': 100,
         'Express Delivery': 50,

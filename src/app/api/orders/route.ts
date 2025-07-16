@@ -133,7 +133,7 @@ export async function POST(request: Request) {
     }
     
     // Use validated data if available, otherwise use original data
-    const { items, shippingDetails, total } = validation.success ? validation.data : body;
+    const { items, shippingDetails, total, visitorId } = validation.success ? validation.data : body;
 
     await connectToDatabase();
 
@@ -269,9 +269,12 @@ export async function POST(request: Request) {
           await generateReference() : 
           generateRandomReference();
 
+        // If not logged in, allow guest order using visitorId as userId
+        const userId = session?.user?.email || visitorId || 'guest';
+
         // Create the order
         order = new Order({
-          userId: session.user.email,
+          userId,
           reference,
           items: processedItems,
           shippingDetails,
@@ -279,6 +282,7 @@ export async function POST(request: Request) {
           vat,
           status: 'pending',
           orderSource,
+          visitorId,
         });
 
         await order.save();

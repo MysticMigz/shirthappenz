@@ -5,6 +5,7 @@ import { connectToDatabase } from '@/backend/utils/database';
 import Order from '@/backend/models/Order';
 import Product from '@/backend/models/Product';
 import User from '@/backend/models/User';
+import mongoose from 'mongoose';
 
 interface OrderItem {
   name: string;
@@ -60,7 +61,7 @@ export async function GET(request: NextRequest) {
     // Fetch orders within date range
     const orders = await Order.find({
       createdAt: { $gte: startDate, $lte: endDate },
-      status: { $in: ['paid', 'shipped', 'completed', 'delivered'] }
+      status: { $in: ['pending', 'in_production', 'paid', 'shipped', 'completed', 'delivered'] }
     }).sort({ createdAt: 1 });
 
     // Process orders for different analytics
@@ -86,8 +87,13 @@ export async function GET(request: NextRequest) {
         // Look up category (cache by productId)
         let category = productIdToCategory[item.productId];
         if (!category) {
-          const product = await Product.findById(item.productId).select('category');
-          category = product?.category || 'Unknown';
+          // If productId is not a valid ObjectId, treat as custom/unknown
+          if (!item.productId || !mongoose.Types.ObjectId.isValid(item.productId)) {
+            category = item.productId === 'custom-design' ? 'Custom Design' : 'Unknown';
+          } else {
+            const product = await Product.findById(item.productId).select('category');
+            category = product?.category || 'Unknown';
+          }
           productIdToCategory[item.productId] = category;
         }
         if (!categorySales[category]) {

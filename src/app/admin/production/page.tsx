@@ -93,7 +93,17 @@ function formatPlacedDate(dateStr: string) {
   return d.toLocaleDateString();
 }
 
-function getPriorityBadge(priority: number) {
+// Helper to get effective priority (overdue = 150+)
+function getEffectivePriority(order: Order) {
+  const due = getDueDateObj(order);
+  const now = new Date();
+  now.setHours(0,0,0,0);
+  if (due < now) return 150;
+  return order.deliveryPriority;
+}
+
+function getPriorityBadge(priorityOrOrder: number | Order) {
+  let priority = typeof priorityOrOrder === 'object' ? getEffectivePriority(priorityOrOrder as Order) : priorityOrOrder;
   if (priority >= 150) return <span className="bg-red-600 text-white px-2 py-0.5 rounded text-xs font-bold">{priority}</span>;
   if (priority >= 100) return <span className="bg-red-400 text-white px-2 py-0.5 rounded text-xs font-bold">{priority}</span>;
   if (priority >= 50) return <span className="bg-orange-400 text-white px-2 py-0.5 rounded text-xs font-bold">{priority}</span>;
@@ -118,6 +128,16 @@ function getNextStatus(status: string) {
 function getPrevStatus(status: string) {
   const idx = STATUS_FLOW.indexOf(status);
   return idx > 0 ? STATUS_FLOW[idx - 1] : null;
+}
+
+// Helper to get due date as Date object
+function getDueDateObj(order: Order) {
+  const orderDate = new Date(order.createdAt);
+  const shipping = order.shippingDetails.shippingMethod.toLowerCase();
+  if (shipping.includes("next day")) orderDate.setDate(orderDate.getDate() + 1);
+  else if (shipping.includes("express")) orderDate.setDate(orderDate.getDate() + 3);
+  else orderDate.setDate(orderDate.getDate() + 5);
+  return orderDate;
 }
 
 export default function ProductionDashboard() {
@@ -149,8 +169,8 @@ export default function ProductionDashboard() {
   // --- Scheduling logic ---
   // Only orders not completed
   const eligibleOrders = orders.filter(o => o.productionStatus !== "completed");
-  // Sort by priority
-  const sortedOrders = [...eligibleOrders].sort((a, b) => b.deliveryPriority - a.deliveryPriority);
+  // Sort by effective priority
+  const sortedOrders = [...eligibleOrders].sort((a, b) => getEffectivePriority(b) - getEffectivePriority(a));
   // Assign to days in rolling batches
   const scheduledBatches: Record<number, Order[]> = {};
   let idx = 0;
@@ -246,13 +266,24 @@ export default function ProductionDashboard() {
             {batch.map(order => (
               <div key={order._id} className="border-2 border-purple-200 rounded-xl p-4 min-w-[260px] bg-white shadow hover:shadow-lg transition-shadow duration-200 flex flex-col gap-1">
                 <div className="flex items-center gap-2 mb-1">
-                  {getPriorityBadge(order.deliveryPriority)}
+                  {getPriorityBadge(order)}
                   <span className="text-xs text-gray-400">{order.reference}</span>
                 </div>
                 <div className="text-xs text-gray-700 font-semibold mb-1">{order.shippingDetails.firstName} {order.shippingDetails.lastName}</div>
                 <div className="text-xs text-gray-500 mb-1">{order.shippingDetails.shippingMethod}</div>
                 <div className="text-xs text-gray-500 mb-1">Placed: {formatPlacedDate(order.createdAt)}</div>
-                <div className="text-xs text-gray-500 mb-1">Due: {getDueDate(order)}</div>
+                <div className="text-xs text-gray-500 mb-1 flex items-center gap-2">
+                  Due: {getDueDate(order)}
+                  {(() => {
+                    const due = getDueDateObj(order);
+                    const now = new Date();
+                    now.setHours(0,0,0,0);
+                    if (due < now) {
+                      return <span className="ml-2 px-2 py-0.5 rounded bg-red-600 text-white text-[10px] font-bold">Overdue</span>;
+                    }
+                    return null;
+                  })()}
+                </div>
                 <div className="text-xs text-gray-500 mb-1">{order.items.length} item(s)</div>
                 <div className="text-xs text-gray-500 mb-1">Total: £{order.total?.toFixed(2) ?? 'N/A'}</div>
                 <div className="mt-1">{getStatusBadge(order.productionStatus)}</div>
@@ -260,7 +291,7 @@ export default function ProductionDashboard() {
                   <div className="font-semibold text-xs text-gray-700 mb-1">Items:</div>
                   <ul className="text-xs text-gray-600 list-disc list-inside">
                     {order.items.map((item, idx) => (
-                      <li key={idx}>
+                      <li key={item.name + item.size + idx}>
                         {item.name} ({item.size}) × {item.quantity}
                         {item.customization?.isCustomized && (
                           <div className="ml-2 text-[11px] text-purple-700 font-medium">
@@ -322,13 +353,24 @@ export default function ProductionDashboard() {
                 ordersByStatus[status].map(order => (
                   <div key={order._id} className="border border-gray-200 rounded-lg p-3 mb-2 bg-white shadow-sm hover:shadow-md transition-shadow duration-200 flex flex-col gap-1">
                     <div className="flex items-center gap-2 mb-1">
-                      {getPriorityBadge(order.deliveryPriority)}
+                      {getPriorityBadge(order)}
                       <span className="text-xs text-gray-400">{order.reference}</span>
                     </div>
                     <div className="text-xs text-gray-700 font-semibold mb-1">{order.shippingDetails.firstName} {order.shippingDetails.lastName}</div>
                     <div className="text-xs text-gray-500 mb-1">{order.shippingDetails.shippingMethod}</div>
                     <div className="text-xs text-gray-500 mb-1">Placed: {formatPlacedDate(order.createdAt)}</div>
-                    <div className="text-xs text-gray-500 mb-1">Due: {getDueDate(order)}</div>
+                    <div className="text-xs text-gray-500 mb-1 flex items-center gap-2">
+                      Due: {getDueDate(order)}
+                      {(() => {
+                        const due = getDueDateObj(order);
+                        const now = new Date();
+                        now.setHours(0,0,0,0);
+                        if (due < now) {
+                          return <span className="ml-2 px-2 py-0.5 rounded bg-red-600 text-white text-[10px] font-bold">Overdue</span>;
+                        }
+                        return null;
+                      })()}
+                    </div>
                     <div className="text-xs text-gray-500 mb-1">{order.items.length} item(s)</div>
                     <div className="text-xs text-gray-500 mb-1">Total: £{order.total?.toFixed(2) ?? 'N/A'}</div>
                     <div className="mt-1">{getStatusBadge(order.productionStatus)}</div>
@@ -336,7 +378,7 @@ export default function ProductionDashboard() {
                       <div className="font-semibold text-xs text-gray-700 mb-1">Items:</div>
                       <ul className="text-xs text-gray-600 list-disc list-inside">
                         {order.items.map((item, idx) => (
-                          <li key={idx}>
+                          <li key={item.name + item.size + idx}>
                             {item.name} ({item.size}) × {item.quantity}
                             {item.customization?.isCustomized && (
                               <div className="ml-2 text-[11px] text-purple-700 font-medium">
@@ -398,7 +440,7 @@ export default function ProductionDashboard() {
               .map(order => (
                 <div key={order._id} className="border-2 border-green-200 rounded-xl p-4 min-w-[260px] bg-white shadow hover:shadow-lg transition-shadow duration-200 flex flex-col gap-1">
                   <div className="flex items-center gap-2 mb-1">
-                    {getPriorityBadge(order.deliveryPriority)}
+                    {getPriorityBadge(order)}
                     <span className="text-xs text-gray-400">{order.reference}</span>
                   </div>
                   <div className="text-xs text-gray-700 font-semibold mb-1">{order.shippingDetails.firstName} {order.shippingDetails.lastName}</div>
@@ -412,7 +454,7 @@ export default function ProductionDashboard() {
                     <div className="font-semibold text-xs text-gray-700 mb-1">Items:</div>
                     <ul className="text-xs text-gray-600 list-disc list-inside">
                       {order.items.map((item, idx) => (
-                        <li key={idx}>
+                        <li key={item.name + item.size + idx}>
                           {item.name} ({item.size}) × {item.quantity}
                           {item.customization?.isCustomized && (
                             <div className="ml-2 text-[11px] text-purple-700 font-medium">
@@ -461,7 +503,7 @@ export default function ProductionDashboard() {
                 </div>
                 <div className="flex items-center gap-4 mt-2">
                   <span className="text-sm text-gray-500">Order #{selectedOrder.reference}</span>
-                  {getPriorityBadge(selectedOrder.deliveryPriority)}
+                  {getPriorityBadge(selectedOrder)}
                   {getStatusBadge(selectedOrder.productionStatus)}
                 </div>
               </div>
@@ -660,6 +702,44 @@ export default function ProductionDashboard() {
         )}
         {loading && <div className="mt-6 text-center text-gray-500">Loading...</div>}
         {error && <div className="mt-6 text-center text-red-500">{error}</div>}
+      </div>
+      {/* Production Priority Guide */}
+      <div className="max-w-7xl mx-auto mt-8">
+        <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
+          <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-8">
+            {/* Delivery Priority & Workflow */}
+            <div className="flex-1 min-w-[260px]">
+              <h2 className="font-semibold text-lg text-gray-900 mb-4">Production Priority Guide</h2>
+              <div className="mb-4">
+                <div className="font-medium mb-1">Delivery Priority</div>
+                <div className="flex flex-col gap-1 text-sm">
+                  <span><span className="text-red-600 font-bold">150+</span> &mdash; Overdue Orders - Highest Priority</span>
+                  <span><span className="text-red-500 font-bold">100+</span> &mdash; Next Day Delivery - Process First</span>
+                  <span><span className="text-orange-500 font-bold">50-99</span> &mdash; Express Delivery - High Priority</span>
+                  <span><span className="text-gray-700 font-bold">10-49</span> &mdash; Standard Delivery - Normal Priority</span>
+                </div>
+              </div>
+              <div className="font-medium mb-1 mt-4">Production Workflow</div>
+              <div className="flex flex-col gap-1 text-sm">
+                <span><span className="inline-block px-2 py-0.5 rounded bg-gray-200 text-gray-700 text-xs font-semibold align-middle mr-2">NOT STARTED</span> &rarr; Ready for production</span>
+                <span><span className="inline-block px-2 py-0.5 rounded bg-blue-200 text-blue-700 text-xs font-semibold align-middle mr-2">IN PRODUCTION</span> &rarr; Currently being made</span>
+                <span><span className="inline-block px-2 py-0.5 rounded bg-yellow-200 text-yellow-800 text-xs font-semibold align-middle mr-2">QUALITY CHECK</span> &rarr; Final inspection</span>
+                <span><span className="inline-block px-2 py-0.5 rounded bg-green-200 text-green-700 text-xs font-semibold align-middle mr-2">READY TO SHIP</span> &rarr; Packaged and ready</span>
+                <span><span className="inline-block px-2 py-0.5 rounded bg-purple-200 text-purple-700 text-xs font-semibold align-middle mr-2">COMPLETED</span> &rarr; Production finished</span>
+              </div>
+            </div>
+            {/* Due Date Colors */}
+            <div className="flex-1 min-w-[260px]">
+              <div className="font-medium mb-1 mt-2 md:mt-0">Due Date Colors</div>
+              <div className="flex flex-col gap-1 text-sm">
+                <span><span className="text-red-600 font-bold">Red</span> &mdash; 1 day or less until due / Overdue</span>
+                <span><span className="text-orange-500 font-bold">Orange</span> &mdash; 2-3 days until due</span>
+                <span><span className="text-black font-bold">Black</span> &mdash; 4-5 days until due</span>
+                <span><span className="text-gray-500 font-bold">Gray</span> &mdash; More than 5 days until due</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

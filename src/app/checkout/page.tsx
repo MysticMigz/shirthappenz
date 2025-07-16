@@ -8,6 +8,7 @@ import PaymentForm from './PaymentForm';
 import ShippingForm, { ShippingDetails } from './ShippingForm';
 import Header from '../components/Header';
 import Image from 'next/image';
+import { useVisitorId } from '../providers';
 
 interface CheckoutStep {
   shippingDetails?: ShippingDetails & { shippingCost: number };
@@ -29,6 +30,7 @@ export default function CheckoutPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>();
   const [currentShippingMethod, setCurrentShippingMethod] = useState<keyof typeof SHIPPING_COSTS>(DEFAULT_SHIPPING_METHOD);
+  const visitorId = useVisitorId();
 
   useEffect(() => {
     if (!items.length) {
@@ -55,7 +57,8 @@ export default function CheckoutPage() {
         body: JSON.stringify({
           items,
           total,
-          shippingDetails
+          shippingDetails,
+          visitorId // Add visitorId to order
         }),
       });
 

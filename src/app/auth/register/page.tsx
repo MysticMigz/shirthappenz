@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useVisitorId } from '../../providers';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -24,6 +25,7 @@ export default function RegisterPage() {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const visitorId = useVisitorId();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -76,7 +78,8 @@ export default function RegisterPage() {
             county: formData.address.county,
             postcode: formData.address.postcode,
             country: formData.address.country
-          }
+          },
+          visitorId // Add visitorId to registration
         }),
       });
 

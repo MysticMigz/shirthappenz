@@ -49,12 +49,28 @@ interface CustomerData {
     date: string;
     count: number;
   }>;
+  uniqueVisitors: number;
+  guestOrders: number;
+  registeredOrders: number;
+  visitorToRegistered: number;
+  ltvBuckets: {
+    [key: string]: number;
+  };
+  ordersPerCustomerBuckets: {
+    [key: string]: number;
+  };
+  topCustomers: Array<{
+    userId: string;
+    total: number;
+  }>;
+  geoCounts: {
+    [key: string]: number;
+  };
 }
 
 export default function CustomerInsightsPage() {
-  const [filterType, setFilterType] = useState<'day' | 'week' | 'month'>('week');
+  const [filterType, setFilterType] = useState<'day' | 'week' | 'month' | 'year'>('week');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [period, setPeriod] = useState<'week' | 'month' | 'year'>('month');
   const [customerData, setCustomerData] = useState<CustomerData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -66,16 +82,19 @@ export default function CustomerInsightsPage() {
   const fetchCustomerData = async () => {
     try {
       setLoading(true);
-      let startDate: string, endDate: string;
+      let startDate: string = '', endDate: string = '';
       if (filterType === 'day') {
         startDate = format(selectedDate, 'yyyy-MM-dd');
         endDate = startDate;
       } else if (filterType === 'week') {
         startDate = format(startOfWeek(selectedDate, { weekStartsOn: 1 }), 'yyyy-MM-dd');
         endDate = format(endOfWeek(selectedDate, { weekStartsOn: 1 }), 'yyyy-MM-dd');
-      } else {
+      } else if (filterType === 'month') {
         startDate = format(startOfMonth(selectedDate), 'yyyy-MM-dd');
         endDate = format(endOfMonth(selectedDate), 'yyyy-MM-dd');
+      } else if (filterType === 'year') {
+        startDate = format(new Date(selectedDate.getFullYear(), 0, 1), 'yyyy-MM-dd');
+        endDate = format(new Date(selectedDate.getFullYear(), 11, 31), 'yyyy-MM-dd');
       }
       const response = await fetch(`/api/admin/analytics/customers?filterType=${filterType}&startDate=${startDate}&endDate=${endDate}`);
       if (!response.ok) throw new Error('Failed to fetch customer data');
@@ -149,6 +168,129 @@ export default function CustomerInsightsPage() {
     ],
   };
 
+  // Pie chart: Unique Visitors vs. Registered Customers
+  const uniqueVsRegisteredChartData = {
+    labels: ['Unique Visitors', 'Registered Customers'],
+    datasets: [
+      {
+        data: [customerData.uniqueVisitors, customerData.summary.totalCustomers],
+        backgroundColor: [
+          'rgba(59, 130, 246, 0.8)', // blue
+          'rgba(239, 68, 68, 0.8)', // red
+        ],
+      },
+    ],
+  };
+
+  // Pie chart: Guest Orders vs. Registered Orders
+  const guestVsRegisteredOrdersChartData = {
+    labels: ['Guest Orders', 'Registered Orders'],
+    datasets: [
+      {
+        data: [customerData.guestOrders, customerData.registeredOrders],
+        backgroundColor: [
+          'rgba(245, 158, 11, 0.8)', // orange
+          'rgba(59, 130, 246, 0.8)', // blue
+        ],
+      },
+    ],
+  };
+
+  // Pie chart: Visitor-to-Registered Conversion
+  const visitorConversionChartData = {
+    labels: ['Converted to Registered', 'Not Converted'],
+    datasets: [
+      {
+        data: [customerData.visitorToRegistered, customerData.uniqueVisitors - customerData.visitorToRegistered],
+        backgroundColor: [
+          'rgba(16, 185, 129, 0.8)', // green
+          'rgba(156, 163, 175, 0.8)', // gray
+        ],
+      },
+    ],
+  };
+
+  // Pie chart: LTV Distribution
+  const ltvChartData = {
+    labels: Object.keys(customerData.ltvBuckets),
+    datasets: [
+      {
+        data: Object.values(customerData.ltvBuckets),
+        backgroundColor: [
+          'rgba(239, 68, 68, 0.8)',
+          'rgba(59, 130, 246, 0.8)',
+          'rgba(16, 185, 129, 0.8)',
+          'rgba(245, 158, 11, 0.8)',
+        ],
+      },
+    ],
+  };
+
+  // Pie chart: Orders per Customer
+  const ordersPerCustomerChartData = {
+    labels: Object.keys(customerData.ordersPerCustomerBuckets),
+    datasets: [
+      {
+        data: Object.values(customerData.ordersPerCustomerBuckets),
+        backgroundColor: [
+          'rgba(59, 130, 246, 0.8)',
+          'rgba(239, 68, 68, 0.8)',
+          'rgba(245, 158, 11, 0.8)',
+          'rgba(16, 185, 129, 0.8)',
+        ],
+      },
+    ],
+  };
+
+  // Pie chart: Top 5 Customers by Revenue
+  const topCustomersChartData = {
+    labels: customerData.topCustomers.map(c => c.userId),
+    datasets: [
+      {
+        data: customerData.topCustomers.map(c => c.total),
+        backgroundColor: [
+          'rgba(59, 130, 246, 0.8)',
+          'rgba(239, 68, 68, 0.8)',
+          'rgba(245, 158, 11, 0.8)',
+          'rgba(16, 185, 129, 0.8)',
+          'rgba(147, 51, 234, 0.8)',
+        ],
+      },
+    ],
+  };
+
+  // Pie chart: Repeat vs. New Customers
+  const repeatVsNewChartData = {
+    labels: ['Repeat Customers', 'New Customers'],
+    datasets: [
+      {
+        data: [customerData.summary.repeatCustomers, customerData.summary.uniqueCustomers - customerData.summary.repeatCustomers],
+        backgroundColor: [
+          'rgba(59, 130, 246, 0.8)',
+          'rgba(239, 68, 68, 0.8)',
+        ],
+      },
+    ],
+  };
+
+  // Pie chart: Geographic Distribution (top 5 cities)
+  const geoEntries = Object.entries(customerData.geoCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const geoChartData = {
+    labels: geoEntries.map(([city]) => city),
+    datasets: [
+      {
+        data: geoEntries.map(([, count]) => count),
+        backgroundColor: [
+          'rgba(59, 130, 246, 0.8)',
+          'rgba(239, 68, 68, 0.8)',
+          'rgba(245, 158, 11, 0.8)',
+          'rgba(16, 185, 129, 0.8)',
+          'rgba(147, 51, 234, 0.8)',
+        ],
+      },
+    ],
+  };
+
   return (
     <div className="p-6">
       <div className="mb-8">
@@ -160,12 +302,13 @@ export default function CustomerInsightsPage() {
       <div className="mb-8 flex flex-col md:flex-row md:items-center gap-4">
         <select
           value={filterType}
-          onChange={e => setFilterType(e.target.value as 'day' | 'week' | 'month')}
+          onChange={e => setFilterType(e.target.value as 'day' | 'week' | 'month' | 'year')}
           className="border rounded-md px-3 py-2 text-sm"
         >
           <option value="day">Day</option>
           <option value="week">Week</option>
           <option value="month">Month</option>
+          <option value="year">Year</option>
         </select>
         <input
           type="date"
@@ -179,25 +322,9 @@ export default function CustomerInsightsPage() {
         {filterType === 'month' && (
           <span className="text-gray-500 text-sm">{format(selectedDate, 'MMMM yyyy')}</span>
         )}
-      </div>
-
-      {/* Time Period Selector */}
-      <div className="mb-8">
-        <div className="inline-flex rounded-lg border border-gray-200 bg-white p-1">
-          {['week', 'month', 'year'].map((p) => (
-            <button
-              key={p}
-              onClick={() => setPeriod(p as 'week' | 'month' | 'year')}
-              className={`px-4 py-2 text-sm font-medium rounded-md ${
-                period === p
-                  ? 'bg-blue-500 text-white'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              {p.charAt(0).toUpperCase() + p.slice(1)}
-            </button>
-          ))}
-        </div>
+        {filterType === 'year' && (
+          <span className="text-gray-500 text-sm">{selectedDate.getFullYear()}</span>
+        )}
       </div>
 
       {/* Summary Cards */}
@@ -290,6 +417,158 @@ export default function CustomerInsightsPage() {
           <div className="h-80">
             <Doughnut
               data={spendingTiersChartData}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    position: 'bottom',
+                  },
+                },
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Unique Visitors vs Registered Customers */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Unique Visitors vs Registered Customers</h2>
+          <div className="h-80">
+            <Doughnut
+              data={uniqueVsRegisteredChartData}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    position: 'bottom',
+                  },
+                },
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Guest Orders vs Registered Orders */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Guest Orders vs Registered Orders</h2>
+          <div className="h-80">
+            <Doughnut
+              data={guestVsRegisteredOrdersChartData}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    position: 'bottom',
+                  },
+                },
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Visitor-to-Registered Conversion */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Visitor-to-Registered Conversion</h2>
+          <div className="h-80">
+            <Doughnut
+              data={visitorConversionChartData}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    position: 'bottom',
+                  },
+                },
+              }}
+            />
+          </div>
+        </div>
+
+        {/* LTV Distribution */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Customer Lifetime Value (LTV) Distribution</h2>
+          <div className="h-80">
+            <Doughnut
+              data={ltvChartData}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    position: 'bottom',
+                  },
+                },
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Orders per Customer */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Orders per Customer</h2>
+          <div className="h-80">
+            <Doughnut
+              data={ordersPerCustomerChartData}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    position: 'bottom',
+                  },
+                },
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Top 5 Customers by Revenue */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Top 5 Customers by Revenue</h2>
+          <div className="h-80">
+            <Doughnut
+              data={topCustomersChartData}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    position: 'bottom',
+                  },
+                },
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Repeat vs New Customers */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Repeat vs New Customers</h2>
+          <div className="h-80">
+            <Doughnut
+              data={repeatVsNewChartData}
+              options={{
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                  legend: {
+                    position: 'bottom',
+                  },
+                },
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Geographic Distribution */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Top Cities (Orders)</h2>
+          <div className="h-80">
+            <Doughnut
+              data={geoChartData}
               options={{
                 responsive: true,
                 maintainAspectRatio: false,

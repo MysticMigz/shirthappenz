@@ -36,7 +36,8 @@ export async function POST(request: Request) {
       lastName: validatedData.lastName,
       phoneNumber: validatedData.phoneNumber,
       address: validatedData.address,
-      isAdmin: false // Default value for new registrations
+      isAdmin: false, // Default value for new registrations
+      visitorId: data.visitorId || ''
     });
 
     // Return user data (excluding password)

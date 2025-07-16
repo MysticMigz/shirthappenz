@@ -48,9 +48,8 @@ interface SalesData {
 }
 
 export default function SalesAnalyticsPage() {
-  const [filterType, setFilterType] = useState<'day' | 'week' | 'month'>('week');
+  const [filterType, setFilterType] = useState<'day' | 'week' | 'month' | 'year'>('week');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [period, setPeriod] = useState<'week' | 'month' | 'year'>('week');
   const [salesData, setSalesData] = useState<SalesData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -62,16 +61,19 @@ export default function SalesAnalyticsPage() {
   const fetchSalesData = async () => {
     try {
       setLoading(true);
-      let startDate: string, endDate: string;
+      let startDate: string = '', endDate: string = '';
       if (filterType === 'day') {
         startDate = format(selectedDate, 'yyyy-MM-dd');
         endDate = startDate;
       } else if (filterType === 'week') {
         startDate = format(startOfWeek(selectedDate, { weekStartsOn: 1 }), 'yyyy-MM-dd');
         endDate = format(endOfWeek(selectedDate, { weekStartsOn: 1 }), 'yyyy-MM-dd');
-      } else {
+      } else if (filterType === 'month') {
         startDate = format(startOfMonth(selectedDate), 'yyyy-MM-dd');
         endDate = format(endOfMonth(selectedDate), 'yyyy-MM-dd');
+      } else if (filterType === 'year') {
+        startDate = format(new Date(selectedDate.getFullYear(), 0, 1), 'yyyy-MM-dd');
+        endDate = format(new Date(selectedDate.getFullYear(), 11, 31), 'yyyy-MM-dd');
       }
       const response = await fetch(`/api/admin/analytics/sales?filterType=${filterType}&startDate=${startDate}&endDate=${endDate}`);
       if (!response.ok) throw new Error('Failed to fetch sales data');
@@ -204,12 +206,13 @@ export default function SalesAnalyticsPage() {
       <div className="mb-8 flex flex-col md:flex-row md:items-center gap-4">
         <select
           value={filterType}
-          onChange={e => setFilterType(e.target.value as 'day' | 'week' | 'month')}
+          onChange={e => setFilterType(e.target.value as 'day' | 'week' | 'month' | 'year')}
           className="border rounded-md px-3 py-2 text-sm"
         >
           <option value="day">Day</option>
           <option value="week">Week</option>
           <option value="month">Month</option>
+          <option value="year">Year</option>
         </select>
         <input
           type="date"
@@ -223,25 +226,9 @@ export default function SalesAnalyticsPage() {
         {filterType === 'month' && (
           <span className="text-gray-500 text-sm">{format(selectedDate, 'MMMM yyyy')}</span>
         )}
-      </div>
-
-      {/* Time Period Selector */}
-      <div className="mb-8">
-        <div className="inline-flex rounded-lg border border-gray-200 bg-white p-1">
-          {['week', 'month', 'year'].map((p) => (
-            <button
-              key={p}
-              onClick={() => setPeriod(p as 'week' | 'month' | 'year')}
-              className={`px-4 py-2 text-sm font-medium rounded-md ${
-                period === p
-                  ? 'bg-blue-500 text-white'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              {p.charAt(0).toUpperCase() + p.slice(1)}
-            </button>
-          ))}
-        </div>
+        {filterType === 'year' && (
+          <span className="text-gray-500 text-sm">{selectedDate.getFullYear()}</span>
+        )}
       </div>
 
       {/* Summary Cards */}
