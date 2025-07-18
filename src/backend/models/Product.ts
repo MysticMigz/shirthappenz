@@ -55,7 +55,9 @@ const productSchema = new mongoose.Schema({
       'YXS', 'YS', 'YM', 'YL', 'YXL',
       '6', '7', '8', '10', '12', '14', '16',
       // Adult sizes
-      'XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', '3XL', '4XL', '5XL'
+      'XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', '3XL', '4XL', '5XL',
+      // New kids sizes
+      '0–3M', '3–6M', '6–12M', '1–2Y', '2–3Y', '3–4Y', '5–6Y', '7–8Y', '9–10Y', '11–12Y', '13–14Y'
     ]
   }],
   colors: [{

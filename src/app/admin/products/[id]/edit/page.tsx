@@ -353,6 +353,7 @@ export default function EditProduct({ params }: { params: { id: string } }) {
                   <option value="men">Men</option>
                   <option value="women">Women</option>
                   <option value="unisex">Unisex</option>
+                  <option value="kids">Kids</option>
                 </select>
               </div>
 
@@ -414,45 +415,85 @@ export default function EditProduct({ params }: { params: { id: string } }) {
               <label className="block text-sm font-medium text-gray-700 required-field">
                 Sizes and Stock
               </label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'].map((size) => (
-                  <div 
-                    key={size} 
-                    className={`p-4 rounded-lg border ${
-                      formData.sizes.includes(size) 
-                        ? 'border-purple-300 bg-purple-50' 
-                        : 'border-gray-200'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <label className="inline-flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={formData.sizes.includes(size)}
-                          onChange={() => handleSizeChange(size)}
-                          className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                        />
-                        <span className="ml-2 font-medium">{size}</span>
-                      </label>
-                    </div>
-                    {formData.sizes.includes(size) && (
-                      <div className="mt-2">
-                        <div className="flex items-center">
+              {formData.gender === 'kids' ? (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {['0–3M', '3–6M', '6–12M', '1–2Y', '2–3Y', '3–4Y', '5–6Y', '7–8Y', '9–10Y', '11–12Y', '13–14Y'].map((size) => (
+                    <div 
+                      key={size} 
+                      className={`p-4 rounded-lg border ${
+                        formData.sizes.includes(size) 
+                          ? 'border-purple-300 bg-purple-50' 
+                          : 'border-gray-200'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <label className="inline-flex items-center">
                           <input
-                            type="number"
-                            value={formData.stock[size] || 0}
-                            onChange={(e) => handleStockChange(size, e.target.value)}
-                            min="0"
-                            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm"
-                            placeholder="Quantity"
+                            type="checkbox"
+                            checked={formData.sizes.includes(size)}
+                            onChange={() => handleSizeChange(size)}
+                            className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                           />
-                          <span className="ml-2 text-sm text-gray-500 whitespace-nowrap">in stock</span>
-                        </div>
+                          <span className="ml-2 font-medium">{size}</span>
+                        </label>
                       </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+                      {formData.sizes.includes(size) && (
+                        <div className="mt-2">
+                          <div className="flex items-center">
+                            <input
+                              type="number"
+                              value={formData.stock[size] || 0}
+                              onChange={(e) => handleStockChange(size, e.target.value)}
+                              min="0"
+                              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm"
+                              placeholder="Quantity"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'].map((size) => (
+                    <div 
+                      key={size} 
+                      className={`p-4 rounded-lg border ${
+                        formData.sizes.includes(size) 
+                          ? 'border-purple-300 bg-purple-50' 
+                          : 'border-gray-200'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <label className="inline-flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={formData.sizes.includes(size)}
+                            onChange={() => handleSizeChange(size)}
+                            className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                          />
+                          <span className="ml-2 font-medium">{size}</span>
+                        </label>
+                      </div>
+                      {formData.sizes.includes(size) && (
+                        <div className="mt-2">
+                          <div className="flex items-center">
+                            <input
+                              type="number"
+                              value={formData.stock[size] || 0}
+                              onChange={(e) => handleStockChange(size, e.target.value)}
+                              min="0"
+                              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm"
+                              placeholder="Quantity"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Colors */}

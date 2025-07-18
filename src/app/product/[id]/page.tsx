@@ -341,10 +341,10 @@ export default function ProductPage({ params }: { params: { id: string } }) {
                 onClick={addToCart}
                 disabled={!selectedSize || isOutOfStock(selectedSize) || addingToCart}
                 className={`
-                  w-full py-3 px-4 rounded-md text-black font-medium
+                  w-full py-3 px-4 rounded-md text-white font-medium transition-colors duration-200
                   ${!selectedSize || isOutOfStock(selectedSize) || addingToCart
                     ? 'bg-gray-400 cursor-not-allowed'
-                    : 'bg-white hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent'
+                    : 'bg-gradient-to-r from-[var(--brand-red)] to-[var(--brand-blue)] hover:brightness-110'
                   }
                 `}
               >

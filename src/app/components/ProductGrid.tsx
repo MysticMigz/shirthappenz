@@ -29,7 +29,8 @@ const ProductGrid = () => {
         const response = await fetch('/api/products');
         if (!response.ok) throw new Error('Failed to fetch products');
         const data = await response.json();
-        setProducts(data.products);
+        // Only set featured products
+        setProducts(data.products.filter((p: Product) => p.featured));
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch products');
       } finally {
@@ -84,80 +85,92 @@ const ProductGrid = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-          {products.map((product) => (
-            <Link
-              href={`/product/${product._id}`}
-              key={product._id}
-              className="group"
-            >
-              <div className="bg-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border border-gray-200 overflow-hidden h-full">
-                <div className="relative aspect-square bg-gray-100">
-                  {product.images[0] ? (
-                    <Image
-                      src={product.images[0].url}
-                      alt={product.images[0].alt || product.name}
-                      fill
-                      className="object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                      <div className="bg-gradient-to-r from-purple-600 via-blue-500 to-orange-400 text-white brand-text text-lg px-4 py-2 rounded-lg">
-                        ShirtHappenZ
-                      </div>
+          {products.map((product) => {
+            const hasDiscount = product.basePrice > product.price;
+            const discountPercent = hasDiscount ? Math.round(((product.basePrice - product.price) / product.basePrice) * 100) : 0;
+            return (
+              <Link
+                href={`/product/${product._id}`}
+                key={product._id}
+                className="group"
+              >
+                <div className="bg-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border border-gray-200 overflow-hidden h-full relative">
+                  {/* Discount Badge at top right */}
+                  {product.basePrice > product.price && (
+                    <div className="absolute top-4 right-4 z-10">
+                      <span className="bg-white text-red-600 text-2xl font-extrabold px-4 py-2 rounded-lg shadow-lg border-2 border-red-500">
+                        -{Math.round(((product.basePrice - product.price) / product.basePrice) * 100)}%
+                      </span>
                     </div>
                   )}
-                </div>
+                  <div className="relative aspect-square bg-gray-100">
+                    {product.images[0] ? (
+                      <Image
+                        src={product.images[0].url}
+                        alt={product.images[0].alt || product.name}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                        <div className="bg-gradient-to-r from-purple-600 via-blue-500 to-orange-400 text-white brand-text text-lg px-4 py-2 rounded-lg">
+                          ShirtHappenZ
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
-                <div className="p-4">
-                  <h3 className="font-semibold text-lg text-gray-900 mb-1 group-hover:text-purple-600 transition-colors">
-                    {product.name}
-                  </h3>
-                  <p className="text-sm text-gray-500 mb-2">
-                    {product.category}
-                  </p>
-                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                    {truncateDescription(product.description)}
-                  </p>
-                  
-                  {/* Color options */}
-                  <div className="flex items-center mb-3">
-                    <span className="text-xs text-gray-500 mr-2">Colors:</span>
-                    <div className="flex space-x-1">
-                      {product.colors.slice(0, 5).map((color, index) => (
-                        <div
-                          key={index}
-                          className="w-4 h-4 rounded-full"
-                          style={{ backgroundColor: color.hexCode }}
-                          title={color.name}
-                        />
-                      ))}
-                      {product.colors.length > 5 && (
-                        <span className="text-xs text-gray-500 ml-1">
-                          +{product.colors.length - 5}
+                  <div className="p-4">
+                    <h3 className="font-semibold text-lg text-gray-900 mb-1 group-hover:text-purple-600 transition-colors">
+                      {product.name}
+                    </h3>
+                    <p className="text-sm text-gray-500 mb-2">
+                      {product.category}
+                    </p>
+                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                      {truncateDescription(product.description)}
+                    </p>
+                    
+                    {/* Color options */}
+                    <div className="flex items-center mb-3">
+                      <span className="text-xs text-gray-500 mr-2">Colors:</span>
+                      <div className="flex space-x-1">
+                        {product.colors.slice(0, 5).map((color, index) => (
+                          <div
+                            key={index}
+                            className="w-4 h-4 rounded-full"
+                            style={{ backgroundColor: color.hexCode }}
+                            title={color.name}
+                          />
+                        ))}
+                        {product.colors.length > 5 && (
+                          <span className="text-xs text-gray-500 ml-1">
+                            +{product.colors.length - 5}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      {product.basePrice > product.price ? (
+                        <div className="flex flex-col items-start gap-1">
+                          <span className="text-xs text-red-600 line-through tracking-tight">RRP: £{product.basePrice.toFixed(2)}</span>
+                          <span className="text-xl font-bold text-green-700 leading-tight">£{product.price.toFixed(2)}</span>
+                        </div>
+                      ) : (
+                        <span className="text-lg font-bold text-purple-600">
+                          £{product.price.toFixed(2)}
                         </span>
                       )}
+                      <span className="text-sm text-purple-600 group-hover:translate-x-1 transition-transform duration-200 group-hover:bg-gradient-to-r group-hover:from-[var(--brand-red)] group-hover:to-[var(--brand-blue)] group-hover:bg-clip-text group-hover:text-transparent">
+                        View Details →
+                      </span>
                     </div>
                   </div>
-
-                  <div className="flex items-center justify-between">
-                    {product.basePrice > product.price ? (
-                      <div className="flex flex-col items-start gap-1">
-                        <span className="text-xs text-red-600 line-through tracking-tight">RRP: £{product.basePrice.toFixed(2)}</span>
-                        <span className="text-xl font-bold text-green-700 leading-tight">£{product.price.toFixed(2)}</span>
-                      </div>
-                    ) : (
-                      <span className="text-lg font-bold text-purple-600">
-                        £{product.price.toFixed(2)}
-                      </span>
-                    )}
-                    <span className="text-sm text-purple-600 group-hover:translate-x-1 transition-transform duration-200 group-hover:bg-gradient-to-r group-hover:from-[var(--brand-red)] group-hover:to-[var(--brand-blue)] group-hover:bg-clip-text group-hover:text-transparent">
-                      View Details →
-                    </span>
-                  </div>
                 </div>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            )
+          })}
         </div>
 
         <div className="text-center mt-12">

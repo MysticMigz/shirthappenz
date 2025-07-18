@@ -62,10 +62,23 @@ const Header = () => {
                     type="text"
                     placeholder="Search for products..."
                     className="bg-transparent outline-none border-none w-80 text-gray-700 placeholder-gray-400"
+                    value={searchInput}
+                    onChange={e => setSearchInput(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        router.push(`/products?search=${encodeURIComponent(searchInput)}`);
+                      }
+                    }}
                   />
-                  <svg className="w-5 h-5 text-gray-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
-                  </svg>
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/products?search=${encodeURIComponent(searchInput)}`)}
+                    className="focus:outline-none"
+                  >
+                    <svg className="w-5 h-5 text-gray-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
+                    </svg>
+                  </button>
                 </div>
               </div>
             </div>

@@ -312,7 +312,7 @@ export default function NewProduct() {
 
   // Size options
   const ADULT_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
-  const KID_SIZES = ['2T', '3T', '4T', '5T', '6', '7', '8', '10', '12', '14', '16'];
+  const KID_SIZES = ['0–3M', '3–6M', '6–12M', '1–2Y', '2–3Y', '3–4Y', '5–6Y', '7–8Y', '9–10Y', '11–12Y', '13–14Y'];
 
   return (
     <div className="min-h-screen bg-gray-100 p-8">
@@ -635,22 +635,24 @@ export default function NewProduct() {
                 <label className={`block text-sm font-medium text-gray-700 mb-4 required-field`}>
                   Sizes and Stock
                 </label>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Sizes</label>
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    <span className="text-xs font-semibold text-gray-500 mr-2">Kid Sizes:</span>
-                    {KID_SIZES.map(size => (
-                      <label key={size} className="inline-flex items-center gap-1">
-                        <input
-                          type="checkbox"
-                          checked={formData.sizes.includes(size)}
-                          onChange={() => handleSizeChange(size)}
-                          className="form-checkbox rounded text-blue-600"
-                        />
-                        <span className="text-xs">{size}</span>
-                      </label>
-                    ))}
+                {formData.gender === 'kids' ? (
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Sizes</label>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {['0–3M', '3–6M', '6–12M', '1–2Y', '2–3Y', '3–4Y', '5–6Y', '7–8Y', '9–10Y', '11–12Y', '13–14Y'].map(size => (
+                        <label key={size} className="inline-flex items-center gap-1">
+                          <input
+                            type="checkbox"
+                            checked={formData.sizes.includes(size)}
+                            onChange={() => handleSizeChange(size)}
+                            className="form-checkbox rounded text-blue-600"
+                          />
+                          <span className="text-xs">{size}</span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
+                ) : (
                   <div className="flex flex-wrap gap-2">
                     <span className="text-xs font-semibold text-gray-500 mr-2">Adult Sizes:</span>
                     {ADULT_SIZES.map(size => (
@@ -665,7 +667,7 @@ export default function NewProduct() {
                       </label>
                     ))}
                   </div>
-                </div>
+                )}
                 {fieldErrors.sizes && (
                   <p className="mt-1 text-sm text-red-600">{fieldErrors.sizes}</p>
                 )}
