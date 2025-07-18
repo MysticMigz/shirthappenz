@@ -31,7 +31,8 @@ const productSchema = new mongoose.Schema({
         'hoodies',
         'sweatshirts',
         'sweatpants',
-        'accessories'
+        'accessories',
+        'shortsleeve'
       ],
       message: '{VALUE} is not a valid category'
     }

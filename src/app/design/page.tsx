@@ -27,6 +27,7 @@ const CATEGORIES = [
   { key: 'jerseys', label: 'Jersey' },
   { key: 'tanktops', label: 'Tank Top' },
   { key: 'longsleeve', label: 'Long Sleeve' },
+  { key: 'shortsleeve', label: 'Short Sleeve' },
   { key: 'hoodies', label: 'Hoody' },
   { key: 'sweatshirts', label: 'Sweatshirt' },
   { key: 'sweatpants', label: 'Sweatpants' },
@@ -39,6 +40,11 @@ const GENDERS = [
   { key: 'unisex', label: 'Unisex' },
   { key: 'kids', label: 'Kids' },
 ];
+
+// Utility to normalize dashes in size labels
+function normalizeSizeLabel(label: string) {
+  return label.replace(/-/g, '–');
+}
 
 export default function CustomDesignPage() {
   const router = useRouter();
@@ -77,16 +83,14 @@ export default function CustomDesignPage() {
   const [detailsProduct, setDetailsProduct] = useState<any | null>(null);
 
   useEffect(() => {
-    // Fetch products for the selected category
+    // Fetch products for the selected category and gender
     const fetchProducts = async () => {
       try {
-        const res = await fetch(`/api/products?category=${selectedCategory}&limit=100`);
+        const res = await fetch(`/api/products?category=${selectedCategory}&gender=${selectedGender}&limit=100`);
         const data = await res.json();
-        
         const allProducts = data.products || [];
         const customizableProducts = allProducts.filter((p: any) => p.customizable);
         const firstCustomizable = customizableProducts.find((p: any) => p.gender === selectedGender) || customizableProducts[0] || null;
-        
         setProducts(allProducts);
         setSelectedProduct(firstCustomizable);
       } catch (err) {
@@ -103,7 +107,9 @@ export default function CustomDesignPage() {
     }
   }, [selectedProduct]);
 
-  const sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
+  // Kids sizes for dropdown
+  const KIDS_SIZES = ['0–3M', '3–6M', '6–12M', '1–2Y', '2–3Y', '3–4Y', '5–6Y', '7–8Y', '9–10Y', '11–12Y', '13–14Y'];
+  const ADULT_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
   const customizationFee = 12.50;
   const basePrice = selectedProduct?.basePrice ?? 24.99;
   // Normalize stock keys and selectedSize
@@ -678,8 +684,17 @@ export default function CustomDesignPage() {
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       >
-                        {sizes.filter(size => selectedProduct?.stock?.[size] > 0).map(size => (
-                          <option key={size} value={size}>{size}</option>
+                        {(selectedGender === 'kids' ? KIDS_SIZES : ADULT_SIZES)
+                          .filter((size) => {
+                            // Only show if size is in KIDS_SIZES and has stock > 0 (normalize dashes)
+                            const normalized = normalizeSizeLabel(size);
+                            const stock = selectedProduct?.stock || {};
+                            // Find a matching key in stock (normalize dashes)
+                            const stockKey = Object.keys(stock).find(k => normalizeSizeLabel(k) === normalized);
+                            return !!stockKey && stock[stockKey] > 0;
+                          })
+                          .map((size) => (
+                            <option key={size} value={size}>{size}</option>
                         ))}
                       </select>
                     </div>
@@ -734,7 +749,11 @@ export default function CustomDesignPage() {
                     !selectedProduct ||
                     (!designData.front.uploadedImage && !designData.back.uploadedImage)
                   }
-                  className="w-full bg-white text-black hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent disabled:bg-gray-400 font-medium py-3 px-6 rounded-lg transition-colors"
+                  className={`w-full font-medium py-3 px-6 rounded-lg transition-colors
+                    ${loading || !selectedProduct || (!designData.front.uploadedImage && !designData.back.uploadedImage)
+                      ? 'bg-gray-400 text-white cursor-not-allowed'
+                      : 'bg-gradient-to-r from-[var(--brand-red)] to-[var(--brand-blue)] text-white hover:brightness-110'}
+                  `}
                 >
                   {loading ? 'Adding to Cart...' : 'Add to Cart'}
                 </button>
