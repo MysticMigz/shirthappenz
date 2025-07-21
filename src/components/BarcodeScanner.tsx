@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { BrowserMultiFormatReader } from '@zxing/browser';
 
 interface BarcodeScannerProps {
   onScan: (result: string) => void;
@@ -12,97 +13,44 @@ export default function BarcodeScanner({ onScan, onClose, isOpen }: BarcodeScann
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
   useEffect(() => {
-    if (isOpen && !scanning) {
-      startScanning();
-    } else if (!isOpen) {
-      stopScanning();
-    }
-  }, [isOpen, scanning]);
-
-  const startScanning = async () => {
-    try {
-      setError(null);
-      setScanning(true);
-
-      // Check if device supports camera
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Camera not supported on this device');
+    if (!isOpen) return;
+    setError(null);
+    setScanning(true);
+    const codeReader = new BrowserMultiFormatReader();
+    codeReaderRef.current = codeReader;
+    let active = true;
+    codeReader.decodeFromVideoDevice(undefined, videoRef.current!, (result, err) => {
+      if (result && active) {
+        onScan(result.getText());
+        active = false;
+        // Only use _controls.stop for cleanup
+        setScanning(false);
       }
-
-      // Get camera stream
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'environment', // Use back camera on mobile
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
-      });
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
+      if (err && err.name !== 'NotFoundException') {
+        setError('Scan error: ' + err.message);
       }
-
-      // Start scanning loop
-      scanLoop();
-
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to start camera');
-      setScanning(false);
-    }
-  };
+    });
+    return () => {
+      active = false;
+      if ((codeReader as any)._controls?.stop) {
+        (codeReader as any)._controls.stop();
+      }
+      codeReaderRef.current = null;
+    };
+    // eslint-disable-next-line
+  }, [isOpen]);
 
   const stopScanning = () => {
     setScanning(false);
-    if (videoRef.current && videoRef.current.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach(track => track.stop());
-      videoRef.current.srcObject = null;
+    if (codeReaderRef.current) {
+      if ((codeReaderRef.current as any)._controls?.stop) {
+        (codeReaderRef.current as any)._controls.stop();
+      }
+      codeReaderRef.current = null;
     }
-  };
-
-  const scanLoop = () => {
-    if (!scanning || !videoRef.current || !canvasRef.current) return;
-
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-
-    if (!ctx) return;
-
-    // Set canvas size to match video
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-
-    // Draw video frame to canvas
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    // Get image data for processing
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
-    // Simple barcode detection (this is a basic implementation)
-    // In a real app, you'd use a library like QuaggaJS or ZXing
-    const detectedBarcode = detectBarcode(imageData);
-    
-    if (detectedBarcode) {
-      onScan(detectedBarcode);
-      stopScanning();
-      return;
-    }
-
-    // Continue scanning
-    requestAnimationFrame(scanLoop);
-  };
-
-  // Basic barcode detection (simplified)
-  const detectBarcode = (imageData: ImageData): string | null => {
-    // This is a placeholder implementation
-    // In reality, you'd use a proper barcode detection library
-    // For now, we'll just return null to indicate no barcode found
-    return null;
   };
 
   if (!isOpen) return null;
@@ -119,7 +67,23 @@ export default function BarcodeScanner({ onScan, onClose, isOpen }: BarcodeScann
             ✕
           </button>
         </div>
-
+        <div className="relative">
+          <video
+            ref={videoRef}
+            className="w-full h-64 bg-gray-900 rounded-lg overflow-hidden"
+            autoPlay
+            playsInline
+            muted
+          />
+          {/* Scanning overlay */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="border-2 border-white rounded-lg p-4">
+              <div className="w-48 h-32 border-2 border-red-500 rounded-lg relative">
+                <div className="absolute inset-0 border-2 border-transparent border-t-red-500 animate-pulse"></div>
+              </div>
+            </div>
+          </div>
+        </div>
         {error ? (
           <div className="text-center py-8">
             <p className="text-red-600 mb-4">{error}</p>
@@ -141,38 +105,16 @@ export default function BarcodeScanner({ onScan, onClose, isOpen }: BarcodeScann
             />
           </div>
         ) : (
-          <div className="relative">
-            <video
-              ref={videoRef}
-              className="w-full h-64 bg-gray-900 rounded-lg"
-              playsInline
-              muted
-            />
-            <canvas
-              ref={canvasRef}
-              className="hidden"
-            />
-            
-            {/* Scanning overlay */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="border-2 border-white rounded-lg p-4">
-                <div className="w-48 h-32 border-2 border-red-500 rounded-lg relative">
-                  <div className="absolute inset-0 border-2 border-transparent border-t-red-500 animate-pulse"></div>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4 text-center">
-              <p className="text-sm text-gray-600">
-                Position the barcode within the frame
-              </p>
-              <button
-                onClick={stopScanning}
-                className="mt-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
-              >
-                Stop Scanning
-              </button>
-            </div>
+          <div className="mt-4 text-center">
+            <p className="text-sm text-gray-600">
+              Position the barcode within the frame
+            </p>
+            <button
+              onClick={stopScanning}
+              className="mt-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+            >
+              Stop Scanning
+            </button>
           </div>
         )}
       </div>

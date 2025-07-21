@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 
 interface Order {
   _id: string;
@@ -50,6 +51,8 @@ const COURIERS = [
   { name: 'FedEx', value: 'FedEx', color: 'bg-blue-100 text-blue-800' },
   { name: 'UPS', value: 'UPS', color: 'bg-brown-100 text-brown-800' },
 ];
+
+const BarcodeScanner = dynamic(() => import('@/components/BarcodeScanner'), { ssr: false });
 
 export default function ShippingPage() {
   const { data: session, status } = useSession();
@@ -155,6 +158,12 @@ export default function ShippingPage() {
     setScanMode(false);
   };
 
+  // Handler for barcode scan (tracking number)
+  const handleTrackingBarcodeScan = (barcode: string) => {
+    setShippingForm(prev => ({ ...prev, trackingNumber: barcode }));
+    setScanMode(false);
+  };
+
   const filteredOrders = (view === 'ready' ? orders : shippedOrders).filter(order =>
     order.reference.toLowerCase().includes(searchTerm.toLowerCase()) ||
     order.shippingDetails.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -223,10 +232,10 @@ export default function ShippingPage() {
               className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 ml-2"
             />
             <button
-              onClick={() => setScanMode(!scanMode)}
+              onClick={() => setScanMode(true)}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
             >
-              {scanMode ? 'Cancel Scan' : 'Scan Barcode'}
+              Scan Tracking Barcode
             </button>
           </div>
 
@@ -401,6 +410,14 @@ export default function ShippingPage() {
           )}
         </div>
       </div>
+      {/* Barcode Scanner Modal */}
+      {scanMode && (
+        <BarcodeScanner
+          isOpen={scanMode}
+          onScan={handleTrackingBarcodeScan}
+          onClose={() => setScanMode(false)}
+        />
+      )}
     </div>
   );
 } 
