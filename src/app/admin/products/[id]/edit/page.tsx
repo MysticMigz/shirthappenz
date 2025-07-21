@@ -5,6 +5,11 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { FaUpload, FaTrash } from 'react-icons/fa';
+import dynamic from 'next/dynamic';
+import { generateBarcode } from '@/lib/utils';
+import { toPng } from 'html-to-image';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 interface ProductFormData {
   name: string;
@@ -19,7 +24,12 @@ interface ProductFormData {
   customizable: boolean;
   basePrice: number;
   stock: { [size: string]: number };
+  barcode?: string;
+  barcodes?: Array<{ colorName: string; colorHex: string; value: string; size: string; sizeCode: string }>;
 }
+
+// Dynamically import react-barcode to avoid SSR issues
+const Barcode = dynamic(() => import('react-barcode'), { ssr: false });
 
 export default function EditProduct({ params }: { params: { id: string } }) {
   const { data: session, status } = useSession();
@@ -235,6 +245,64 @@ export default function EditProduct({ params }: { params: { id: string } }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Barcode export handler
+  const barcodeRef = useRef<HTMLDivElement>(null);
+  const handleExportBarcode = async () => {
+    if (!barcodeRef.current) return;
+    try {
+      const dataUrl = await toPng(barcodeRef.current);
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = `${formData.name || 'barcode'}.png`;
+      link.click();
+    } catch (err) {
+      alert('Failed to export barcode.');
+    }
+  };
+
+  // Export all barcodes as printable PDF labels
+  const handleExportAllBarcodesPDF = async () => {
+    if (!formData.barcodes || formData.barcodes.length === 0) return;
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [50, 30] }); // 50x30mm label size
+    for (let i = 0; i < formData.barcodes.length; i++) {
+      const barcode = formData.barcodes[i];
+      // Create a temporary div for rendering
+      const tempDiv = document.createElement('div');
+      tempDiv.style.width = '180px';
+      tempDiv.style.height = '100px';
+      tempDiv.style.display = 'flex';
+      tempDiv.style.flexDirection = 'column';
+      tempDiv.style.alignItems = 'center';
+      tempDiv.style.justifyContent = 'center';
+      tempDiv.style.background = 'white';
+      tempDiv.innerHTML = `
+        <div style="font-size:12px;font-weight:bold;margin-bottom:2px;text-align:center;">${formData.name}</div>
+        <div style="font-size:10px;margin-bottom:2px;">${barcode.colorName} - ${barcode.size}</div>
+        <svg id="barcode-svg-${i}"></svg>
+        <div style="font-size:10px;margin-top:2px;">${barcode.value}</div>
+      `;
+      document.body.appendChild(tempDiv);
+      // Render barcode SVG
+      // @ts-ignore
+      await import('jsbarcode').then(jsbarcode => {
+        jsbarcode.default(`#barcode-svg-${i}`, barcode.value, {
+          format: 'CODE128',
+          width: 2,
+          height: 40,
+          displayValue: false,
+          margin: 0
+        });
+      });
+      // Convert to image
+      const canvas = await html2canvas(tempDiv, { backgroundColor: '#fff', scale: 2 });
+      const imgData = canvas.toDataURL('image/png');
+      if (i > 0) pdf.addPage([50, 30], 'portrait');
+      pdf.addImage(imgData, 'PNG', 0, 0, 50, 30);
+      document.body.removeChild(tempDiv);
+    }
+    pdf.save(`${formData.name.replace(/\s+/g, '_')}_barcodes.pdf`);
   };
 
   if (status === 'loading' || loading) {
@@ -624,6 +692,39 @@ export default function EditProduct({ params }: { params: { id: string } }) {
               </button>
             </div>
           </form>
+
+          {/* Barcode Section */}
+          <div className="mt-10 bg-gray-50 rounded-lg p-6 border border-gray-200">
+            <h2 className="text-lg font-semibold mb-4 text-gray-800">Product Barcodes</h2>
+            {formData.barcodes && formData.barcodes.length > 0 ? (
+              <div className="space-y-4">
+               <button
+                 onClick={handleExportAllBarcodesPDF}
+                 className="mb-4 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+               >
+                 Export All Barcodes for Printing (PDF)
+               </button>
+                {formData.barcodes.map((barcode, idx) => (
+                  <div key={barcode.value + barcode.colorName + barcode.size + idx} className="flex items-center gap-4 bg-white p-4 rounded shadow">
+                    <Barcode
+                      value={barcode.value}
+                      format="CODE128"
+                      width={2}
+                      height={60}
+                      displayValue={true}
+                      fontSize={14}
+                    />
+                    <div>
+                      <div className="font-semibold text-xs mb-1">{formData.name} - <span style={{ color: barcode.colorHex }}>{barcode.colorName}</span> - {barcode.size}</div>
+                      <div className="text-xs text-gray-700">{barcode.value}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-gray-500">No barcodes assigned. Use the Barcodes tab to generate them.</div>
+            )}
+          </div>
         </div>
       </div>
     </div>

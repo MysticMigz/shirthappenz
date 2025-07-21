@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import Product from '@/backend/models/Product';
 import Order from '@/backend/models/Order';
+import { productSchema, validateAndSanitize } from '@/lib/validation';
 
 export async function GET(request: NextRequest) {
   try {
@@ -96,9 +97,21 @@ export async function POST(request: Request) {
   try {
     await connectToDatabase();
     const data = await request.json();
-    const product = await Product.create(data);
+    
+    // Validate and sanitize input using Zod
+    const validation = validateAndSanitize(productSchema, data);
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: validation.errors[0] },
+        { status: 400 }
+      );
+    }
+
+    const validatedData = validation.data;
+    const product = await Product.create(validatedData);
     return NextResponse.json(product, { status: 201 });
   } catch (error) {
+    console.error('Error creating product:', error);
     return NextResponse.json({ error: 'Failed to create product' }, { status: 500 });
   }
 }

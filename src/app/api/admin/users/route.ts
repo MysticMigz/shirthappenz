@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { connectToDatabase } from '@/backend/utils/database';
 import User from '@/backend/models/User';
+import { userRegistrationSchema, validateAndSanitize } from '@/lib/validation';
 
 // Get all users
 export async function GET(request: NextRequest) {
@@ -95,8 +96,19 @@ export async function POST(request: NextRequest) {
 
     const data = await request.json();
 
+    // Validate and sanitize input using Zod
+    const validation = validateAndSanitize(userRegistrationSchema, data);
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: validation.errors[0] },
+        { status: 400 }
+      );
+    }
+
+    const validatedData = validation.data;
+
     // Check if user already exists
-    const existingUser = await User.findOne({ email: data.email });
+    const existingUser = await User.findOne({ email: validatedData.email });
     if (existingUser) {
       return NextResponse.json(
         { error: 'Email already registered' },
@@ -104,8 +116,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create new user
-    const user = await User.create(data);
+    // Create new user with validated data
+    const user = await User.create(validatedData);
     
     // Return user data (excluding password)
     const userData = {

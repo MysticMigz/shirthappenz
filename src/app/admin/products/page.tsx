@@ -4,6 +4,10 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import dynamic from 'next/dynamic';
+
+// Dynamically import react-barcode to avoid SSR issues
+const Barcode = dynamic(() => import('react-barcode'), { ssr: false });
 
 interface Product {
   _id: string;
@@ -20,6 +24,7 @@ interface Product {
   basePrice: number;
   createdAt: string;
   updatedAt: string;
+  barcode?: string;
 }
 
 export default function AdminProducts() {
@@ -174,6 +179,12 @@ export default function AdminProducts() {
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">{product.name}</div>
                           <div className="text-sm text-gray-500">{product.description.substring(0, 50)}...</div>
+                         {product.barcode && (
+                           <div className="mt-1 flex flex-col items-start">
+                             <span className="text-xs text-purple-700 font-mono">{product.barcode}</span>
+                             <div className="mt-1"><Barcode value={product.barcode} width={1.2} height={24} fontSize={10} /></div>
+                           </div>
+                         )}
                         </div>
                       </div>
                     </td>

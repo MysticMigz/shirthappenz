@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { FaHome, FaBox, FaShoppingCart, FaUsers, FaTachometerAlt, FaBoxes, FaBell, FaTruck, FaClipboardList, FaChartLine, FaIndustry, FaShippingFast } from 'react-icons/fa';
+import { FaBarcode } from 'react-icons/fa';
 
 export default function AdminSidebar() {
   const pathname = usePathname();
@@ -68,6 +69,11 @@ export default function AdminSidebar() {
       href: '/admin/supplies/orders',
       icon: FaClipboardList,
       text: 'Supply Orders'
+    },
+    {
+      href: '/admin/barcodes',
+      icon: FaBarcode,
+      text: 'Barcodes'
     }
   ];
 

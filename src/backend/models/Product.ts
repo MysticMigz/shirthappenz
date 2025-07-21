@@ -92,6 +92,20 @@ const productSchema = new mongoose.Schema({
     type: Number,
     required: [true, 'Base price is required for customizable products']
   },
+  barcode: {
+    type: String,
+    default: '',
+    index: true
+  },
+  barcodes: [
+    {
+      colorName: { type: String, required: true },
+      colorHex: { type: String, required: true },
+      value: { type: String, required: true },
+      size: { type: String, required: true },
+      sizeCode: { type: String, required: true },
+    }
+  ],
   createdAt: {
     type: Date,
     default: Date.now
