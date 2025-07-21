@@ -28,6 +28,7 @@ interface Order {
     courier?: string;
     estimatedDelivery?: string;
     shippedAt?: string;
+    notes?: string; // Added for shipped orders
   };
   items: Array<{
     name: string;
@@ -65,6 +66,8 @@ export default function ShippingPage() {
   });
   const [shippingLoading, setShippingLoading] = useState(false);
   const [scanMode, setScanMode] = useState(false);
+  const [view, setView] = useState<'ready' | 'shipped'>('ready');
+  const [shippedOrders, setShippedOrders] = useState<Order[]>([]);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -86,6 +89,12 @@ export default function ShippingPage() {
         }
         const data = await response.json();
         setOrders(data.orders);
+        // Fetch shipped orders
+        const shippedRes = await fetch(`/api/admin/orders?status=shipped`);
+        if (shippedRes.ok) {
+          const shippedData = await shippedRes.json();
+          setShippedOrders(shippedData.orders);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch orders');
       } finally {
@@ -115,15 +124,15 @@ export default function ShippingPage() {
 
       const result = await response.json();
       
-      // Update local state
+      // Update local state: remove from ready, add to shipped
       setOrders(orders.filter(order => order._id !== orderId));
+      setShippedOrders(prev => [...prev, result.order]);
       setSelectedOrder(null);
       setShippingForm({
         trackingNumber: '',
         courier: 'Royal Mail',
         notes: ''
       });
-      
       // Show success message
       alert(result.message);
     } catch (err) {
@@ -146,7 +155,7 @@ export default function ShippingPage() {
     setScanMode(false);
   };
 
-  const filteredOrders = orders.filter(order =>
+  const filteredOrders = (view === 'ready' ? orders : shippedOrders).filter(order =>
     order.reference.toLowerCase().includes(searchTerm.toLowerCase()) ||
     order.shippingDetails.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     order.shippingDetails.lastName.toLowerCase().includes(searchTerm.toLowerCase())
@@ -192,15 +201,26 @@ export default function ShippingPage() {
               Back to Orders
             </Link>
           </div>
-          
-          {/* Search and Scan */}
+          {/* Tabs for Ready to Ship / Shipped */}
           <div className="flex gap-2 mb-4">
+            <button
+              className={`px-4 py-2 rounded-md text-sm font-medium border ${view === 'ready' ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-700 border-gray-300'}`}
+              onClick={() => setView('ready')}
+            >
+              Ready to Ship
+            </button>
+            <button
+              className={`px-4 py-2 rounded-md text-sm font-medium border ${view === 'shipped' ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-700 border-gray-300'}`}
+              onClick={() => setView('shipped')}
+            >
+              Shipped
+            </button>
             <input
               type="text"
               placeholder="Search orders by reference or customer name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+              className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 ml-2"
             />
             <button
               onClick={() => setScanMode(!scanMode)}
@@ -235,13 +255,12 @@ export default function ShippingPage() {
           )}
         </div>
 
-        {/* Shipping Form */}
-        {selectedOrder && (
+        {/* Shipping Form (only for non-shipped orders) */}
+        {selectedOrder && selectedOrder.status !== 'shipped' && (
           <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
             <h2 className="text-lg font-medium text-gray-900 mb-4">
               Ship Order: {selectedOrder.reference}
             </h2>
-            
             <div className="space-y-4">
               {/* Order Info */}
               <div className="bg-gray-50 rounded-lg p-3">
@@ -255,78 +274,70 @@ export default function ShippingPage() {
                   {selectedOrder.items.map(item => `${item.quantity}x ${item.name}`).join(', ')}
                 </p>
               </div>
-
               {/* Shipping Form */}
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tracking Number
-                  </label>
-                  <input
-                    type="text"
-                    value={shippingForm.trackingNumber}
-                    onChange={(e) => setShippingForm(prev => ({ ...prev, trackingNumber: e.target.value }))}
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
-                    placeholder="Enter tracking number..."
-                  />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tracking Number
+                </label>
+                <input
+                  type="text"
+                  value={shippingForm.trackingNumber}
+                  onChange={(e) => setShippingForm(prev => ({ ...prev, trackingNumber: e.target.value }))}
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                  placeholder="Enter tracking number..."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Courier
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {COURIERS.map(courier => (
+                    <button
+                      key={courier.value}
+                      onClick={() => setShippingForm(prev => ({ ...prev, courier: courier.value }))}
+                      className={`p-2 rounded-md text-sm font-medium border ${
+                        shippingForm.courier === courier.value
+                          ? 'border-purple-500 bg-purple-50'
+                          : 'border-gray-300 bg-white hover:bg-gray-50'
+                      } ${courier.color}`}
+                    >
+                      {courier.name}
+                    </button>
+                  ))}
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Courier
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {COURIERS.map(courier => (
-                      <button
-                        key={courier.value}
-                        onClick={() => setShippingForm(prev => ({ ...prev, courier: courier.value }))}
-                        className={`p-2 rounded-md text-sm font-medium border ${
-                          shippingForm.courier === courier.value
-                            ? 'border-purple-500 bg-purple-50'
-                            : 'border-gray-300 bg-white hover:bg-gray-50'
-                        } ${courier.color}`}
-                      >
-                        {courier.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Notes (optional)
-                  </label>
-                  <textarea
-                    value={shippingForm.notes}
-                    onChange={(e) => setShippingForm(prev => ({ ...prev, notes: e.target.value }))}
-                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
-                    rows={2}
-                    placeholder="Add any shipping notes..."
-                  />
-                </div>
-
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleShipOrder(selectedOrder._id)}
-                    disabled={!shippingForm.trackingNumber || shippingLoading}
-                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 font-medium"
-                  >
-                    {shippingLoading ? 'Shipping...' : 'Mark as Shipped'}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSelectedOrder(null);
-                      setShippingForm({
-                        trackingNumber: '',
-                        courier: 'Royal Mail',
-                        notes: ''
-                      });
-                    }}
-                    className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 font-medium"
-                  >
-                    Cancel
-                  </button>
-                </div>
+              </div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Notes (optional)
+              </label>
+              <textarea
+                value={shippingForm.notes}
+                onChange={(e) => setShippingForm(prev => ({ ...prev, notes: e.target.value }))}
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                rows={2}
+                placeholder="Add any shipping notes..."
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleShipOrder(selectedOrder._id)}
+                  disabled={!shippingForm.trackingNumber || shippingLoading}
+                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 font-medium"
+                >
+                  {shippingLoading ? 'Shipping...' : 'Mark as Shipped'}
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedOrder(null);
+                    setShippingForm({
+                      trackingNumber: '',
+                      courier: 'Royal Mail',
+                      notes: ''
+                    });
+                  }}
+                  className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 font-medium"
+                >
+                  Cancel
+                </button>
               </div>
             </div>
           </div>
@@ -335,12 +346,12 @@ export default function ShippingPage() {
         {/* Orders List */}
         <div className="space-y-3">
           <h3 className="text-lg font-medium text-gray-900">
-            Ready to Ship ({filteredOrders.length})
+            {view === 'ready' ? 'Ready to Ship' : 'Shipped'} ({filteredOrders.length})
           </h3>
           
           {filteredOrders.length === 0 ? (
             <div className="bg-white rounded-lg p-6 text-center">
-              <p className="text-gray-500">No orders ready to ship</p>
+              <p className="text-gray-500">No orders {view === 'ready' ? 'ready to ship' : 'shipped'}</p>
             </div>
           ) : (
             filteredOrders.map((order) => (
@@ -357,14 +368,12 @@ export default function ShippingPage() {
                     Priority: {order.deliveryPriority}
                   </span>
                 </div>
-                
                 <p className="text-sm text-gray-600 mb-1">
                   {order.shippingDetails.firstName} {order.shippingDetails.lastName}
                 </p>
                 <p className="text-xs text-gray-500 mb-2">
                   {order.shippingDetails.shippingMethod} • {order.shippingDetails.city}
                 </p>
-                
                 <div className="text-xs text-gray-600">
                   {order.items.map((item, index) => (
                     <span key={index}>
@@ -373,8 +382,16 @@ export default function ShippingPage() {
                     </span>
                   ))}
                 </div>
-                
-                {order.productionNotes && (
+                {view === 'shipped' && (
+                  <div className="mt-2 p-2 bg-blue-50 rounded text-xs text-blue-800">
+                    <div><strong>Tracking:</strong> {order.shippingDetails.trackingNumber || <span className="text-gray-400">N/A</span>}</div>
+                    <div><strong>Courier:</strong> {order.shippingDetails.courier || <span className="text-gray-400">N/A</span>}</div>
+                    {order.shippingDetails.notes && (
+                      <div><strong>Notes:</strong> {order.shippingDetails.notes}</div>
+                    )}
+                  </div>
+                )}
+                {view !== 'shipped' && order.productionNotes && (
                   <div className="mt-2 p-2 bg-yellow-50 rounded text-xs text-yellow-800">
                     <strong>Notes:</strong> {order.productionNotes}
                   </div>
