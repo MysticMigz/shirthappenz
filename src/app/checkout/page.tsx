@@ -49,33 +49,16 @@ export default function CheckoutPage() {
     try {
       const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
       const total = subtotal + shippingDetails.shippingCost;
-      
-      // Create order first
-      const orderResponse = await fetch('/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          items,
-          total,
-          shippingDetails,
-          visitorId // Add visitorId to order
-        }),
-      });
 
-      if (!orderResponse.ok) {
-        const errorData = await orderResponse.json();
-        throw new Error(errorData.error || 'Failed to create order');
-      }
-
-      const orderData = await orderResponse.json();
-
-      // Then create payment intent
+      // Do NOT create order first. Instead, send all data to payment intent creation.
       const paymentResponse = await fetch('/api/payment/create-payment-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amount: total,
-          orderId: orderData.orderId,
+          items,
+          shippingDetails,
+          visitorId // Add visitorId to payment intent metadata
         }),
       });
 
@@ -84,11 +67,11 @@ export default function CheckoutPage() {
       }
 
       const { clientSecret } = await paymentResponse.json();
-      
+
       setStep({
         shippingDetails,
         clientSecret,
-        orderId: orderData.orderId
+        // orderId: orderData.orderId // No orderId yet, will be created after payment
       });
     } catch (err: any) {
       console.error('Checkout error:', err);

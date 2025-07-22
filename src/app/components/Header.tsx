@@ -44,7 +44,7 @@ const Header = () => {
             {/* Logo */}
             <Link href="/" className="flex items-center group">
               <Image
-                src="/images/logo.png"
+                src="https://res.cloudinary.com/dfjgvffou/image/upload/v1753210261/logo_yqmosx.png"
                 alt="Mr SHIRT PERSONALISATION Logo"
                 width={600}
                 height={240}

@@ -13,12 +13,12 @@ export async function POST(request: Request) {
     // Debug request
     console.log('Creating payment intent...');
 
-    const { amount, orderId } = await request.json();
-    console.log('Payment intent request:', { amount, orderId });
+    const { amount, orderId, items, shippingDetails, visitorId } = await request.json();
+    console.log('Payment intent request:', { amount, orderId, items, shippingDetails, visitorId });
 
-    if (!amount || !orderId) {
+    if (!amount) {
       return NextResponse.json(
-        { error: 'Amount and orderId are required' },
+        { error: 'Amount is required' },
         { status: 400 }
       );
     }
@@ -30,9 +30,15 @@ export async function POST(request: Request) {
       );
     }
 
+    // Store all order/cart/shipping details in metadata
     const { clientSecret, paymentIntentId } = await createPaymentIntent({
       amount,
       orderId,
+      metadata: {
+        items: JSON.stringify(items),
+        shippingDetails: JSON.stringify(shippingDetails),
+        visitorId: visitorId || '',
+      },
     });
 
     console.log('Payment intent created:', { paymentIntentId });

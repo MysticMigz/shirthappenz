@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import User from '@/backend/models/User';
 import { userRegistrationSchema, validateAndSanitize } from '@/lib/validation';
+import { sendRegistrationConfirmationEmail } from '@/lib/email';
 
 export async function POST(request: Request) {
   try {
@@ -50,6 +51,13 @@ export async function POST(request: Request) {
       address: user.address,
       isAdmin: user.isAdmin
     };
+
+    // Send registration confirmation email
+    try {
+      await sendRegistrationConfirmationEmail(user.email, user.firstName);
+    } catch (error) {
+      console.error('Failed to send registration confirmation email:', error);
+    }
 
     return NextResponse.json(userData, { status: 201 });
   } catch (error) {

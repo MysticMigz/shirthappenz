@@ -3,11 +3,10 @@ import nodemailer from 'nodemailer';
 interface EmailOptions {
   to: string;
   subject: string;
-  text: string;
   html: string;
 }
 
-export async function sendEmail({ to, subject, text, html }: EmailOptions) {
+export async function sendEmail({ to, subject, html }: EmailOptions) {
   const transporter = nodemailer.createTransport({
     host: process.env.EMAIL_SERVER_HOST,
     port: Number(process.env.EMAIL_SERVER_PORT),
@@ -23,20 +22,9 @@ export async function sendEmail({ to, subject, text, html }: EmailOptions) {
     from: process.env.EMAIL_FROM,
     to,
     subject,
-    text,
     html,
   });
 }
-
-const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_SERVER_HOST,
-  port: Number(process.env.EMAIL_SERVER_PORT),
-  auth: {
-    user: process.env.EMAIL_SERVER_USER,
-    pass: process.env.EMAIL_SERVER_PASSWORD,
-  },
-  secure: true,
-});
 
 export async function sendLowStockAlert(productName: string, size: string, currentStock: number) {
   const adminEmail = process.env.ADMIN_EMAIL;
@@ -46,8 +34,7 @@ export async function sendLowStockAlert(productName: string, size: string, curre
   }
 
   try {
-    await transporter.sendMail({
-      from: process.env.EMAIL_FROM,
+    await sendEmail({
       to: adminEmail,
       subject: `⚠️ Low Stock Alert: ${productName}`,
       html: `
@@ -78,8 +65,7 @@ export async function sendPasswordResetEmail(email: string, resetToken: string) 
   try {
     const resetUrl = `${process.env.NEXTAUTH_URL}/auth/reset-password?token=${resetToken}`;
 
-    await transporter.sendMail({
-      from: process.env.EMAIL_FROM,
+    await sendEmail({
       to: email,
       subject: 'Reset Your Password',
       html: `
@@ -102,113 +88,145 @@ export async function sendPasswordResetEmail(email: string, resetToken: string) 
   }
 }
 
-interface OrderItem {
-  name: string;
-  quantity: number;
-  price: number;
-  size: string;
-  customization?: {
-    name?: string;
-    number?: string;
-    isCustomized: boolean;
-  };
-}
-
 interface ShippingDetails {
   firstName: string;
   lastName: string;
   email: string;
   phone: string;
   address: string;
+  addressLine2?: string;
   city: string;
+  county?: string;
   postcode: string;
+  country?: string;
   shippingMethod: string;
   shippingCost: number;
+}
+
+interface OrderItem {
+  name: string;
+  size: string;
+  quantity: number;
+  price: number;
+  customization?: { isCustomized: boolean; name?: string; number?: string };
 }
 
 export async function sendOrderConfirmationEmail(
   orderReference: string,
   items: OrderItem[],
   shippingDetails: ShippingDetails,
-  total: number
+  total: number,
+  vat?: number,
+  createdAt?: string,
+  status?: string
 ) {
   try {
+    const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const shipping = shippingDetails.shippingCost;
+    const vatIncluded = typeof vat === 'number' ? vat : Number(((subtotal + shipping) * 0.2).toFixed(2));
+    const orderStatus = status || 'confirmed';
+    const orderDate = createdAt ? new Date(createdAt).toLocaleDateString() : new Date().toLocaleDateString();
     const itemsList = items.map(item => `
       <tr>
-        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">${item.name}${item.customization?.isCustomized ? 
-          `<br><span style="font-size: 14px; color: #6b7280;">Customization: ${item.customization.name || ''} ${item.customization.number || ''}</span>` 
-          : ''}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">Size: ${item.size}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">${item.quantity}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">£${(item.price * item.quantity).toFixed(2)}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <div style='font-weight: bold;'>${item.name}</div>
+          <div style='color: #6b7280; font-size: 13px;'>Size: ${item.size}</div>
+          <div style='color: #6b7280; font-size: 13px;'>Quantity: ${item.quantity}</div>
+          ${item.customization?.name || item.customization?.number ? `<div style='color: #6b7280; font-size: 13px;'>Customization: ${item.customization.name || ''} ${item.customization.number || ''}</div>` : ''}
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right; font-weight: bold;">£${(item.price * item.quantity).toFixed(2)}</td>
       </tr>
     `).join('');
 
-    await transporter.sendMail({
-      from: process.env.EMAIL_FROM,
+    await sendEmail({
       to: shippingDetails.email,
-      subject: `Order Confirmation - ${orderReference}`,
+      subject: `Order Confirmation - ${orderReference} | Mr Shirt Personalisation`,
       html: `
-        <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #1f2937;">Order Confirmation</h2>
-          <p style="font-size: 16px; color: #374151;">
-            Thank you for your order, ${shippingDetails.firstName}!
-          </p>
-          <p style="font-size: 16px; color: #374151;">
-            Order Reference: <strong>${orderReference}</strong>
-          </p>
-          
-          <div style="margin: 24px 0;">
-            <h3 style="color: #1f2937;">Order Details</h3>
-            <table style="width: 100%; border-collapse: collapse;">
-              <thead>
-                <tr style="background-color: #f3f4f6;">
-                  <th style="padding: 12px; text-align: left;">Item</th>
-                  <th style="padding: 12px; text-align: left;">Size</th>
-                  <th style="padding: 12px; text-align: left;">Qty</th>
-                  <th style="padding: 12px; text-align: left;">Price</th>
+        <div style="font-family: Arial, sans-serif; background: #f9fafb; padding: 0; margin: 0;">
+          <div style="max-width: 600px; margin: 0 auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px #e5e7eb;">
+            <div style="padding: 32px 32px 0 32px; text-align: center;">
+              <a href="https://mrshirtpersonalisation.co.uk" target="_blank" rel="noopener noreferrer">
+                <img src="https://res.cloudinary.com/dfjgvffou/image/upload/v1753210261/logo_yqmosx.png" alt="Mr Shirt Personalisation Logo" style="max-width: 180px; margin: 0 auto 24px auto; display: block;" />
+              </a>
+              <h1 style="font-size: 28px; font-weight: bold; color: #1f2937; margin-bottom: 8px;">Thank You for Your Order!</h1>
+              <p style="color: #4b5563; font-size: 16px; margin-bottom: 0;">Your order has been <b>${orderStatus}</b></p>
+            </div>
+            <div style="padding: 0 32px 32px 32px;">
+              <h2 style="font-size: 20px; font-weight: 600; color: #1f2937; margin-bottom: 16px;">Order Details</h2>
+              <table style="width: 100%; margin-bottom: 24px;">
+                <tr>
+                  <td style="color: #6b7280;">Order Reference:</td>
+                  <td style="font-weight: 500; text-align: right;">${orderReference}</td>
                 </tr>
-              </thead>
-              <tbody>
-                ${itemsList}
-              </tbody>
-            </table>
+                <tr>
+                  <td style="color: #6b7280;">Order Date:</td>
+                  <td style="font-weight: 500; text-align: right;">${orderDate}</td>
+                </tr>
+                <tr>
+                  <td style="color: #6b7280;">Status:</td>
+                  <td style="font-weight: 500; text-align: right; text-transform: capitalize;">${orderStatus}</td>
+                </tr>
+                <tr>
+                  <td style="color: #6b7280;">Total Amount:</td>
+                  <td style="font-weight: 500; text-align: right;">£${total.toFixed(2)}</td>
+                </tr>
+              </table>
+              <h3 style="font-size: 16px; font-weight: 600; color: #1f2937; margin-bottom: 12px;">Shipping Details</h3>
+              <table style="width: 100%; margin-bottom: 24px;">
+                <tr>
+                  <td style="color: #6b7280;">Name:</td>
+                  <td style="font-weight: 500; text-align: right;">${shippingDetails.firstName} ${shippingDetails.lastName}</td>
+                </tr>
+                <tr>
+                  <td style="color: #6b7280;">Email:</td>
+                  <td style="font-weight: 500; text-align: right;">${shippingDetails.email}</td>
+                </tr>
+                <tr>
+                  <td style="color: #6b7280;">Phone:</td>
+                  <td style="font-weight: 500; text-align: right;">${shippingDetails.phone}</td>
+                </tr>
+                <tr>
+                  <td style="color: #6b7280;">Address:</td>
+                  <td style="font-weight: 500; text-align: right;">${shippingDetails.address}, ${shippingDetails.city}, ${shippingDetails.county || ''}, ${shippingDetails.postcode}, ${shippingDetails.country}</td>
+                </tr>
+                <tr>
+                  <td style="color: #6b7280;">Shipping Method:</td>
+                  <td style="font-weight: 500; text-align: right;">${shippingDetails.shippingMethod}</td>
+                </tr>
+                <tr>
+                  <td style="color: #6b7280;">Shipping Cost:</td>
+                  <td style="font-weight: 500; text-align: right;">£${shippingDetails.shippingCost.toFixed(2)}</td>
+                </tr>
+              </table>
+              <h3 style="font-size: 16px; font-weight: 600; color: #1f2937; margin-bottom: 12px;">Items</h3>
+              <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+                <tbody>
+                  ${itemsList}
+                </tbody>
+              </table>
+              <div style="margin-top: 32px; border-top: 1px solid #e5e7eb; padding-top: 16px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                  <span style="color: #6b7280;">Subtotal</span>
+                  <span style="font-weight: 500;">£${subtotal.toFixed(2)}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                  <span style="color: #6b7280;">Shipping (${shippingDetails.shippingMethod})</span>
+                  <span style="font-weight: 500;">£${shipping.toFixed(2)}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 18px; font-weight: bold; margin-top: 16px;">
+                  <span>Total</span>
+                  <span>£${total.toFixed(2)}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 13px; color: #6b7280; font-style: italic;">
+                  <span>Includes VAT (20%)</span>
+                  <span>£${vatIncluded.toFixed(2)}</span>
+                </div>
+              </div>
+              <div style="margin-top: 32px; text-align: center;">
+                <a href="https://shirthappenz.com/orders" style="display: inline-block; background: #6366f1; color: #fff; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: 600;">View All Orders</a>
+              </div>
+            </div>
           </div>
-
-          <div style="margin: 24px 0; padding: 16px; background-color: #f3f4f6; border-radius: 8px;">
-            <h3 style="color: #1f2937; margin-bottom: 12px;">Shipping Details</h3>
-            <p style="margin: 4px 0; color: #374151;">
-              ${shippingDetails.firstName} ${shippingDetails.lastName}<br>
-              ${shippingDetails.address}<br>
-              ${shippingDetails.city}<br>
-              ${shippingDetails.postcode}<br>
-              Phone: ${shippingDetails.phone}
-            </p>
-            <p style="margin: 12px 0 4px; color: #374151;">
-              Shipping Method: ${shippingDetails.shippingMethod}
-            </p>
-          </div>
-
-          <div style="margin: 24px 0;">
-            <table style="width: 100%;">
-              <tr>
-                <td style="padding: 8px 0;">Subtotal:</td>
-                <td style="text-align: right;">£${(total - shippingDetails.shippingCost).toFixed(2)}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px 0;">Shipping:</td>
-                <td style="text-align: right;">£${shippingDetails.shippingCost.toFixed(2)}</td>
-              </tr>
-              <tr style="font-weight: bold;">
-                <td style="padding: 8px 0; border-top: 2px solid #e5e7eb;">Total:</td>
-                <td style="text-align: right; border-top: 2px solid #e5e7eb;">£${total.toFixed(2)}</td>
-              </tr>
-            </table>
-          </div>
-
-          <p style="color: #6b7280; font-size: 14px; margin-top: 24px;">
-            We'll send you another email when your payment is confirmed and your order is being processed.
-          </p>
         </div>
       `,
     });
@@ -223,29 +241,134 @@ export async function sendPaymentConfirmationEmail(
   firstName: string
 ) {
   try {
-    await transporter.sendMail({
-      from: process.env.EMAIL_FROM,
+    await sendEmail({
       to: email,
       subject: `Payment Confirmed - Order ${orderReference}`,
       html: `
-        <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #1f2937;">Payment Confirmed</h2>
-          <p style="font-size: 16px; color: #374151;">
-            Hi ${firstName},
-          </p>
-          <p style="font-size: 16px; color: #374151;">
-            Great news! We've received your payment for order <strong>${orderReference}</strong>.
-          </p>
-          <p style="font-size: 16px; color: #374151;">
-            We're now processing your order and will send you another email when it's on its way.
-          </p>
-          <p style="color: #6b7280; font-size: 14px; margin-top: 24px;">
-            Thank you for shopping with us!
-          </p>
+        <div style="font-family: Arial, sans-serif; background: #f9fafb; padding: 0; margin: 0;">
+          <div style="max-width: 600px; margin: 0 auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px #e5e7eb;">
+            <div style="padding: 32px 32px 0 32px; text-align: center;">
+              <a href="https://mrshirtpersonalisation.co.uk" target="_blank" rel="noopener noreferrer">
+                <img src="https://res.cloudinary.com/dfjgvffou/image/upload/v1753210261/logo_yqmosx.png" alt="Mr Shirt Personalisation Logo" style="max-width: 180px; margin: 0 auto 24px auto; display: block;" />
+              </a>
+              <h2 style="color: #1f2937;">Payment Confirmed</h2>
+            </div>
+            <div style="padding: 0 32px 32px 32px;">
+              <p style="font-size: 16px; color: #374151;">
+                Hi ${firstName},
+              </p>
+              <p style="font-size: 16px; color: #374151;">
+                Great news! We've received your payment for order <strong>${orderReference}</strong>.
+              </p>
+              <p style="font-size: 16px; color: #374151;">
+                We're now processing your order and will send you another email when it's on its way.
+              </p>
+              <p style="color: #6b7280; font-size: 14px; margin-top: 24px;">
+                Thank you for shopping with us!
+              </p>
+            </div>
+          </div>
         </div>
       `,
     });
   } catch (error) {
     console.error('Failed to send payment confirmation email:', error);
+  }
+}
+
+export async function sendOrderShippedEmail(
+  orderReference: string,
+  shippingDetails: ShippingDetails & { trackingNumber?: string; courier?: string; estimatedDelivery?: string },
+  items: OrderItem[],
+  shippedAt?: Date
+) {
+  try {
+    const itemsList = items.map(item => `
+      <tr>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+          <div style='font-weight: bold;'>${item.name}</div>
+          <div style='color: #6b7280; font-size: 13px;'>Size: ${item.size}</div>
+          <div style='color: #6b7280; font-size: 13px;'>Quantity: ${item.quantity}</div>
+          ${item.customization?.name || item.customization?.number ? `<div style='color: #6b7280; font-size: 13px;'>Customization: ${item.customization.name || ''} ${item.customization.number || ''}</div>` : ''}
+        </td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right; font-weight: bold;">£${(item.price * item.quantity).toFixed(2)}</td>
+      </tr>
+    `).join('');
+    await sendEmail({
+      to: shippingDetails.email,
+      subject: `Your Order Has Shipped! - ${orderReference} | Mr Shirt Personalisation`,
+      html: `
+        <div style="font-family: Arial, sans-serif; background: #f9fafb; padding: 0; margin: 0;">
+          <div style="max-width: 600px; margin: 0 auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px #e5e7eb;">
+            <div style="padding: 32px 32px 0 32px; text-align: center;">
+              <a href="https://mrshirtpersonalisation.co.uk" target="_blank" rel="noopener noreferrer">
+                <img src="https://res.cloudinary.com/dfjgvffou/image/upload/v1753210261/logo_yqmosx.png" alt="Mr Shirt Personalisation Logo" style="max-width: 180px; margin: 0 auto 24px auto; display: block;" />
+              </a>
+              <h1 style="font-size: 28px; font-weight: bold; color: #1f2937; margin-bottom: 8px;">Your Order Has Shipped!</h1>
+              <p style="color: #4b5563; font-size: 16px; margin-bottom: 0;">Order <b>${orderReference}</b> is on its way.</p>
+            </div>
+            <div style="padding: 0 32px 32px 32px;">
+              <h2 style="font-size: 20px; font-weight: 600; color: #1f2937; margin-bottom: 16px;">Shipping Details</h2>
+              <table style="width: 100%; margin-bottom: 24px;">
+                <tr>
+                  <td style="color: #6b7280;">Courier:</td>
+                  <td style="font-weight: 500; text-align: right;">${shippingDetails.courier || 'N/A'}</td>
+                </tr>
+                <tr>
+                  <td style="color: #6b7280;">Tracking Number:</td>
+                  <td style="font-weight: 500; text-align: right;">${shippingDetails.trackingNumber || 'N/A'}</td>
+                </tr>
+                ${shippingDetails.estimatedDelivery ? `<tr><td style='color: #6b7280;'>Estimated Delivery:</td><td style='font-weight: 500; text-align: right;'>${shippingDetails.estimatedDelivery}</td></tr>` : ''}
+                <tr>
+                  <td style="color: #6b7280;">Shipped At:</td>
+                  <td style="font-weight: 500; text-align: right;">${shippedAt ? new Date(shippedAt).toLocaleString() : 'N/A'}</td>
+                </tr>
+              </table>
+              <h3 style="font-size: 16px; font-weight: 600; color: #1f2937; margin-bottom: 12px;">Items in Your Order</h3>
+              <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+                <tbody>
+                  ${itemsList}
+                </tbody>
+              </table>
+              <div style="margin-top: 32px; text-align: center;">
+                <a href="https://shirthappenz.com/orders" style="display: inline-block; background: #6366f1; color: #fff; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: 600;">View Your Order Status</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      `,
+    });
+  } catch (error) {
+    console.error('Failed to send order shipped email:', error);
+  }
+}
+
+export async function sendRegistrationConfirmationEmail(email: string, firstName: string) {
+  try {
+    await sendEmail({
+      to: email,
+      subject: 'Welcome to Mr Shirt Personalisation! Your Registration is Successful',
+      html: `
+        <div style="font-family: Arial, sans-serif; background: #f9fafb; padding: 0; margin: 0;">
+          <div style="max-width: 600px; margin: 0 auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px #e5e7eb;">
+            <div style="padding: 32px 32px 0 32px; text-align: center;">
+              <a href="https://mrshirtpersonalisation.co.uk" target="_blank" rel="noopener noreferrer">
+                <img src="https://res.cloudinary.com/dfjgvffou/image/upload/v1753210261/logo_yqmosx.png" alt="Mr Shirt Personalisation Logo" style="max-width: 180px; margin: 0 auto 24px auto; display: block;" />
+              </a>
+              <h1 style="font-size: 28px; font-weight: bold; color: #1f2937; margin-bottom: 8px;">Welcome to Mr Shirt Personalisation!</h1>
+              <p style="color: #4b5563; font-size: 16px; margin-bottom: 0;">Hi ${firstName}, your registration was successful.</p>
+            </div>
+            <div style="padding: 0 32px 32px 32px;">
+              <p style="font-size: 16px; color: #374151;">We're excited to have you on board. You can now log in and start customizing your apparel!</p>
+              <div style="margin-top: 32px; text-align: center;">
+                <a href="https://shirthappenz.com/auth/login" style="display: inline-block; background: #6366f1; color: #fff; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: 600;">Log In to Your Account</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      `,
+    });
+  } catch (error) {
+    console.error('Failed to send registration confirmation email:', error);
   }
 } 

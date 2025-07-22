@@ -258,72 +258,13 @@ export async function POST(request: Request) {
     const subtotal = processedItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const backendTotal = subtotal + shippingDetails.shippingCost;
 
-    // Create and save order with retries
-    let order;
-    let attempts = 0;
-    const maxAttempts = 3;
-
-    while (attempts < maxAttempts) {
-      try {
-        const reference = attempts === 0 ? 
-          await generateReference() : 
-          generateRandomReference();
-
-        // If not logged in, allow guest order using visitorId as userId
-        const userId = session?.user?.email || visitorId || 'guest';
-
-        // Create the order
-        order = new Order({
-          userId,
-          reference,
-          items: processedItems,
-          shippingDetails,
-          total: backendTotal,
-          vat,
-          status: 'pending',
-          orderSource,
-          visitorId,
-        });
-
-        await order.save();
-        break;
-      } catch (error) {
-        if (error instanceof Error && 
-            'code' in error && 
-            (error as any).code === 11000 && 
-            (error as any).keyPattern?.reference) {
-          // If duplicate reference, try again with a new reference
-          attempts++;
-          continue;
-        }
-        throw error;
-      }
-    }
-
-    if (!order) {
-      return NextResponse.json(
-        { error: 'Failed to create order after multiple attempts' },
-        { status: 500 }
-      );
-    }
-
-    // Send order confirmation email
-    try {
-      await sendOrderConfirmationEmail(
-        order.reference,
-        order.items,
-        order.shippingDetails,
-        order.total
-      );
-    } catch (error) {
-      console.error('Failed to send order confirmation email:', error);
-      // Don't fail the request if email fails
-    }
-
-    // Return the order ID and reference
+    // Remove order creation and email sending logic
+    // Only validate and return the order data for payment intent metadata
     return NextResponse.json({
-      orderId: order._id.toString(),
-      reference: order.reference
+      items,
+      shippingDetails,
+      total,
+      visitorId
     });
 
   } catch (error) {

@@ -53,10 +53,44 @@ export async function POST(request: Request) {
     switch (event.type) {
       case 'payment_intent.succeeded': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
-        const orderId = paymentIntent.metadata.orderId;
+        // Extract order/cart/shipping details from metadata
+        const items = paymentIntent.metadata?.items ? JSON.parse(paymentIntent.metadata.items) : [];
+        const shippingDetails = paymentIntent.metadata?.shippingDetails ? JSON.parse(paymentIntent.metadata.shippingDetails) : {};
+        const visitorId = paymentIntent.metadata?.visitorId || '';
+        const total = paymentIntent.amount / 100;
 
-        // Update order status
-        const order = await updateOrderStatus(orderId, 'paid');
+        // Only create the order if payment is successful
+        await connectToDatabase();
+        // Generate reference number (reuse logic from /api/orders if needed)
+        const date = new Date();
+        const year = date.getFullYear().toString().slice(-2);
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const day = date.getDate().toString().padStart(2, '0');
+        const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
+        const todayCount = await Order.countDocuments({
+          createdAt: { $gte: startOfDay, $lt: endOfDay }
+        });
+        const sequence = (todayCount + 1).toString().padStart(4, '0');
+        const reference = `SH-${year}${month}${day}-${sequence}`;
+
+        // Calculate VAT (UK VAT 20%)
+        const vatBase = total + (shippingDetails.shippingCost || 0);
+        const vat = Number((vatBase / 1.2 * 0.2).toFixed(2));
+
+        // Create the order
+        const order = new Order({
+          userId: paymentIntent.metadata?.userId || visitorId || 'guest',
+          reference,
+          items,
+          shippingDetails,
+          total,
+          vat,
+          status: 'paid',
+          orderSource: items?.[0]?.orderSource || undefined,
+          visitorId,
+        });
+        await order.save();
 
         // Create transaction record
         const transaction = new Transaction({
@@ -70,12 +104,17 @@ export async function POST(request: Request) {
         });
         await transaction.save();
 
-        // Send payment confirmation email
-        await sendPaymentConfirmationEmail(
+        // Send order confirmation email
+        await sendOrderConfirmationEmail(
           order.reference,
-          order.shippingDetails.email,
-          order.shippingDetails.firstName
+          order.items,
+          order.shippingDetails,
+          order.total,
+          order.vat,
+          order.createdAt,
+          order.status
         );
+        // Do NOT send payment confirmation email anymore
 
         break;
       }

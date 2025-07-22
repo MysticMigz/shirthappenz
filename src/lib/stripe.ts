@@ -28,9 +28,10 @@ if (typeof window === 'undefined') {  // Only run on server side
 
 export interface CreatePaymentIntentOptions {
   amount: number;
-  orderId: string;
+  orderId?: string;
   currency?: string;
   paymentMethodTypes?: string[];
+  metadata?: Record<string, string>;
 }
 
 export async function createPaymentIntent({
@@ -38,6 +39,7 @@ export async function createPaymentIntent({
   orderId,
   currency = 'gbp',
   paymentMethodTypes = ['card'],
+  metadata = {},
 }: CreatePaymentIntentOptions) {
   if (!stripe) {
     throw new Error('Stripe has not been initialized. This method can only be called from the server.');
@@ -49,14 +51,16 @@ export async function createPaymentIntent({
       throw new Error('Amount must be greater than 0');
     }
 
+    // Merge orderId into metadata if present
+    const fullMetadata = { ...metadata };
+    if (orderId) fullMetadata.orderId = orderId;
+
     // Create the payment intent
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100), // Convert to cents
       currency,
       payment_method_types: paymentMethodTypes,
-      metadata: {
-        orderId,
-      },
+      metadata: fullMetadata,
     });
 
     return {

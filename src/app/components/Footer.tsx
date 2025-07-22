@@ -11,7 +11,7 @@ const Footer = () => {
           <div className="col-span-2 lg:col-span-1">
             <Link href="/" className="inline-block mb-6">
               <Image
-                src="/images/logo.png"
+                src="https://res.cloudinary.com/dfjgvffou/image/upload/v1753210261/logo_yqmosx.png"
                 alt="Mr SHIRT PERSONALISATION Logo"
                 width={320}
                 height={120}
