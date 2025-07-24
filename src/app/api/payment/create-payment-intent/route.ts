@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     // Debug request
     console.log('Creating payment intent...');
 
-    const { amount, orderId, items, shippingDetails, visitorId } = await request.json();
+    const { amount, orderId, items, shippingDetails, visitorId, userId } = await request.json();
     console.log('Payment intent request:', { amount, orderId, items, shippingDetails, visitorId });
 
     if (!amount) {
@@ -38,6 +38,7 @@ export async function POST(request: Request) {
         items: JSON.stringify(items),
         shippingDetails: JSON.stringify(shippingDetails),
         visitorId: visitorId || '',
+        userId: userId || '',
       },
     });
 

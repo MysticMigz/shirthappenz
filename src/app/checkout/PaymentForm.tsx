@@ -10,7 +10,7 @@ import {
 import { useCart } from '@/context/CartContext';
 
 interface PaymentFormProps {
-  orderId: string;
+  orderId?: string;
   total: number;
 }
 
@@ -33,10 +33,13 @@ export default function PaymentForm({ orderId, total }: PaymentFormProps) {
     setError(undefined);
 
     try {
+      const returnUrl = orderId
+        ? `${window.location.origin}/thank-you?orderId=${orderId}`
+        : `${window.location.origin}/thank-you`;
       const { error: submitError } = await stripe.confirmPayment({
         elements,
         confirmParams: {
-          return_url: `${window.location.origin}/thank-you?orderId=${orderId}`,
+          return_url: returnUrl,
         },
         redirect: 'always',
       });

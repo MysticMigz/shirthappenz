@@ -62,13 +62,14 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Sign in to your account
-          </h2>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="max-w-md w-full p-8">
+        <div className="flex flex-col items-center mb-6">
+          <a href="https://mrshirtpersonalisation.co.uk" target="_blank" rel="noopener noreferrer">
+            <img src="https://res.cloudinary.com/dfjgvffou/image/upload/v1753210261/logo_yqmosx.png" alt="Mr Shirt Personalisation Logo" style={{ maxWidth: '180px', margin: '0 auto 24px auto', display: 'block' }} />
+          </a>
         </div>
+        <h1 className="text-2xl font-bold mb-6 text-center">Sign in to your account</h1>
         <form onSubmit={handleSubmit} className="mt-8 space-y-6">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded">
@@ -120,6 +121,9 @@ export default function LoginPage() {
                   )}
                 </button>
               </div>
+            </div>
+            <div className="flex justify-end mb-4">
+              <Link href="/auth/forgot-password" className="text-sm text-blue-600 hover:underline">Forgot your password?</Link>
             </div>
           </div>
 

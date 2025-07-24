@@ -14,7 +14,7 @@ export default function ContactPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    window.location.href = `mailto:customerservice@mrshirtpersonalisation.co.uk?subject=Contact%20from%20${encodeURIComponent(form.name)}&body=${encodeURIComponent(form.message + '\n\nFrom: ' + form.email)}`;
+    window.location.href = `mailto:customer.service@mrshirtpersonalisation.com?subject=Contact%20from%20${encodeURIComponent(form.name)}&body=${encodeURIComponent(form.message + '\n\nFrom: ' + form.email)}`;
     setSubmitted(true);
   };
 
@@ -29,7 +29,7 @@ export default function ContactPage() {
               <h2 className="text-3xl font-bold text-gray-900 mb-2">Contact Information</h2>
               <p className="text-gray-600 mb-4">We're here to help! Reach out to us using the form or the details below.</p>
               <div className="text-gray-700 space-y-2 text-base">
-                <div><span className="font-semibold">Email:</span> <a href="mailto:customerservice@mrshirtpersonalisation.co.uk" className="text-blue-600 underline">customerservice@mrshirtpersonalisation.co.uk</a></div>
+                <div><span className="font-semibold">Email:</span> <a href="mailto:customer.service@mrshirtpersonalisation.com" className="text-blue-600 underline">customer.service@mrshirtpersonalisation.com</a></div>
                 <div><span className="font-semibold">Phone:</span> <span>+44 1234 567890</span></div>
                 <div><span className="font-semibold">Address:</span> <span>123 Design Street, Creative City, CC 12345, United Kingdom</span></div>
                 <div><span className="font-semibold">Business Hours:</span> <span>Mon-Fri 9:00am - 6:00pm</span></div>
@@ -57,7 +57,7 @@ export default function ContactPage() {
             <h1 className="text-5xl font-extrabold mb-4 text-gray-900 text-center md:text-left">Contact Us</h1>
             <p className="mb-10 text-gray-600 text-center md:text-left text-xl">
               Have a question or need help? Fill out the form below or email us at
-              <a href="mailto:customerservice@mrshirtpersonalisation.co.uk" className="text-blue-600 underline ml-1">customerservice@mrshirtpersonalisation.co.uk</a>
+              <a href="mailto:customer.service@mrshirtpersonalisation.com" className="text-blue-600 underline ml-1">customer.service@mrshirtpersonalisation.com</a>
             </p>
             <form onSubmit={handleSubmit} className="space-y-8">
               <div>

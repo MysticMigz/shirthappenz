@@ -28,7 +28,7 @@ const Footer = () => {
               <p>United States</p>
               <div className="pt-2">
                 <p>Phone: (555) 123-4567</p>
-                <p>Email: hello@shirthappenz.com</p>
+                <p>Email: customer.service@mrshirtpersonalisation.com</p>
               </div>
             </div>
             <div className="flex space-x-4">

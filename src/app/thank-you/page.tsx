@@ -60,7 +60,8 @@ export default function ThankYouPage() {
   useEffect(() => {
     const orderId = searchParams.get('orderId');
     if (!orderId) {
-      setError('No order ID provided.');
+      setOrder(null);
+      setError(null);
       setLoading(false);
       return;
     }
@@ -102,23 +103,23 @@ export default function ThankYouPage() {
     );
   }
 
-  if (error) {
+  if (!searchParams.get('orderId')) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
         <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full text-center">
-          <h2 className="text-red-600 text-xl font-semibold mb-4">Order Not Found</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="w-full bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700 mb-3"
-          >
-            Try Again
-          </button>
+          <h2 className="text-green-700 text-2xl font-bold mb-4">Thank You for Your Order!</h2>
+          <p className="text-gray-700 mb-6">Your payment was successful. You will receive an order confirmation email shortly with your order details.</p>
           <Link
-            href="/contact"
+            href="/orders"
+            className="block w-full bg-indigo-600 text-white text-center py-2 px-4 rounded hover:bg-indigo-700 mb-3"
+          >
+            View My Orders
+          </Link>
+          <Link
+            href="/"
             className="block w-full bg-gray-100 text-indigo-700 text-center py-2 px-4 rounded hover:bg-gray-200"
           >
-            Contact Support
+            Continue Shopping
           </Link>
         </div>
       </div>

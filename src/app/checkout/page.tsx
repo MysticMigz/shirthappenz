@@ -9,6 +9,7 @@ import ShippingForm, { ShippingDetails } from './ShippingForm';
 import Header from '../components/Header';
 import Image from 'next/image';
 import { useVisitorId } from '../providers';
+import { useUser } from '@/context/UserContext';
 
 interface CheckoutStep {
   shippingDetails?: ShippingDetails & { shippingCost: number };
@@ -31,6 +32,7 @@ export default function CheckoutPage() {
   const [error, setError] = useState<string>();
   const [currentShippingMethod, setCurrentShippingMethod] = useState<keyof typeof SHIPPING_COSTS>(DEFAULT_SHIPPING_METHOD);
   const visitorId = useVisitorId();
+  const { user } = useUser();
 
   useEffect(() => {
     if (!items.length) {
@@ -58,7 +60,8 @@ export default function CheckoutPage() {
           amount: total,
           items,
           shippingDetails,
-          visitorId // Add visitorId to payment intent metadata
+          visitorId, // Add visitorId to payment intent metadata
+          userId: user?._id || null // Pass userId if logged in
         }),
       });
 
@@ -208,11 +211,10 @@ export default function CheckoutPage() {
                     <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600"></div>
                     <p className="mt-4 text-gray-600">Processing your order...</p>
                   </div>
-                ) : step.clientSecret && step.orderId && step.shippingDetails ? (
+                ) : step.clientSecret && step.shippingDetails ? (
                   <div className="bg-white rounded-lg">
                     <StripeProvider clientSecret={step.clientSecret}>
                       <PaymentForm 
-                        orderId={step.orderId} 
                         total={getTotal() + step.shippingDetails.shippingCost} 
                       />
                     </StripeProvider>

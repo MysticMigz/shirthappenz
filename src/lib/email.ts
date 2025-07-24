@@ -61,24 +61,29 @@ export async function sendLowStockAlert(productName: string, size: string, curre
   }
 }
 
-export async function sendPasswordResetEmail(email: string, resetToken: string) {
+export async function sendPasswordResetEmail(email: string, resetToken: string, resetUrl: string) {
   try {
-    const resetUrl = `${process.env.NEXTAUTH_URL}/auth/reset-password?token=${resetToken}`;
-
     await sendEmail({
       to: email,
-      subject: 'Reset Your Password',
+      subject: 'Reset Your Password | Mr Shirt Personalisation',
       html: `
-        <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
-          <h2>Reset Your Password</h2>
-          <p>Click the button below to reset your password:</p>
-          <a href="${resetUrl}" style="display: inline-block; background-color: #7c3aed; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0;">
-            Reset Password
-          </a>
-          <p style="color: #666; font-size: 14px;">
-            If you didn't request this, please ignore this email.
-            The link will expire in 1 hour.
-          </p>
+        <div style="font-family: Arial, sans-serif; background: #f9fafb; padding: 0; margin: 0;">
+          <div style="max-width: 600px; margin: 0 auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px #e5e7eb;">
+            <div style="padding: 32px 32px 0 32px; text-align: center;">
+              <a href="https://mrshirtpersonalisation.co.uk" target="_blank" rel="noopener noreferrer">
+                <img src="https://res.cloudinary.com/dfjgvffou/image/upload/v1753210261/logo_yqmosx.png" alt="Mr Shirt Personalisation Logo" style="max-width: 180px; margin: 0 auto 24px auto; display: block;" />
+              </a>
+              <h1 style="font-size: 28px; font-weight: bold; color: #1f2937; margin-bottom: 8px;">Reset Your Password</h1>
+              <p style="color: #4b5563; font-size: 16px; margin-bottom: 0;">A password reset was requested for your Mr Shirt Personalisation account.</p>
+            </div>
+            <div style="padding: 0 32px 32px 32px;">
+              <p style="font-size: 16px; color: #374151;">Click the button below to reset your password. This link will expire in 1 hour.</p>
+              <div style="margin: 32px 0; text-align: center;">
+                <a href="${resetUrl}" style="display: inline-block; background: #6366f1; color: #fff; padding: 14px 36px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 18px;">Reset Password</a>
+              </div>
+              <p style="color: #6b7280; font-size: 14px;">If you did not request this, you can safely ignore this email.</p>
+            </div>
+          </div>
         </div>
       `,
     });

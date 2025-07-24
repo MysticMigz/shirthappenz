@@ -1,5 +1,4 @@
-import { NextResponse } from 'next/server';
-import { headers } from 'next/headers';
+import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { connectToDatabase } from '@/lib/mongodb';
 import Order from '@/backend/models/Order';
@@ -22,37 +21,31 @@ async function updateOrderStatus(orderId: string, status: 'paid' | 'payment_fail
   return order;
 }
 
-export async function POST(request: Request) {
-  const body = await request.text();
-  const sig = headers().get('stripe-signature');
+export async function POST(req: NextRequest) {
+  const sig = req.headers.get('stripe-signature');
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
-  if (!sig || !process.env.STRIPE_WEBHOOK_SECRET) {
-    return NextResponse.json(
-      { error: 'Missing stripe-signature or webhook secret' },
-      { status: 400 }
-    );
-  }
+  // Read the raw body as a buffer
+  const rawBody = await req.arrayBuffer();
+  const buf = Buffer.from(rawBody);
 
   let event: Stripe.Event;
 
   try {
-    event = stripe.webhooks.constructEvent(
-      body,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET
-    );
-  } catch (err) {
-    console.error('Webhook signature verification failed:', err);
-    return NextResponse.json(
-      { error: 'Webhook signature verification failed' },
-      { status: 400 }
-    );
+    event = stripe.webhooks.constructEvent(buf, sig!, webhookSecret);
+  } catch (err: any) {
+    console.error('Webhook signature verification failed:', err.message);
+    return NextResponse.json({ error: 'Webhook signature verification failed' }, { status: 400 });
   }
 
   try {
     switch (event.type) {
       case 'payment_intent.succeeded': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        console.log('[Stripe Webhook] payment_intent.succeeded received:', {
+          paymentIntentId: paymentIntent.id,
+          metadata: paymentIntent.metadata,
+        });
         // Extract order/cart/shipping details from metadata
         const items = paymentIntent.metadata?.items ? JSON.parse(paymentIntent.metadata.items) : [];
         const shippingDetails = paymentIntent.metadata?.shippingDetails ? JSON.parse(paymentIntent.metadata.shippingDetails) : {};
@@ -61,6 +54,7 @@ export async function POST(request: Request) {
 
         // Only create the order if payment is successful
         await connectToDatabase();
+        console.log('[Stripe Webhook] Connected to database');
         // Generate reference number (reuse logic from /api/orders if needed)
         const date = new Date();
         const year = date.getFullYear().toString().slice(-2);
@@ -90,30 +84,56 @@ export async function POST(request: Request) {
           orderSource: items?.[0]?.orderSource || undefined,
           visitorId,
         });
-        await order.save();
+        try {
+          await order.save();
+          console.log('[Stripe Webhook] Order saved:', order._id, order.reference);
+        } catch (err) {
+          console.error('[Stripe Webhook] Error saving order:', err);
+          throw err;
+        }
 
         // Create transaction record
-        const transaction = new Transaction({
+        const transactionData: any = {
           orderId: order._id,
-          userId: order.userId,
           amount: paymentIntent.amount / 100, // Convert from cents
           currency: paymentIntent.currency.toUpperCase(),
           paymentMethod: 'stripe',
           status: 'completed',
           paymentIntentId: paymentIntent.id,
-        });
-        await transaction.save();
+        };
+        // Only set userId if it looks like a valid ObjectId
+        if (
+          order.userId &&
+          typeof order.userId === 'string' &&
+          /^[a-fA-F0-9]{24}$/.test(order.userId)
+        ) {
+          transactionData.userId = order.userId;
+        }
+        const transaction = new Transaction(transactionData);
+        try {
+          await transaction.save();
+          console.log('[Stripe Webhook] Transaction saved:', transaction._id);
+        } catch (err) {
+          console.error('[Stripe Webhook] Error saving transaction:', err);
+          throw err;
+        }
 
         // Send order confirmation email
-        await sendOrderConfirmationEmail(
-          order.reference,
-          order.items,
-          order.shippingDetails,
-          order.total,
-          order.vat,
-          order.createdAt,
-          order.status
-        );
+        try {
+          console.log('[Stripe Webhook] Sending order confirmation email to:', order.shippingDetails?.email);
+          await sendOrderConfirmationEmail(
+            order.reference,
+            order.items,
+            order.shippingDetails,
+            order.total,
+            order.vat,
+            order.createdAt,
+            order.status
+          );
+          console.log('[Stripe Webhook] Order confirmation email sent successfully');
+        } catch (err) {
+          console.error('[Stripe Webhook] Error sending order confirmation email:', err);
+        }
         // Do NOT send payment confirmation email anymore
 
         break;
@@ -142,13 +162,9 @@ export async function POST(request: Request) {
         break;
       }
     }
-
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error('Error processing webhook:', error);
-    return NextResponse.json(
-      { error: 'Webhook handler failed' },
-      { status: 500 }
-    );
+    console.error('Error handling Stripe webhook:', error);
+    return NextResponse.json({ error: 'Webhook handler error' }, { status: 500 });
   }
 } 
