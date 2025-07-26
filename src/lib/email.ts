@@ -126,6 +126,7 @@ export async function sendOrderConfirmationEmail(
   status?: string
 ) {
   try {
+    console.log('[Email] sendOrderConfirmationEmail called for:', shippingDetails.email);
     const subtotal = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const shipping = shippingDetails.shippingCost;
     const vatIncluded = typeof vat === 'number' ? vat : Number(((subtotal + shipping) * 0.2).toFixed(2));

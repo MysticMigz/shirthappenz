@@ -22,6 +22,7 @@ async function updateOrderStatus(orderId: string, status: 'paid' | 'payment_fail
 }
 
 export async function POST(req: NextRequest) {
+  console.log('[Stripe Webhook] Handler triggered');
   const sig = req.headers.get('stripe-signature');
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
@@ -120,6 +121,7 @@ export async function POST(req: NextRequest) {
 
         // Send order confirmation email
         try {
+          console.log('[Stripe Webhook] Preparing to send order confirmation email');
           console.log('[Stripe Webhook] Sending order confirmation email to:', order.shippingDetails?.email);
           await sendOrderConfirmationEmail(
             order.reference,
