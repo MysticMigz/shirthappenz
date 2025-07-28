@@ -49,9 +49,14 @@ export async function GET(request: NextRequest) {
       createdAt: { $gte: startDate, $lte: endDate }
     });
 
-    // Get orders data
+    // Get orders data (excluding cancelled and refunded orders)
     const orders = await Order.find({
-      createdAt: { $gte: startDate, $lte: endDate }
+      createdAt: { $gte: startDate, $lte: endDate },
+      status: { $nin: ['cancelled', 'payment_failed'] },
+      $or: [
+        { 'metadata.refundAmount': { $exists: false } },
+        { 'metadata.refundAmount': { $exists: true, $eq: null } }
+      ]
     });
 
     // Calculate customer metrics

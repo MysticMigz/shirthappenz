@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import Header from '@/app/components/Header';
 import Footer from '@/app/components/Footer';
+import CancellationModal from '@/app/components/CancellationModal';
 import { getImageUrl } from '@/lib/utils';
 
 interface OrderItem {
@@ -48,6 +49,20 @@ interface Order {
   total: number;
   vat: number;
   status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled' | 'payment_failed';
+  productionStatus: 'not_started' | 'in_production' | 'quality_check' | 'ready_to_ship' | 'completed';
+  cancellationRequested: boolean;
+  cancellationReason?: string;
+  cancellationRequestedAt?: string;
+  cancellationRequestedBy?: 'customer' | 'admin';
+  cancellationNotes?: string;
+  metadata?: {
+    refundAmount?: number;
+    refundReason?: string;
+    refundNotes?: string;
+    refundedAt?: string;
+    refundedBy?: string;
+    stripeRefundId?: string;
+  };
   createdAt: string;
 }
 
@@ -84,6 +99,12 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [cancellationModal, setCancellationModal] = useState<{
+    isOpen: boolean;
+    orderId: string;
+    orderReference: string;
+  }>({ isOpen: false, orderId: '', orderReference: '' });
+  const [cancellationLoading, setCancellationLoading] = useState(false);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -111,6 +132,129 @@ export default function OrdersPage() {
       fetchOrders();
     }
   }, [status, router]);
+
+  const handleCancellationRequest = async (reason: string, notes: string) => {
+    setCancellationLoading(true);
+    try {
+      const response = await fetch(`/api/orders/${cancellationModal.orderId}/cancel`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reason, notes }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to cancel order');
+      }
+
+      // Update the order in the list
+      setOrders(orders.map(order => 
+        order._id === cancellationModal.orderId 
+          ? { ...order, status: 'cancelled', cancellationRequested: true }
+          : order
+      ));
+
+      // Close modal and show success message
+      setCancellationModal({ isOpen: false, orderId: '', orderReference: '' });
+      alert('Order cancelled successfully. You will receive a confirmation email shortly.');
+    } catch (err) {
+      console.error('Cancellation error:', err);
+      alert(err instanceof Error ? err.message : 'Failed to cancel order');
+    } finally {
+      setCancellationLoading(false);
+    }
+  };
+
+  const canCancelOrder = (order: Order) => {
+    if (order.cancellationRequested) return false;
+    
+    const orderDate = new Date(order.createdAt);
+    const currentDate = new Date();
+    const daysSinceOrder = Math.floor((currentDate.getTime() - orderDate.getTime()) / (1000 * 60 * 60 * 24));
+    const withinCoolingOffPeriod = daysSinceOrder <= 14;
+    
+    // Check if production has started
+    const productionStarted = order.productionStatus === 'in_production' || 
+                             order.productionStatus === 'quality_check' || 
+                             order.productionStatus === 'ready_to_ship' || 
+                             order.productionStatus === 'completed';
+    
+    // Check if order has custom items
+    const hasCustomItems = order.items.some(item => item.customization?.isCustomized);
+    
+    // UK Consumer Law: Can cancel within 14 days of receiving goods
+    if (order.status === 'delivered' || order.status === 'shipped') {
+      return withinCoolingOffPeriod;
+    }
+    
+    // For pending/paid orders: Can cancel before production starts
+    if (order.status === 'pending' || order.status === 'paid') {
+      if (productionStarted && hasCustomItems) {
+        return false; // Custom items cannot be cancelled once production starts
+      }
+      return !productionStarted;
+    }
+    
+    return false;
+  };
+
+  const getCancellationStatus = (order: Order) => {
+    const orderDate = new Date(order.createdAt);
+    const currentDate = new Date();
+    const daysSinceOrder = Math.floor((currentDate.getTime() - orderDate.getTime()) / (1000 * 60 * 60 * 24));
+    const withinCoolingOffPeriod = daysSinceOrder <= 14;
+    
+    const productionStarted = order.productionStatus === 'in_production' || 
+                             order.productionStatus === 'quality_check' || 
+                             order.productionStatus === 'ready_to_ship' || 
+                             order.productionStatus === 'completed';
+    
+    const hasCustomItems = order.items.some(item => item.customization?.isCustomized);
+    
+    if (order.cancellationRequested) {
+      return { canCancel: false, message: 'Cancellation already requested' };
+    }
+    
+    if (order.status === 'cancelled') {
+      return { canCancel: false, message: 'Order already cancelled' };
+    }
+    
+    if (order.status === 'delivered' || order.status === 'shipped') {
+      if (!withinCoolingOffPeriod) {
+        return { canCancel: false, message: '14-day cancellation period expired' };
+      }
+      return { canCancel: true, message: `Can cancel until ${new Date(orderDate.getTime() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString()}` };
+    }
+    
+    if (order.status === 'pending' || order.status === 'paid') {
+      if (productionStarted && hasCustomItems) {
+        return { canCancel: false, message: 'Custom items cannot be cancelled once production starts' };
+      }
+      if (productionStarted) {
+        return { canCancel: false, message: 'Cannot cancel - production has started' };
+      }
+      return { canCancel: true, message: 'Can cancel before production starts' };
+    }
+    
+    return { canCancel: false, message: 'Cannot cancel at this stage' };
+  };
+
+  const getRefundStatus = (order: Order) => {
+    if (!order.metadata?.refundAmount) {
+      return null;
+    }
+
+    return {
+      amount: order.metadata.refundAmount,
+      reason: order.metadata.refundReason || 'Order cancellation',
+      notes: order.metadata.refundNotes,
+      refundedAt: order.metadata.refundedAt,
+      refundedBy: order.metadata.refundedBy,
+      stripeRefundId: order.metadata.stripeRefundId,
+    };
+  };
 
   if (status === 'loading' || loading) {
     return (
@@ -293,12 +437,104 @@ export default function OrdersPage() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Order Actions */}
+                  <div className="mt-6 border-t border-gray-200 pt-6">
+                    <div className="flex justify-between items-center">
+                      <div className="text-sm text-gray-500">
+                        {order.productionStatus && (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            Production: {order.productionStatus.replace('_', ' ')}
+                          </span>
+                        )}
+                        {order.cancellationRequested && (
+                          <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            Cancellation Requested
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex flex-col space-y-2">
+                        {(() => {
+                          const cancellationStatus = getCancellationStatus(order);
+                          return (
+                            <>
+                              {cancellationStatus.canCancel ? (
+                                <button
+                                  onClick={() => setCancellationModal({
+                                    isOpen: true,
+                                    orderId: order._id,
+                                    orderReference: order.reference
+                                  })}
+                                  className="inline-flex items-center px-4 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                                >
+                                  Cancel Order
+                                </button>
+                              ) : (
+                                <span className="text-xs text-gray-500 italic">
+                                  {cancellationStatus.message}
+                                </span>
+                              )}
+                            </>
+                          );
+                        })()}
+                        {order.cancellationRequested && order.cancellationReason && (
+                          <div className="text-sm text-gray-500">
+                            <p><strong>Reason:</strong> {order.cancellationReason}</p>
+                            {order.cancellationNotes && (
+                              <p><strong>Notes:</strong> {order.cancellationNotes}</p>
+                            )}
+                          </div>
+                        )}
+                        
+                        {/* Refund Information */}
+                        {(() => {
+                          const refundStatus = getRefundStatus(order);
+                          if (refundStatus) {
+                            return (
+                              <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-md">
+                                <div className="flex items-center">
+                                  <svg className="h-5 w-5 text-green-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                  </svg>
+                                  <h4 className="text-sm font-medium text-green-800">Refund Processed</h4>
+                                </div>
+                                <div className="mt-2 text-sm text-green-700 space-y-1">
+                                  <p><strong>Amount:</strong> £{refundStatus.amount.toFixed(2)}</p>
+                                  <p><strong>Reason:</strong> {refundStatus.reason}</p>
+                                  {refundStatus.notes && (
+                                    <p><strong>Notes:</strong> {refundStatus.notes}</p>
+                                  )}
+                                  {refundStatus.refundedAt && (
+                                    <p><strong>Processed:</strong> {formatDateTime(refundStatus.refundedAt)}</p>
+                                  )}
+                                  <p className="text-xs text-green-600 mt-2">
+                                    Refund will appear in your account within 5-10 working days
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         )}
       </main>
+      
+      {/* Cancellation Modal */}
+      <CancellationModal
+        isOpen={cancellationModal.isOpen}
+        onClose={() => setCancellationModal({ isOpen: false, orderId: '', orderReference: '' })}
+        onCancel={handleCancellationRequest}
+        orderReference={cancellationModal.orderReference}
+        loading={cancellationLoading}
+      />
+      
       <Footer />
     </div>
   );

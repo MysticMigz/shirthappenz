@@ -47,9 +47,23 @@ export async function POST(req: NextRequest) {
           paymentIntentId: paymentIntent.id,
           metadata: paymentIntent.metadata,
         });
+        
+        // Check if this is a test webhook without proper metadata
+        if (!paymentIntent.metadata?.items || !paymentIntent.metadata?.shippingDetails) {
+          console.log('[Stripe Webhook] Test webhook detected - skipping order creation');
+          return NextResponse.json({ received: true });
+        }
+        
         // Extract order/cart/shipping details from metadata
-        const items = paymentIntent.metadata?.items ? JSON.parse(paymentIntent.metadata.items) : [];
-        const shippingDetails = paymentIntent.metadata?.shippingDetails ? JSON.parse(paymentIntent.metadata.shippingDetails) : {};
+        let items, shippingDetails;
+        try {
+          items = paymentIntent.metadata?.items ? JSON.parse(paymentIntent.metadata.items) : [];
+          shippingDetails = paymentIntent.metadata?.shippingDetails ? JSON.parse(paymentIntent.metadata.shippingDetails) : {};
+        } catch (error) {
+          console.error('[Stripe Webhook] Error parsing metadata:', error);
+          return NextResponse.json({ error: 'Invalid metadata format' }, { status: 400 });
+        }
+        
         const visitorId = paymentIntent.metadata?.visitorId || '';
         const total = paymentIntent.amount / 100;
 

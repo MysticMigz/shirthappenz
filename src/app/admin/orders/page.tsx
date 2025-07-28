@@ -16,6 +16,19 @@ interface Order {
   productionNotes: string;
   productionStartDate: string | null;
   productionCompletedDate: string | null;
+  cancellationRequested: boolean;
+  cancellationReason?: string;
+  cancellationRequestedAt?: string;
+  cancellationRequestedBy?: 'customer' | 'admin';
+  cancellationNotes?: string;
+  metadata?: {
+    refundAmount?: number;
+    refundReason?: string;
+    refundNotes?: string;
+    refundedAt?: string;
+    refundedBy?: string;
+    stripeRefundId?: string;
+  };
   createdAt: string;
   shippingDetails: {
     firstName: string;
@@ -379,9 +392,15 @@ export default function AdminOrdersPage() {
                       </div>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
-                      <span className={getStatusBadgeClass(order.status, 'status')}>
-                        {order.status.replace('_', ' ').toUpperCase()}
-                      </span>
+                      {order.metadata?.refundAmount ? (
+                        <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
+                          REFUNDED
+                        </span>
+                      ) : (
+                        <span className={getStatusBadgeClass(order.status, 'status')}>
+                          {order.status.replace('_', ' ').toUpperCase()}
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
                       <span className={getStatusBadgeClass(order.productionStatus, 'production')}>
@@ -409,22 +428,62 @@ export default function AdminOrdersPage() {
                         {/* Order Status Actions */}
                         <div>
                           <label className="block text-xs font-medium text-gray-700 mb-1">Order:</label>
-                          <div className="flex flex-wrap gap-1">
-                            {getNextActions(order.status).map((nextStatus) => (
-                              <button
-                                key={nextStatus}
-                                onClick={() => handleStatusChange(order._id, nextStatus)}
-                                className={`px-2 py-1 rounded text-xs font-medium ${
-                                  nextStatus === 'cancelled'
-                                    ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                                    : 'bg-green-100 text-green-700 hover:bg-green-200'
-                                }`}
-                              >
-                                {nextStatus.charAt(0).toUpperCase() + nextStatus.slice(1)}
-                              </button>
-                            ))}
-                          </div>
+                          {order.metadata?.refundAmount ? (
+                            <div className="text-xs text-gray-500 italic">
+                              Order has been refunded - status cannot be changed
+                            </div>
+                          ) : (
+                            <div className="flex flex-wrap gap-1">
+                              {getNextActions(order.status).map((nextStatus) => (
+                                <button
+                                  key={nextStatus}
+                                  onClick={() => handleStatusChange(order._id, nextStatus)}
+                                  className={`px-2 py-1 rounded text-xs font-medium ${
+                                    nextStatus === 'cancelled'
+                                      ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                                      : 'bg-green-100 text-green-700 hover:bg-green-200'
+                                  }`}
+                                >
+                                  {nextStatus.charAt(0).toUpperCase() + nextStatus.slice(1)}
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
+
+                        {/* Cancellation Information */}
+                        {order.cancellationRequested && (
+                          <div className="bg-red-50 border border-red-200 rounded p-2">
+                            <label className="block text-xs font-medium text-red-700 mb-1">Cancellation:</label>
+                            <div className="text-xs text-red-600 space-y-1">
+                              <p><strong>Reason:</strong> {order.cancellationReason}</p>
+                              <p><strong>Requested by:</strong> {order.cancellationRequestedBy}</p>
+                              <p><strong>Date:</strong> {order.cancellationRequestedAt ? new Date(order.cancellationRequestedAt).toLocaleDateString() : 'N/A'}</p>
+                              {order.cancellationNotes && (
+                                <p><strong>Notes:</strong> {order.cancellationNotes}</p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Refund Information */}
+                        {order.metadata?.refundAmount && (
+                          <div className="bg-green-50 border border-green-200 rounded p-2">
+                            <label className="block text-xs font-medium text-green-700 mb-1">Refund:</label>
+                            <div className="text-xs text-green-600 space-y-1">
+                              <p><strong>Amount:</strong> £{order.metadata.refundAmount.toFixed(2)}</p>
+                              <p><strong>Reason:</strong> {order.metadata.refundReason || 'Order cancellation'}</p>
+                              {order.metadata.refundNotes && (
+                                <p><strong>Notes:</strong> {order.metadata.refundNotes}</p>
+                              )}
+                              <p><strong>Processed by:</strong> {order.metadata.refundedBy || 'N/A'}</p>
+                              <p><strong>Date:</strong> {order.metadata.refundedAt ? new Date(order.metadata.refundedAt).toLocaleDateString() : 'N/A'}</p>
+                              {order.metadata.stripeRefundId && (
+                                <p><strong>Stripe ID:</strong> {order.metadata.stripeRefundId}</p>
+                              )}
+                            </div>
+                          </div>
+                        )}
 
                         {/* Production Notes */}
                         <div>

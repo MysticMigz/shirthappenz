@@ -26,8 +26,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get all orders, sorted by deliveryPriority and createdAt
-    const orders = await Order.find({})
+    // Get all orders (excluding cancelled and refunded orders), sorted by deliveryPriority and createdAt
+    const orders = await Order.find({
+      status: { $nin: ['cancelled', 'payment_failed'] },
+      $or: [
+        { 'metadata.refundAmount': { $exists: false } },
+        { 'metadata.refundAmount': { $exists: true, $eq: null } }
+      ]
+    })
       .sort({ deliveryPriority: -1, createdAt: -1 });
 
     return NextResponse.json({ orders });

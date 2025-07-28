@@ -37,6 +37,34 @@ const AboutPage = () => (
           <strong>MR Shirt Personalisation</strong> – Where your ideas become reality.
         </p>
       </div>
+      
+      {/* Business Information Disclosure */}
+      <div className="mt-12 p-6 bg-gray-50 rounded-lg">
+        <h2 className="text-2xl font-semibold mb-4 text-gray-900">Business Information</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700">
+          <div>
+            <h3 className="font-semibold text-gray-900 mb-2">Company Details</h3>
+            <ul className="space-y-1">
+              <li><strong>Business Name:</strong> Mr SHIRT PERSONALISATION</li>
+              <li><strong>Legal Structure:</strong> Sole Trader</li>
+              <li><strong>Trading Address:</strong> 10 Barney Close, SE7 8SS, United Kingdom</li>
+              <li><strong>Geographic Address:</strong> 10 Barney Close, SE7 8SS, United Kingdom</li>
+            </ul>
+          </div>
+          <div>
+            <h3 className="font-semibold text-gray-900 mb-2">Contact Information</h3>
+            <ul className="space-y-1">
+              <li><strong>Email:</strong> customer.service@mrshirtpersonalisation.com</li>
+              <li><strong>Phone:</strong> 07954746514</li>
+              <li><strong>Instagram:</strong> @mr_shirt_personalisation</li>
+              <li><strong>Business Hours:</strong> Mon-Fri 9:00am - 6:00pm</li>
+            </ul>
+          </div>
+        </div>
+        <div className="mt-4 text-xs text-gray-600">
+          <p><strong>Note:</strong> This information is provided in compliance with the Companies Act 2006 and E-Commerce Regulations.</p>
+        </div>
+      </div>
     </section>
     <Footer />
   </>

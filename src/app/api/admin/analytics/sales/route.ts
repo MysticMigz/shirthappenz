@@ -58,10 +58,14 @@ export async function GET(request: NextRequest) {
       startDate.setFullYear(now.getFullYear() - 1);
     }
 
-    // Fetch orders within date range
+    // Fetch orders within date range (excluding cancelled and refunded orders)
     const orders = await Order.find({
       createdAt: { $gte: startDate, $lte: endDate },
-      status: { $in: ['pending', 'in_production', 'paid', 'shipped', 'completed', 'delivered'] }
+      status: { $in: ['pending', 'in_production', 'paid', 'shipped', 'completed', 'delivered'] },
+      $or: [
+        { 'metadata.refundAmount': { $exists: false } },
+        { 'metadata.refundAmount': { $exists: true, $eq: null } }
+      ]
     }).sort({ createdAt: 1 });
 
     // Process orders for different analytics
@@ -132,11 +136,15 @@ export async function GET(request: NextRequest) {
     // --- Repeat vs. New Customers ---
     // 1. Find all unique userIds in this period
     const userIdsInPeriod = Array.from(new Set(orders.map(order => order.userId)));
-    // 2. Find which of these had an order before the period
+    // 2. Find which of these had an order before the period (excluding cancelled and refunded orders)
     const previousOrders = await Order.find({
       userId: { $in: userIdsInPeriod },
       createdAt: { $lt: startDate },
-      status: { $in: ['paid', 'shipped', 'completed', 'delivered'] }
+      status: { $in: ['paid', 'shipped', 'completed', 'delivered'] },
+      $or: [
+        { 'metadata.refundAmount': { $exists: false } },
+        { 'metadata.refundAmount': { $exists: true, $eq: null } }
+      ]
     }).select('userId');
     const repeatUserIds = new Set(previousOrders.map(o => o.userId));
     // 3. Aggregate order count and revenue for new vs repeat

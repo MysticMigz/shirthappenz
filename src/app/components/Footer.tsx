@@ -22,13 +22,14 @@ const Footer = () => {
               Your one-stop shop for custom apparel printing.
               DTF & Sublimation services for brand owners, individuals, and businesses.
             </p>
-            <div className="space-y-2 text-sm text-blue-100">
-              <p>123 Design Street</p>
-              <p>Creative City, CC 12345</p>
-              <p>United States</p>
+                        <div className="space-y-2 text-sm text-blue-100">
+              <p>10 Barney Close</p>
+              <p>SE7 8SS</p>
+              <p>United Kingdom</p>
               <div className="pt-2">
-                <p>Phone: (555) 123-4567</p>
+                <p>Phone: 07954746514</p>
                 <p>Email: customer.service@mrshirtpersonalisation.com</p>
+                <p>Instagram: <a href="https://www.instagram.com/mr_shirt_personalisation" target="_blank" rel="noopener noreferrer" className="text-blue-100 hover:text-[var(--brand-red)] transition-colors">@mr_shirt_personalisation</a></p>
               </div>
             </div>
             <div className="flex space-x-4">
@@ -128,7 +129,12 @@ const Footer = () => {
         <div className="container mx-auto px-4 py-6">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="text-sm text-blue-100 mb-4 md:mb-0">
-              © ShirtHappenZ 2025. All rights reserved. | Created with <span className="text-[var(--brand-red)]">❤️</span> for custom printing.
+              <div>© Mr SHIRT PERSONALISATION 2025. All rights reserved.</div>
+              <div className="mt-1 text-xs">
+                Trading Address: 10 Barney Close, SE7 8SS, United Kingdom | 
+                Email: customer.service@mrshirtpersonalisation.com | 
+                Phone: 07954746514
+              </div>
             </div>
             <div className="flex space-x-6 text-sm">
               <Link href="/privacy" className="text-blue-100 hover:text-[var(--brand-red)] transition-colors">

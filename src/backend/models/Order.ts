@@ -170,6 +170,28 @@ const OrderSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Transaction',
   },
+  // Cancellation fields
+  cancellationRequested: {
+    type: Boolean,
+    default: false,
+  },
+  cancellationReason: {
+    type: String,
+    default: '',
+  },
+  cancellationRequestedAt: {
+    type: Date,
+    default: null,
+  },
+  cancellationRequestedBy: {
+    type: String,
+    enum: ['customer', 'admin'],
+    default: null,
+  },
+  cancellationNotes: {
+    type: String,
+    default: '',
+  },
   createdAt: {
     type: Date,
     default: Date.now,

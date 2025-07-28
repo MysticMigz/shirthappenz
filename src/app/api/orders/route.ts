@@ -84,8 +84,17 @@ export async function GET(request: Request) {
 
     await connectToDatabase();
 
-    // Get user's orders
-    const orders = await Order.find({ userId: session.user.email })
+    // Get user from database to get the correct user ID
+    const user = await User.findOne({ email: session.user.email });
+    if (!user) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      );
+    }
+
+    // Get user's orders using the user's ObjectId
+    const orders = await Order.find({ userId: user._id.toString() })
       .sort({ createdAt: -1 });
 
     return NextResponse.json(orders);

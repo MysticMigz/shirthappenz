@@ -349,6 +349,163 @@ export async function sendOrderShippedEmail(
   }
 }
 
+export async function sendOrderCancellationEmail(
+  orderReference: string,
+  shippingDetails: ShippingDetails,
+  items: OrderItem[],
+  total: number,
+  reason: string,
+  notes?: string
+) {
+  try {
+    const itemsList = items.map(item => `
+      <div style="border-bottom: 1px solid #e5e7eb; padding: 12px 0;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <p style="margin: 0; font-weight: 600; color: #111827;">${item.name}</p>
+            <p style="margin: 4px 0 0 0; color: #6b7280; font-size: 14px;">
+              Size: ${item.size} | Qty: ${item.quantity}
+              ${item.customization?.isCustomized ? ` | Custom: ${item.customization.name || ''} ${item.customization.number || ''}` : ''}
+            </p>
+          </div>
+          <p style="margin: 0; font-weight: 600; color: #111827;">£${item.price.toFixed(2)}</p>
+        </div>
+      </div>
+    `).join('');
+
+    await sendEmail({
+      to: shippingDetails.email,
+      subject: `Order Cancelled - ${orderReference} | Mr Shirt Personalisation`,
+      html: `
+        <div style="font-family: Arial, sans-serif; background: #f9fafb; padding: 0; margin: 0;">
+          <div style="max-width: 600px; margin: 0 auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px #e5e7eb;">
+            <div style="padding: 32px 32px 0 32px; text-align: center;">
+              <a href="https://mrshirtpersonalisation.co.uk" target="_blank" rel="noopener noreferrer">
+                <img src="https://res.cloudinary.com/dfjgvffou/image/upload/v1753210261/logo_yqmosx.png" alt="Mr Shirt Personalisation Logo" style="max-width: 180px; margin: 0 auto 24px auto; display: block;" />
+              </a>
+              <h1 style="font-size: 28px; font-weight: bold; color: #dc2626; margin-bottom: 8px;">Order Cancelled</h1>
+              <p style="color: #4b5563; font-size: 16px; margin-bottom: 0;">Your order has been successfully cancelled.</p>
+            </div>
+            <div style="padding: 0 32px 32px 32px;">
+              <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                <h2 style="color: #dc2626; margin: 0 0 12px 0; font-size: 18px;">Order Details</h2>
+                <p style="margin: 0 0 8px 0; color: #374151;"><strong>Order Reference:</strong> ${orderReference}</p>
+                <p style="margin: 0 0 8px 0; color: #374151;"><strong>Cancellation Reason:</strong> ${reason}</p>
+                ${notes ? `<p style="margin: 0 0 8px 0; color: #374151;"><strong>Additional Notes:</strong> ${notes}</p>` : ''}
+                <p style="margin: 8px 0 0 0; color: #6b7280; font-size: 14px;">Cancelled on ${new Date().toLocaleDateString('en-GB')}</p>
+              </div>
+              
+              <div style="background-color: #f9fafb; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                <h3 style="margin: 0 0 16px 0; color: #111827; font-size: 16px;">Cancelled Items</h3>
+                ${itemsList}
+                <div style="border-top: 2px solid #e5e7eb; padding-top: 12px; margin-top: 12px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <p style="margin: 0; font-weight: 600; color: #111827;">Total</p>
+                    <p style="margin: 0; font-weight: 600; color: #111827;">£${total.toFixed(2)}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div style="background-color: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                <h3 style="margin: 0 0 12px 0; color: #0369a1; font-size: 16px;">Refund Information</h3>
+                <p style="margin: 0; color: #374151; font-size: 14px;">
+                  A full refund will be processed within 5-10 working days. The refund will be credited to your original payment method.
+                </p>
+              </div>
+              
+              <p style="color: #6b7280; font-size: 14px; margin-top: 24px;">
+                If you have any questions about this cancellation, please contact us at customer.service@mrshirtpersonalisation.com
+              </p>
+            </div>
+          </div>
+        </div>
+      `,
+    });
+  } catch (error) {
+    console.error('Failed to send order cancellation email:', error);
+    throw error;
+  }
+}
+
+export async function sendRefundConfirmationEmail(
+  orderReference: string,
+  shippingDetails: ShippingDetails,
+  items: OrderItem[],
+  refundAmount: number,
+  reason: string,
+  notes?: string
+) {
+  try {
+    const itemsList = items.map(item => `
+      <div style="border-bottom: 1px solid #e5e7eb; padding: 12px 0;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <p style="margin: 0; font-weight: 600; color: #111827;">${item.name}</p>
+            <p style="margin: 4px 0 0 0; color: #6b7280; font-size: 14px;">
+              Size: ${item.size} | Qty: ${item.quantity}
+              ${item.customization?.isCustomized ? ` | Custom: ${item.customization.name || ''} ${item.customization.number || ''}` : ''}
+            </p>
+          </div>
+          <p style="margin: 0; font-weight: 600; color: #111827;">£${item.price.toFixed(2)}</p>
+        </div>
+      </div>
+    `).join('');
+
+    await sendEmail({
+      to: shippingDetails.email,
+      subject: `Refund Processed - ${orderReference} | Mr Shirt Personalisation`,
+      html: `
+        <div style="font-family: Arial, sans-serif; background: #f9fafb; padding: 0; margin: 0;">
+          <div style="max-width: 600px; margin: 0 auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px #e5e7eb;">
+            <div style="padding: 32px 32px 0 32px; text-align: center;">
+              <a href="https://mrshirtpersonalisation.co.uk" target="_blank" rel="noopener noreferrer">
+                <img src="https://res.cloudinary.com/dfjgvffou/image/upload/v1753210261/logo_yqmosx.png" alt="Mr Shirt Personalisation Logo" style="max-width: 180px; margin: 0 auto 24px auto; display: block;" />
+              </a>
+              <h1 style="font-size: 28px; font-weight: bold; color: #059669; margin-bottom: 8px;">Refund Processed</h1>
+              <p style="color: #4b5563; font-size: 16px; margin-bottom: 0;">Your refund has been successfully processed.</p>
+            </div>
+            <div style="padding: 0 32px 32px 32px;">
+              <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                <h2 style="color: #059669; margin: 0 0 12px 0; font-size: 18px;">Refund Details</h2>
+                <p style="margin: 0 0 8px 0; color: #374151;"><strong>Order Reference:</strong> ${orderReference}</p>
+                <p style="margin: 0 0 8px 0; color: #374151;"><strong>Refund Amount:</strong> £${refundAmount.toFixed(2)}</p>
+                <p style="margin: 0 0 8px 0; color: #374151;"><strong>Reason:</strong> ${reason}</p>
+                ${notes ? `<p style="margin: 0 0 8px 0; color: #374151;"><strong>Notes:</strong> ${notes}</p>` : ''}
+                <p style="margin: 8px 0 0 0; color: #6b7280; font-size: 14px;">Refunded on ${new Date().toLocaleDateString('en-GB')}</p>
+              </div>
+              
+              <div style="background-color: #f9fafb; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                <h3 style="margin: 0 0 16px 0; color: #111827; font-size: 16px;">Refunded Items</h3>
+                ${itemsList}
+                <div style="border-top: 2px solid #e5e7eb; padding-top: 12px; margin-top: 12px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <p style="margin: 0; font-weight: 600; color: #111827;">Refund Amount</p>
+                    <p style="margin: 0; font-weight: 600; color: #059669;">£${refundAmount.toFixed(2)}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div style="background-color: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                <h3 style="margin: 0 0 12px 0; color: #0369a1; font-size: 16px;">Refund Timeline</h3>
+                <p style="margin: 0; color: #374151; font-size: 14px;">
+                  The refund will appear in your account within 5-10 working days, depending on your bank or card issuer.
+                </p>
+              </div>
+              
+              <p style="color: #6b7280; font-size: 14px; margin-top: 24px;">
+                If you have any questions about this refund, please contact us at customer.service@mrshirtpersonalisation.com
+              </p>
+            </div>
+          </div>
+        </div>
+      `,
+    });
+  } catch (error) {
+    console.error('Failed to send refund confirmation email:', error);
+    throw error;
+  }
+}
+
 export async function sendRegistrationConfirmationEmail(email: string, firstName: string) {
   try {
     await sendEmail({

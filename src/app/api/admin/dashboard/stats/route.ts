@@ -27,9 +27,23 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get total orders and revenue
-    const totalOrders = await Order.countDocuments();
-    const orders = await Order.find();
+    // Get total orders and revenue (excluding cancelled and refunded orders)
+    const totalOrders = await Order.countDocuments({
+      status: { $nin: ['cancelled', 'payment_failed'] },
+      $or: [
+        { 'metadata.refundAmount': { $exists: false } },
+        { 'metadata.refundAmount': { $exists: true, $eq: null } }
+      ]
+    });
+    
+    const orders = await Order.find({
+      status: { $nin: ['cancelled', 'payment_failed'] },
+      $or: [
+        { 'metadata.refundAmount': { $exists: false } },
+        { 'metadata.refundAmount': { $exists: true, $eq: null } }
+      ]
+    });
+    
     const totalRevenue = orders.reduce((sum, order) => sum + order.total, 0);
 
     // Get pending orders

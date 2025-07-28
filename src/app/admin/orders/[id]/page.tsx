@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { saveAs } from 'file-saver';
+import RefundModal from '@/app/components/RefundModal';
 
 interface OrderItem {
   productId: string;
@@ -38,6 +39,14 @@ interface Order {
   productionNotes: string;
   productionStartDate: string | null;
   productionCompletedDate: string | null;
+  metadata?: {
+    refundAmount?: number;
+    refundReason?: string;
+    refundNotes?: string;
+    refundedAt?: string;
+    refundedBy?: string;
+    stripeRefundId?: string;
+  };
   createdAt: string;
   shippingDetails: {
     firstName: string;
@@ -61,6 +70,13 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
   const [productionStatusUpdateLoading, setProductionStatusUpdateLoading] = useState(false);
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesText, setNotesText] = useState('');
+  const [refundModal, setRefundModal] = useState<{
+    isOpen: boolean;
+    orderReference: string;
+    orderTotal: number;
+  }>({ isOpen: false, orderReference: '', orderTotal: 0 });
+  const [refundLoading, setRefundLoading] = useState(false);
+  const [refundInfo, setRefundInfo] = useState<any>(null);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -159,6 +175,59 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
       setError(err instanceof Error ? err.message : 'Failed to update production notes');
     }
   };
+
+  const fetchRefundInfo = async () => {
+    try {
+      const response = await fetch(`/api/admin/orders/${params.id}/refund`);
+      if (response.ok) {
+        const data = await response.json();
+        setRefundInfo(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch refund info:', error);
+    }
+  };
+
+  const handleRefund = async (refundAmount: number, reason: string, notes: string) => {
+    setRefundLoading(true);
+    try {
+      const response = await fetch(`/api/admin/orders/${params.id}/refund`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refundAmount, reason, notes }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to process refund');
+      }
+
+      const result = await response.json();
+      alert(`Refund processed successfully! Refund ID: ${result.refund.id}`);
+      setRefundModal({ isOpen: false, orderReference: '', orderTotal: 0 });
+      
+      // Refresh order details
+      const orderResponse = await fetch(`/api/admin/orders/${params.id}`);
+      if (orderResponse.ok) {
+        const orderData = await orderResponse.json();
+        setOrder(orderData.order);
+      }
+    } catch (err) {
+      console.error('Refund error:', err);
+      alert(err instanceof Error ? err.message : 'Failed to process refund');
+    } finally {
+      setRefundLoading(false);
+    }
+  };
+
+  // Fetch refund info when order is cancelled
+  useEffect(() => {
+    if (order?.status === 'cancelled') {
+      fetchRefundInfo();
+    }
+  }, [order?.status]);
 
   const exportOrderItemForDTF = (customization: OrderItem['customization'], side = 'front', designName = 'dtf-design') => {
     if (!customization) return;
@@ -273,6 +342,14 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
                   <option value="cancelled">Cancelled</option>
                   <option value="payment_failed">Payment Failed</option>
                 </select>
+                {order.metadata?.refundAmount && (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                    <svg className="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    Refunded £{order.metadata.refundAmount.toFixed(2)}
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -504,9 +581,94 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
                 </table>
               </div>
             </div>
+
+            {/* Refund Section */}
+            {order.status === 'cancelled' && (
+              <div className="mt-8">
+                <h2 className="text-lg font-medium text-gray-900 mb-4">Refund Management</h2>
+                <div className="bg-gray-50 rounded-lg p-6">
+                  {refundInfo ? (
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <h3 className="text-md font-semibold text-gray-900">Refund Status</h3>
+                          <p className="text-sm text-gray-600">
+                            {refundInfo.transaction.status === 'refunded' || order.metadata?.refundAmount
+                              ? 'Refund has been processed' 
+                              : 'Refund not yet processed'}
+                          </p>
+                        </div>
+                        {refundInfo.canRefund && !order.metadata?.refundAmount && (
+                          <button
+                            onClick={() => setRefundModal({
+                              isOpen: true,
+                              orderReference: order.reference,
+                              orderTotal: order.total
+                            })}
+                            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium"
+                          >
+                            Process Refund
+                          </button>
+                        )}
+                        {(refundInfo.transaction.status === 'refunded' || order.metadata?.refundAmount) && (
+                          <div className="flex items-center">
+                            <svg className="h-5 w-5 text-green-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                            <span className="text-sm font-medium text-green-700">Refunded</span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {(refundInfo.transaction.status === 'refunded' || order.metadata?.refundAmount) && (
+                        <div className="bg-green-50 border border-green-200 rounded-md p-4">
+                          <h4 className="text-sm font-semibold text-green-800 mb-2">Refund Details</h4>
+                          <div className="text-sm text-green-700 space-y-1">
+                            <p><strong>Refund ID:</strong> {refundInfo.transaction.refundId || order.metadata?.stripeRefundId || 'N/A'}</p>
+                            <p><strong>Amount:</strong> £{(refundInfo.transaction.metadata?.refundAmount || order.metadata?.refundAmount || 0).toFixed(2)}</p>
+                            <p><strong>Reason:</strong> {refundInfo.transaction.metadata?.refundReason || order.metadata?.refundReason || 'N/A'}</p>
+                            {refundInfo.transaction.metadata?.refundNotes || order.metadata?.refundNotes ? (
+                              <p><strong>Notes:</strong> {refundInfo.transaction.metadata?.refundNotes || order.metadata?.refundNotes}</p>
+                            ) : null}
+                            <p><strong>Processed by:</strong> {refundInfo.transaction.metadata?.refundedBy || order.metadata?.refundedBy || 'N/A'}</p>
+                            <p><strong>Date:</strong> {(refundInfo.transaction.metadata?.refundedAt || order.metadata?.refundedAt) ? new Date(refundInfo.transaction.metadata?.refundedAt || order.metadata?.refundedAt || '').toLocaleDateString() : 'N/A'}</p>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {refundInfo.transaction.status !== 'refunded' && !order.metadata?.refundAmount && (
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+                          <h4 className="text-sm font-semibold text-yellow-800 mb-2">Refund Information</h4>
+                          <div className="text-sm text-yellow-700 space-y-1">
+                            <p><strong>Original Payment:</strong> £{refundInfo.transaction.amount.toFixed(2)}</p>
+                            <p><strong>Payment Method:</strong> {refundInfo.transaction.paymentMethod}</p>
+                            <p><strong>Payment Intent:</strong> {refundInfo.transaction.paymentIntentId}</p>
+                            <p><strong>Order Status:</strong> {refundInfo.order.status}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center py-4">
+                      <p className="text-gray-500">Loading refund information...</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
+      
+      {/* Refund Modal */}
+      <RefundModal
+        isOpen={refundModal.isOpen}
+        onClose={() => setRefundModal({ isOpen: false, orderReference: '', orderTotal: 0 })}
+        onRefund={handleRefund}
+        orderReference={refundModal.orderReference}
+        orderTotal={refundModal.orderTotal}
+        loading={refundLoading}
+      />
     </div>
   );
 } 
