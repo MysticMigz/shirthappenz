@@ -1,26 +1,52 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useUser } from '@/context/UserContext';
 import { useRouter } from 'next/navigation';
-import { signOut } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
 import { useCart } from '@/context/CartContext';
+import { useUser } from '@/context/UserContext';
+
+interface Voucher {
+  code: string;
+  description: string;
+  validUntil: string;
+  type?: string;
+  value?: number;
+  minimumOrderAmount?: number;
+}
 
 const Header = () => {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const { data: session } = useSession();
   const { user, setUser } = useUser();
-  const { getTotal, getItemCount } = useCart();
+  const { items } = useCart();
   const router = useRouter();
   const [searchInput, setSearchInput] = useState('');
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [vouchers, setVouchers] = useState<Voucher[]>([]);
+
+  // Fetch active vouchers
+  useEffect(() => {
+    const fetchVouchers = async () => {
+      try {
+        const response = await fetch('/api/discount-codes');
+        if (response.ok) {
+          const data = await response.json();
+          setVouchers(data.discountCodes || []);
+        }
+      } catch (error) {
+        console.error('Error fetching vouchers:', error);
+      }
+    };
+
+    fetchVouchers();
+  }, []);
 
   const handleLogout = async () => {
     try {
-      await signOut({ redirect: false });
-      setUser(null);
-      router.push('/');
+      await signOut({ callbackUrl: '/' });
     } catch (error) {
       console.error('Logout failed:', error);
     }
@@ -28,13 +54,19 @@ const Header = () => {
 
   return (
     <>
-      {/* Top announcement bar */}
-      <div className="bg-gradient-to-r from-[var(--brand-red)] to-[var(--brand-blue)] text-white text-center py-2 px-4">
-        <p className="text-xs sm:text-sm px-2">
-          <strong>Important:</strong> Orders processed within 3-5 working days. 
-          <span className="hidden sm:inline"> Fast turnaround available!</span>
-        </p>
-      </div>
+      {/* Top announcement bar - now shows voucher information */}
+      {vouchers.length > 0 && (
+        <div className="bg-gradient-to-r from-[var(--brand-red)] to-[var(--brand-blue)] text-white text-center py-2 px-4">
+          <p className="text-xs sm:text-sm px-2">
+            <strong>Special Offer:</strong> {vouchers.map((voucher, index) => (
+              <span key={voucher.code}>
+                Use code <strong>{voucher.code}</strong> for {voucher.description}
+                {index < vouchers.length - 1 && ' | '}
+              </span>
+            ))}
+          </p>
+        </div>
+      )}
 
       {/* Main header */}
       <header className="bg-white shadow-md sticky top-0 z-50">
@@ -158,14 +190,14 @@ const Header = () => {
                   <svg className="w-5 h-5 mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m1.6 8L5 3H3m4 10v6a1 1 0 001 1h8a1 1 0 001-1v-6M9 13h6" />
                   </svg>
-                  {getItemCount() > 0 && (
+                  {items.length > 0 && (
                     <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                      {getItemCount()}
+                      {items.length}
                     </span>
                   )}
                 </div>
                 <span className="hidden sm:inline group-hover:translate-x-1 transition-transform duration-200 group-hover:bg-gradient-to-r group-hover:from-[var(--brand-red)] group-hover:to-[var(--brand-blue)] group-hover:bg-clip-text group-hover:text-transparent">
-                  £{getTotal().toFixed(2)} ({getItemCount()})
+                  £{items.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2)} ({items.reduce((sum, item) => sum + item.quantity, 0)})
                 </span>
               </Link>
 
