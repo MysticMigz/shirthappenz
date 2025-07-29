@@ -188,9 +188,10 @@ export default function ProductsPage() {
     return (
       <div className="min-h-screen flex flex-col">
         <Header />
-        <main className="flex-grow container mx-auto px-4 py-8">
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+        <main className="flex-grow container mx-auto px-4 py-4 sm:py-8">
+          <div className="flex flex-col justify-center items-center h-64 space-y-4">
+            <div className="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-t-2 border-b-2 border-purple-500"></div>
+            <p className="text-sm sm:text-base text-gray-600">Loading products...</p>
           </div>
         </main>
         <Footer />
@@ -201,27 +202,27 @@ export default function ProductsPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      <main className="flex-grow container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">Our Products</h1>
-          <p className="text-lg text-gray-600">
+      <main className="flex-grow container mx-auto px-4 py-4 sm:py-8">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-2 sm:mb-4">Our Products</h1>
+          <p className="text-sm sm:text-base md:text-lg text-gray-600">
             Discover our range of high-quality customizable apparel and accessories.
           </p>
         </div>
 
         {/* Gender Nav Bar */}
-        <div className="flex justify-center gap-8 mb-8">
+        <div className="flex justify-center gap-2 sm:gap-4 md:gap-8 mb-6 sm:mb-8 overflow-x-auto pb-2">
           {genderNav.map((gender) => (
             <button
               key={gender.key}
               onClick={() => handleGenderClick(gender.key)}
-              className={`px-8 py-2 rounded-full font-semibold border border-black bg-white text-black transition-all duration-300 ease-in-out
+              className={`px-4 sm:px-6 md:px-8 py-2 rounded-full font-semibold border border-black bg-white text-black transition-all duration-300 ease-in-out flex-shrink-0
                 focus-visible:ring-2 focus-visible:ring-[var(--brand-red)] focus-visible:ring-offset-2
                 ${selectedGender === gender.key ? 'shadow-[0_2px_0_0_var(--brand-red)]' : ''}
                 group hover:scale-105 focus:scale-105 hover:shadow-[0_4px_0_0_var(--brand-red)] focus:shadow-[0_4px_0_0_var(--brand-red)] active:scale-100`
               }
             >
-              <span className="transition text-black group-hover:bg-gradient-to-r group-hover:from-[var(--brand-red)] group-hover:to-[var(--brand-blue)] group-hover:bg-clip-text group-hover:text-transparent">
+              <span className="text-sm sm:text-base transition text-black group-hover:bg-gradient-to-r group-hover:from-[var(--brand-red)] group-hover:to-[var(--brand-blue)] group-hover:bg-clip-text group-hover:text-transparent">
                 {gender.label}
               </span>
             </button>
@@ -229,19 +230,19 @@ export default function ProductsPage() {
         </div>
 
         {/* Category Cards for selected gender */}
-        <div className="flex flex-wrap gap-4 justify-center mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:flex lg:flex-wrap gap-3 sm:gap-4 justify-center mb-6 sm:mb-8">
           {allCategories[selectedGender].map((cat: Category) => (
             <button
               key={cat.key}
               onClick={() => handleCategoryClick(cat.key)}
-              className={`flex flex-col items-center px-6 py-4 rounded-lg border border-black bg-white text-black transition-all duration-300 ease-in-out
+              className={`flex flex-col items-center px-3 sm:px-4 md:px-6 py-3 sm:py-4 rounded-lg border border-black bg-white text-black transition-all duration-300 ease-in-out
                 focus-visible:ring-2 focus-visible:ring-[var(--brand-red)] focus-visible:ring-offset-2
                 ${selectedCategory === cat.key ? 'shadow-[0_2px_0_0_var(--brand-red)]' : ''}
                 group hover:scale-105 focus:scale-105 hover:shadow-[0_4px_0_0_var(--brand-red)] focus:shadow-[0_4px_0_0_var(--brand-red)] active:scale-100`
               }
             >
-              <span className="mb-2">{cat.icon}</span>
-              <span className="text-sm font-medium transition text-black group-hover:bg-gradient-to-r group-hover:from-[var(--brand-red)] group-hover:to-[var(--brand-blue)] group-hover:bg-clip-text group-hover:text-transparent">
+              <span className="mb-1 sm:mb-2 w-8 h-8 sm:w-10 sm:h-10">{cat.icon}</span>
+              <span className="text-xs sm:text-sm font-medium transition text-black group-hover:bg-gradient-to-r group-hover:from-[var(--brand-red)] group-hover:to-[var(--brand-blue)] group-hover:bg-clip-text group-hover:text-transparent text-center">
                 {cat.label}
               </span>
             </button>
@@ -249,35 +250,38 @@ export default function ProductsPage() {
         </div>
 
         {/* Add attribution for Icons8 below the categories section */}
-        <div className="text-xs text-gray-400 text-center mt-2">
+        <div className="text-xs text-gray-400 text-center mt-2 mb-4">
           Icons by <a href="https://icons8.com" target="_blank" rel="noopener noreferrer" className="underline">Icons8</a>
         </div>
 
         {/* Search and Filter Controls */}
-        <div className="bg-white rounded-lg shadow-sm p-4 mb-8">
-          <div className="flex flex-col md:flex-row gap-4 items-center justify-between mb-4">
-            <div className="relative flex-grow">
+        <div className="bg-white rounded-lg shadow-sm p-4 mb-6 sm:mb-8">
+          <div className="flex flex-col gap-4 mb-4">
+            {/* Search Bar */}
+            <div className="relative">
               <input
                 type="text"
                 placeholder="Search products..."
                 value={searchQuery}
                 onChange={(e) => handleFilterChange('search', e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--brand-red)] focus:border-transparent"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--brand-red)] focus:border-transparent text-base"
               />
               <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             </div>
+            
+            {/* Filter and Sort Controls */}
             <div className="flex gap-2 items-center">
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center px-4 py-2 border border-black bg-white text-black rounded-lg transition-all duration-300 ease-in-out group focus-visible:ring-2 focus-visible:ring-[var(--brand-red)] focus-visible:ring-offset-2 hover:scale-105 focus:scale-105 hover:shadow-[0_4px_0_0_var(--brand-red)] focus:shadow-[0_4px_0_0_var(--brand-red)] active:scale-100"
+                className="flex items-center px-3 sm:px-4 py-2 border border-black bg-white text-black rounded-lg transition-all duration-300 ease-in-out group focus-visible:ring-2 focus-visible:ring-[var(--brand-red)] focus-visible:ring-offset-2 hover:scale-105 focus:scale-105 hover:shadow-[0_4px_0_0_var(--brand-red)] focus:shadow-[0_4px_0_0_var(--brand-red)] active:scale-100 flex-1"
               >
                 <FaFilter className="mr-2 text-black" />
-                <span className="transition text-black group-hover:bg-gradient-to-r group-hover:from-[var(--brand-red)] group-hover:to-[var(--brand-blue)] group-hover:bg-clip-text group-hover:text-transparent">Filters</span>
+                <span className="text-sm sm:text-base transition text-black group-hover:bg-gradient-to-r group-hover:from-[var(--brand-red)] group-hover:to-[var(--brand-blue)] group-hover:bg-clip-text group-hover:text-transparent">Filters</span>
               </button>
               <select
                 value={sortBy}
                 onChange={e => setSortBy(e.target.value as any)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--brand-red)] focus:border-transparent"
+                className="px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[var(--brand-red)] focus:border-transparent text-sm sm:text-base flex-1"
               >
                 <option value="bestsellers">Best Sellers</option>
                 <option value="price-asc">Lowest Price</option>
@@ -290,7 +294,7 @@ export default function ProductsPage() {
           {/* Expanded Filters */}
           {showFilters && (
             <div className="mt-4 p-4 border-t border-gray-200">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Min Price
@@ -300,7 +304,7 @@ export default function ProductsPage() {
                     min="0"
                     value={priceRange.min.toString()}
                     onChange={(e) => handleFilterChange('minPrice', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-base"
                   />
                 </div>
                 <div>
@@ -312,7 +316,7 @@ export default function ProductsPage() {
                     min="0"
                     value={priceRange.max?.toString() || ''}
                     onChange={(e) => handleFilterChange('maxPrice', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-base"
                   />
                 </div>
               </div>
@@ -327,7 +331,7 @@ export default function ProductsPage() {
         )}
 
         {/* Products Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
           {filteredProducts.map((product) => (
             <Link
               href={`/product/${product._id}`}
@@ -344,21 +348,21 @@ export default function ProductsPage() {
                   />
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                    <div className="bg-gradient-to-r from-purple-600 via-blue-500 to-orange-400 text-white brand-text text-lg px-4 py-2 rounded-lg">
+                    <div className="bg-gradient-to-r from-purple-600 via-blue-500 to-orange-400 text-white brand-text text-sm sm:text-lg px-2 sm:px-4 py-1 sm:py-2 rounded-lg">
                       ShirtHappenZ
                     </div>
                   </div>
                 )}
               </div>
 
-              <div className="p-4">
-                <h3 className="font-semibold text-lg text-gray-900 mb-1 group-hover:text-purple-600 transition-colors">
+              <div className="p-3 sm:p-4">
+                <h3 className="font-semibold text-base sm:text-lg text-gray-900 mb-1 group-hover:text-purple-600 transition-colors">
                   {product.name}
                 </h3>
-                <p className="text-sm text-gray-500 mb-2">
+                <p className="text-xs sm:text-sm text-gray-500 mb-2">
                   {product.category}
                 </p>
-                <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                <p className="text-xs sm:text-sm text-gray-600 mb-3 line-clamp-2">
                   {product.description}
                 </p>
 
@@ -369,7 +373,7 @@ export default function ProductsPage() {
                     {product.colors.slice(0, 5).map((color, index) => (
                       <div
                         key={index}
-                        className="w-4 h-4 rounded-full"
+                        className="w-3 h-3 sm:w-4 sm:h-4 rounded-full"
                         style={{ backgroundColor: color.hexCode }}
                         title={color.name}
                       />
@@ -385,19 +389,19 @@ export default function ProductsPage() {
                 <div className="flex items-center justify-between">
                   {product.basePrice > product.price ? (
                     <>
-                      <span className="text-sm text-gray-400 line-through mr-2">
+                      <span className="text-xs sm:text-sm text-gray-400 line-through mr-2">
                         RRP: £{product.basePrice.toFixed(2)}
                       </span>
-                      <span className="text-lg font-bold text-green-700">
+                      <span className="text-sm sm:text-lg font-bold text-green-700">
                         Offer: £{product.price.toFixed(2)}
                       </span>
                     </>
                   ) : (
-                    <span className="text-lg font-bold text-purple-600">
+                    <span className="text-sm sm:text-lg font-bold text-purple-600">
                       £{product.price.toFixed(2)}
                     </span>
                   )}
-                  <span className="text-sm text-purple-600 group-hover:translate-x-1 transition-transform duration-200 group-hover:bg-gradient-to-r group-hover:from-[var(--brand-red)] group-hover:to-[var(--brand-blue)] group-hover:bg-clip-text group-hover:text-transparent">
+                  <span className="text-xs sm:text-sm text-purple-600 group-hover:translate-x-1 transition-transform duration-200 group-hover:bg-gradient-to-r group-hover:from-[var(--brand-red)] group-hover:to-[var(--brand-blue)] group-hover:bg-clip-text group-hover:text-transparent">
                     View Details →
                   </span>
                 </div>

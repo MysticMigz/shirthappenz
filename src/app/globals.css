@@ -96,6 +96,81 @@ body {
     transform: scale(0.98);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   }
+  
+  /* Mobile product grid improvements */
+  .product-grid {
+    gap: 1rem;
+  }
+  
+  /* Mobile filter improvements */
+  .filter-button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Mobile search improvements */
+  .search-input {
+    font-size: 16px;
+    padding: 0.75rem;
+  }
+  
+  /* Mobile category grid */
+  .category-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  @media (min-width: 640px) {
+    .category-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+  
+  @media (min-width: 768px) {
+    .category-grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .category-grid {
+      display: flex;
+      flex-wrap: wrap;
+    }
+  }
+  
+  /* Mobile carousel improvements */
+  .carousel-section {
+    touch-action: pan-y pinch-zoom;
+  }
+  
+  .carousel-button {
+    min-height: 44px;
+    min-width: 44px;
+    touch-action: manipulation;
+  }
+  
+  .carousel-indicator {
+    min-height: 16px;
+    min-width: 16px;
+    touch-action: manipulation;
+  }
+  
+  /* Mobile carousel text improvements */
+  .carousel-title {
+    line-height: 1.1;
+    word-wrap: break-word;
+  }
+  
+  .carousel-description {
+    line-height: 1.4;
+  }
+  
+  /* Mobile carousel button improvements */
+  .carousel-cta-button {
+    min-height: 44px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
 }
 
 .brand-text {

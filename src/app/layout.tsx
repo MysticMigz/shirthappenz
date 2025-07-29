@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
@@ -9,8 +9,6 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "ShirtHappenZ",
   description: "Custom T-Shirt Printing and Design Services",
-  viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no",
-  themeColor: "#FF1744",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -21,6 +19,14 @@ export const metadata: Metadata = {
     email: false,
     address: false
   }
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: "#FF1744"
 };
 
 export default function RootLayout({
