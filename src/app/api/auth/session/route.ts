@@ -3,9 +3,24 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../[...nextauth]/route';
 import { connectToDatabase } from '@/lib/mongodb';
 import User from '@/backend/models/User';
+import { apiRateLimiter } from '@/lib/rate-limit';
+import { securityLogger } from '@/lib/security-audit';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    // Rate limiting check
+    const rateLimitResult = await apiRateLimiter.checkLimit(request as any, 'session');
+    if (!rateLimitResult.allowed) {
+      const ip = (request as any).ip || (request as any).headers?.get('x-forwarded-for') || 'unknown';
+      const userAgent = (request as any).headers?.get('user-agent') || undefined;
+      securityLogger.logRateLimitExceeded(ip, 'session', userAgent);
+      
+      return NextResponse.json(
+        { error: 'Too many requests' },
+        { status: 429 }
+      );
+    }
+
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.email) {

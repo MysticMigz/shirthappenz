@@ -144,7 +144,11 @@ export async function POST(
         order.items,
         order.total,
         reason,
-        notes
+        notes,
+        order.voucherCode,
+        order.voucherDiscount,
+        order.voucherType,
+        order.voucherValue
       );
     } catch (error) {
       console.error('Failed to send cancellation email:', error);

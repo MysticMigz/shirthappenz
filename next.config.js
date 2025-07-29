@@ -53,7 +53,7 @@ const nextConfig = {
           },
           {
             key: 'Content-Security-Policy',
-            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com https://www.paypal.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://api.stripe.com https://www.paypal.com; frame-src https://js.stripe.com https://www.paypal.com;"
+            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com https://www.paypal.com https://www.google-analytics.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob: https://res.cloudinary.com https://m.media-amazon.com https://images-na.ssl-images-amazon.com https://media.amazon.com https://i.imgur.com https://imgur.com https://cloudinary.com https://images.unsplash.com https://upload.wikimedia.org; connect-src 'self' https://api.stripe.com https://www.paypal.com https://www.google-analytics.com; frame-src https://js.stripe.com https://www.paypal.com; object-src 'none'; base-uri 'self'; form-action 'self';"
           }
         ]
       }

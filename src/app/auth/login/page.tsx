@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { signIn } from 'next-auth/react';
 import { useUser } from '@/context/UserContext';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
+import SecurityHeaders from '@/components/SecurityHeaders';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -62,7 +63,12 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <>
+      <SecurityHeaders 
+        title="Sign In - Mr SHIRT PERSONALISATION"
+        description="Sign in to your account to access your personalized apparel"
+      />
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="max-w-md w-full p-8">
         <div className="flex flex-col items-center mb-6">
           <a href="https://mrshirtpersonalisation.co.uk" target="_blank" rel="noopener noreferrer">
@@ -146,6 +152,7 @@ export default function LoginPage() {
           </div>
         </form>
       </div>
-    </div>
+      </div>
+    </>
   );
 } 

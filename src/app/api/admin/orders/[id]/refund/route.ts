@@ -200,7 +200,11 @@ export async function POST(
         order.items,
         actualRefundAmount,
         reason || 'Order cancellation',
-        notes
+        notes,
+        order.voucherCode,
+        order.voucherDiscount,
+        order.voucherType,
+        order.voucherValue
       );
     } catch (error) {
       console.error('Failed to send refund confirmation email:', error);

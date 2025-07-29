@@ -154,7 +154,11 @@ export async function POST(req: NextRequest) {
             order.total,
             order.vat,
             order.createdAt,
-            order.status
+            order.status,
+            order.voucherCode,
+            order.voucherDiscount,
+            order.voucherType,
+            order.voucherValue
           );
           console.log('[Stripe Webhook] Order confirmation email sent successfully');
         } catch (err) {

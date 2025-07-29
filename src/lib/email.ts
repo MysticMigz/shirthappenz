@@ -123,7 +123,11 @@ export async function sendOrderConfirmationEmail(
   total: number,
   vat?: number,
   createdAt?: string,
-  status?: string
+  status?: string,
+  voucherCode?: string,
+  voucherDiscount?: number,
+  voucherType?: string,
+  voucherValue?: number
 ) {
   try {
     console.log('[Email] sendOrderConfirmationEmail called for:', shippingDetails.email);
@@ -219,6 +223,12 @@ export async function sendOrderConfirmationEmail(
                   <span style="color: #6b7280;">Shipping (${shippingDetails.shippingMethod})</span>
                   <span style="font-weight: 500;">£${shipping.toFixed(2)}</span>
                 </div>
+                ${voucherCode && voucherDiscount ? `
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                  <span style="color: #8b5cf6; font-weight: 500;">Discount (${voucherCode})</span>
+                  <span style="color: #8b5cf6; font-weight: 500;">-£${(voucherDiscount / 100).toFixed(2)}</span>
+                </div>
+                ` : ''}
                 <div style="display: flex; justify-content: space-between; font-size: 18px; font-weight: bold; margin-top: 16px;">
                   <span>Total</span>
                   <span>£${total.toFixed(2)}</span>
@@ -355,7 +365,11 @@ export async function sendOrderCancellationEmail(
   items: OrderItem[],
   total: number,
   reason: string,
-  notes?: string
+  notes?: string,
+  voucherCode?: string,
+  voucherDiscount?: number,
+  voucherType?: string,
+  voucherValue?: number
 ) {
   try {
     const itemsList = items.map(item => `
@@ -399,6 +413,12 @@ export async function sendOrderCancellationEmail(
                 <h3 style="margin: 0 0 16px 0; color: #111827; font-size: 16px;">Cancelled Items</h3>
                 ${itemsList}
                 <div style="border-top: 2px solid #e5e7eb; padding-top: 12px; margin-top: 12px;">
+                  ${voucherCode && voucherDiscount ? `
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <p style="margin: 0; color: #8b5cf6; font-weight: 500;">Discount (${voucherCode})</p>
+                    <p style="margin: 0; color: #8b5cf6; font-weight: 500;">-£${(voucherDiscount / 100).toFixed(2)}</p>
+                  </div>
+                  ` : ''}
                   <div style="display: flex; justify-content: space-between; align-items: center;">
                     <p style="margin: 0; font-weight: 600; color: #111827;">Total</p>
                     <p style="margin: 0; font-weight: 600; color: #111827;">£${total.toFixed(2)}</p>
@@ -433,7 +453,11 @@ export async function sendRefundConfirmationEmail(
   items: OrderItem[],
   refundAmount: number,
   reason: string,
-  notes?: string
+  notes?: string,
+  voucherCode?: string,
+  voucherDiscount?: number,
+  voucherType?: string,
+  voucherValue?: number
 ) {
   try {
     const itemsList = items.map(item => `

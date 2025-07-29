@@ -1,11 +1,27 @@
 import { NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import User from '@/backend/models/User';
 import crypto from 'crypto';
 import { sendPasswordResetEmail } from '@/lib/email';
+import { forgotPasswordRateLimiter } from '@/lib/rate-limit';
+import { securityLogger } from '@/lib/security-audit';
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
+    // Rate limiting check
+    const rateLimitResult = await forgotPasswordRateLimiter.checkLimit(req, 'forgot-password');
+    if (!rateLimitResult.allowed) {
+      const ip = req.ip || req.headers.get('x-forwarded-for') || 'unknown';
+      const userAgent = req.headers.get('user-agent') || undefined;
+      securityLogger.logRateLimitExceeded(ip, 'forgot-password', userAgent);
+      
+      return NextResponse.json(
+        { message: 'Too many requests. Please try again later.' },
+        { status: 429 }
+      );
+    }
+
     const { email } = await req.json();
     if (!email) {
       return NextResponse.json({ message: 'Email is required' }, { status: 400 });

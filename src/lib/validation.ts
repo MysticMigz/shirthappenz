@@ -3,13 +3,80 @@ import { z } from 'zod';
 // Email validation schema
 export const emailSchema = z.string().email('Invalid email format');
 
-// Password validation schema
+// Password validation schema with enhanced security
 export const passwordSchema = z
   .string()
   .min(8, 'Password must be at least 8 characters')
-  .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, {
-    message: 'Password must contain at least one uppercase letter, one lowercase letter, and one number'
+  .max(128, 'Password must be less than 128 characters')
+  .regex(/^(?=.*[a-z])/, {
+    message: 'Password must contain at least one lowercase letter'
+  })
+  .regex(/^(?=.*[A-Z])/, {
+    message: 'Password must contain at least one uppercase letter'
+  })
+  .regex(/^(?=.*\d)/, {
+    message: 'Password must contain at least one number'
+  })
+  .regex(/^(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?])/, {
+    message: 'Password must contain at least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?)'
+  })
+  .refine((password) => {
+    // Check for common weak passwords
+    const commonPasswords = [
+      'password', '123456', '123456789', 'qwerty', 'abc123',
+      'password123', 'admin', 'letmein', 'welcome', 'monkey'
+    ];
+    return !commonPasswords.includes(password.toLowerCase());
+  }, {
+    message: 'Password is too common. Please choose a stronger password'
   });
+
+// Password strength checker
+export function checkPasswordStrength(password: string): {
+  score: number;
+  feedback: string[];
+  isStrong: boolean;
+} {
+  const feedback: string[] = [];
+  let score = 0;
+
+  // Length check
+  if (password.length >= 8) score += 1;
+  else feedback.push('At least 8 characters');
+
+  // Character variety checks
+  if (/[a-z]/.test(password)) score += 1;
+  else feedback.push('Include lowercase letters');
+
+  if (/[A-Z]/.test(password)) score += 1;
+  else feedback.push('Include uppercase letters');
+
+  if (/\d/.test(password)) score += 1;
+  else feedback.push('Include numbers');
+
+  if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) score += 1;
+  else feedback.push('Include special characters');
+
+  // Bonus for length
+  if (password.length >= 12) score += 1;
+  if (password.length >= 16) score += 1;
+
+  // Bonus for variety
+  const uniqueChars = new Set(password).size;
+  if (uniqueChars >= 8) score += 1;
+
+  const isStrong = score >= 4;
+  
+  if (score < 3) {
+    feedback.push('Password is weak');
+  } else if (score < 4) {
+    feedback.push('Password is moderate');
+  } else {
+    feedback.push('Password is strong');
+  }
+
+  return { score, feedback, isStrong };
+}
 
 // Phone number validation (UK format)
 export const phoneSchema = z
@@ -25,13 +92,35 @@ export const postcodeSchema = z
     message: 'Please enter a valid UK postcode'
   });
 
-// Sanitize HTML input
+// Enhanced input sanitization
 export function sanitizeHtml(input: string): string {
+  if (typeof input !== 'string') return '';
+  
   return input
     .replace(/[<>]/g, '') // Remove < and >
     .replace(/javascript:/gi, '') // Remove javascript: protocol
     .replace(/on\w+=/gi, '') // Remove event handlers
+    .replace(/data:/gi, '') // Remove data: protocol
+    .replace(/vbscript:/gi, '') // Remove vbscript: protocol
+    .replace(/expression\(/gi, '') // Remove CSS expressions
+    .replace(/url\(/gi, '') // Remove CSS url()
+    .replace(/eval\(/gi, '') // Remove eval()
+    .replace(/alert\(/gi, '') // Remove alert()
+    .replace(/confirm\(/gi, '') // Remove confirm()
+    .replace(/prompt\(/gi, '') // Remove prompt()
+    .replace(/document\./gi, '') // Remove document access
+    .replace(/window\./gi, '') // Remove window access
+    .replace(/localStorage\./gi, '') // Remove localStorage access
+    .replace(/sessionStorage\./gi, '') // Remove sessionStorage access
+    .replace(/cookie/gi, '') // Remove cookie access
     .trim();
+}
+
+// Sanitize user input for database storage
+export function sanitizeUserInput(input: string): string {
+  return sanitizeHtml(input)
+    .replace(/[^\w\s\-.,'()]/g, '') // Only allow alphanumeric, spaces, hyphens, commas, apostrophes, and parentheses
+    .substring(0, 200); // Limit length
 }
 
 // Sanitize file name
