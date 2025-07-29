@@ -21,6 +21,10 @@ interface Order {
   cancellationRequestedAt?: string;
   cancellationRequestedBy?: 'customer' | 'admin';
   cancellationNotes?: string;
+  voucherCode?: string;
+  voucherDiscount?: number;
+  voucherType?: 'percentage' | 'fixed' | 'free_shipping';
+  voucherValue?: number;
   metadata?: {
     refundAmount?: number;
     refundReason?: string;
@@ -97,6 +101,32 @@ const formatDateTime = (dateString: string) => {
     hour: '2-digit',
     minute: '2-digit',
   });
+};
+
+const formatVoucherDiscount = (order: Order) => {
+  if (!order.voucherCode || !order.voucherDiscount) {
+    return null;
+  }
+
+  const discountAmount = order.voucherDiscount / 100; // Convert from pence to pounds
+  const originalTotal = (order.total + order.voucherDiscount) / 100; // Calculate original total
+
+  let discountText = '';
+  if (order.voucherType === 'percentage') {
+    discountText = `${order.voucherValue}% off`;
+  } else if (order.voucherType === 'fixed') {
+    discountText = `£${(order.voucherValue || 0) / 100} off`;
+  } else if (order.voucherType === 'free_shipping') {
+    discountText = 'Free shipping';
+  }
+
+  return {
+    code: order.voucherCode,
+    discountText,
+    discountAmount,
+    originalTotal,
+    finalTotal: order.total / 100,
+  };
 };
 
 const STATUS_ACTIONS: Record<Order['status'], Array<Order['status']>> = {
@@ -339,6 +369,9 @@ export default function AdminOrdersPage() {
                     Items
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Total & Discount
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Order Status
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -389,6 +422,37 @@ export default function AdminOrdersPage() {
                             )}
                           </div>
                         ))}
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 text-sm text-gray-500">
+                      <div className="space-y-1">
+                        {(() => {
+                          const voucherInfo = formatVoucherDiscount(order);
+                          if (voucherInfo) {
+                            return (
+                              <div className="space-y-1">
+                                <div className="text-xs text-gray-400 line-through">
+                                  £{voucherInfo.originalTotal.toFixed(2)}
+                                </div>
+                                <div className="text-sm font-medium text-green-600">
+                                  £{voucherInfo.finalTotal.toFixed(2)}
+                                </div>
+                                <div className="text-xs text-purple-600 font-medium">
+                                  {voucherInfo.code} - {voucherInfo.discountText}
+                                </div>
+                                <div className="text-xs text-green-600">
+                                  -£{voucherInfo.discountAmount.toFixed(2)} saved
+                                </div>
+                              </div>
+                            );
+                          } else {
+                            return (
+                              <div className="text-sm font-medium">
+                                £{(order.total / 100).toFixed(2)}
+                              </div>
+                            );
+                          }
+                        })()}
                       </div>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">

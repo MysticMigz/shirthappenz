@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { FaHome, FaBox, FaShoppingCart, FaUsers, FaTachometerAlt, FaBoxes, FaBell, FaTruck, FaClipboardList, FaChartLine, FaIndustry, FaShippingFast } from 'react-icons/fa';
+import { FaHome, FaBox, FaShoppingCart, FaUsers, FaTachometerAlt, FaBoxes, FaBell, FaTruck, FaClipboardList, FaChartLine, FaIndustry, FaShippingFast, FaTicketAlt } from 'react-icons/fa';
 import { FaBarcode } from 'react-icons/fa';
 
 export default function AdminSidebar() {
@@ -74,6 +74,11 @@ export default function AdminSidebar() {
       href: '/admin/barcodes',
       icon: FaBarcode,
       text: 'Barcodes'
+    },
+    {
+      href: '/admin/vouchers',
+      icon: FaTicketAlt,
+      text: 'Vouchers'
     }
   ];
 

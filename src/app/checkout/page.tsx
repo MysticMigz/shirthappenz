@@ -17,6 +17,15 @@ interface CheckoutStep {
   orderId?: string;
 }
 
+interface VoucherDiscount {
+  code: string;
+  type: 'percentage' | 'fixed' | 'free_shipping';
+  value: number;
+  description?: string;
+  discountAmount: number;
+  newTotal: number;
+}
+
 const DEFAULT_SHIPPING_METHOD = 'Standard Delivery';
 const SHIPPING_COSTS = { 
   'Standard Delivery': 5.99, 
@@ -31,6 +40,10 @@ export default function CheckoutPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>();
   const [currentShippingMethod, setCurrentShippingMethod] = useState<keyof typeof SHIPPING_COSTS>(DEFAULT_SHIPPING_METHOD);
+  const [voucherCode, setVoucherCode] = useState('');
+  const [voucherDiscount, setVoucherDiscount] = useState<VoucherDiscount | null>(null);
+  const [isValidatingVoucher, setIsValidatingVoucher] = useState(false);
+  const [voucherError, setVoucherError] = useState<string | null>(null);
   const visitorId = useVisitorId();
   const { user } = useUser();
 
@@ -44,6 +57,53 @@ export default function CheckoutPage() {
     setCurrentShippingMethod(shippingMethod);
   };
 
+  const handleVoucherValidation = async () => {
+    if (!voucherCode.trim()) {
+      setVoucherError('Please enter a voucher code');
+      return;
+    }
+
+    setIsValidatingVoucher(true);
+    setVoucherError(null);
+
+    try {
+      const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+      const shippingCost = SHIPPING_COSTS[currentShippingMethod];
+      const orderTotal = subtotal + shippingCost;
+
+      const response = await fetch('/api/vouchers/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: voucherCode.trim(),
+          orderTotal: orderTotal * 100, // Convert to pence
+          items
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setVoucherDiscount(data.voucher);
+        setVoucherError(null);
+      } else {
+        setVoucherError(data.error);
+        setVoucherDiscount(null);
+      }
+    } catch (error) {
+      setVoucherError('Failed to validate voucher code');
+      setVoucherDiscount(null);
+    } finally {
+      setIsValidatingVoucher(false);
+    }
+  };
+
+  const removeVoucher = () => {
+    setVoucherCode('');
+    setVoucherDiscount(null);
+    setVoucherError(null);
+  };
+
   const handleShippingSubmit = async (shippingDetails: ShippingDetails & { shippingCost: number }) => {
     setIsLoading(true);
     setError(undefined);
@@ -51,15 +111,22 @@ export default function CheckoutPage() {
     try {
       const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
       const total = subtotal + shippingDetails.shippingCost;
+      
+      // Apply voucher discount if available
+      const finalTotal = voucherDiscount ? voucherDiscount.newTotal / 100 : total;
 
       // Do NOT create order first. Instead, send all data to payment intent creation.
       const paymentResponse = await fetch('/api/payment/create-payment-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: total,
+          amount: finalTotal,
           items,
           shippingDetails,
+          voucherCode: voucherDiscount?.code || null,
+          voucherDiscount: voucherDiscount ? voucherDiscount.discountAmount : 0,
+          voucherType: voucherDiscount?.type || null,
+          voucherValue: voucherDiscount?.value || null,
           visitorId, // Add visitorId to payment intent metadata
           userId: user?._id || null // Pass userId if logged in
         }),
@@ -181,6 +248,55 @@ export default function CheckoutPage() {
                         <span className="font-semibold text-gray-900 text-sm lg:text-base">£{(item.price * item.quantity).toFixed(2)}</span>
                       </div>
                     ))}
+                    {/* Voucher Code Section */}
+                    <div className="mt-6 pt-6 border-t border-gray-200">
+                      <div className="mb-4">
+                        <h3 className="text-sm font-medium text-gray-900 mb-2">Have a voucher code?</h3>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={voucherCode}
+                            onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+                            placeholder="Enter code"
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            disabled={isValidatingVoucher}
+                          />
+                          <button
+                            onClick={handleVoucherValidation}
+                            disabled={!voucherCode.trim() || isValidatingVoucher}
+                            className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isValidatingVoucher ? 'Validating...' : 'Apply'}
+                          </button>
+                        </div>
+                        {voucherError && (
+                          <p className="text-red-500 text-xs mt-1">{voucherError}</p>
+                        )}
+                        {voucherDiscount && (
+                          <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-medium text-green-800">
+                                  {voucherDiscount.code} - {voucherDiscount.type === 'percentage' ? `${voucherDiscount.value}% off` : `£${(voucherDiscount.value / 100).toFixed(2)} off`}
+                                </p>
+                                {voucherDiscount.description && (
+                                  <p className="text-xs text-green-600">{voucherDiscount.description}</p>
+                                )}
+                              </div>
+                              <button
+                                onClick={removeVoucher}
+                                className="text-green-600 hover:text-green-800"
+                              >
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
                     {/* Subtotal, Shipping, and Total (VAT included) */}
                     <div className="mt-6 pt-6 border-t border-gray-200">
                       <div className="flex justify-between mb-2 text-sm text-gray-500">
@@ -191,9 +307,15 @@ export default function CheckoutPage() {
                         <span>Shipping ({currentShippingMethod})</span>
                         <span>£{shippingCost.toFixed(2)}</span>
                       </div>
+                      {voucherDiscount && (
+                        <div className="flex justify-between mb-2 text-sm text-green-600">
+                          <span>Discount ({voucherDiscount.code})</span>
+                          <span>-£{(voucherDiscount.discountAmount / 100).toFixed(2)}</span>
+                        </div>
+                      )}
                       <div className="flex justify-between text-lg font-bold text-gray-900 mt-4">
                         <span>Total</span>
-                        <span>£{total.toFixed(2)}</span>
+                        <span>£{voucherDiscount ? (voucherDiscount.newTotal / 100).toFixed(2) : total.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between mt-2 text-xs text-gray-500 italic">
                         <span>Includes VAT (20%)</span>

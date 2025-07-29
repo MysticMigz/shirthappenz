@@ -192,6 +192,24 @@ const OrderSchema = new mongoose.Schema({
     type: String,
     default: '',
   },
+  // Voucher fields
+  voucherCode: {
+    type: String,
+    default: null,
+  },
+  voucherDiscount: {
+    type: Number,
+    default: 0,
+  },
+  voucherType: {
+    type: String,
+    enum: ['percentage', 'fixed', 'free_shipping'],
+    default: null,
+  },
+  voucherValue: {
+    type: Number,
+    default: null,
+  },
   createdAt: {
     type: Date,
     default: Date.now,

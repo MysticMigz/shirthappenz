@@ -55,6 +55,10 @@ interface Order {
   cancellationRequestedAt?: string;
   cancellationRequestedBy?: 'customer' | 'admin';
   cancellationNotes?: string;
+  voucherCode?: string;
+  voucherDiscount?: number;
+  voucherType?: 'percentage' | 'fixed' | 'free_shipping';
+  voucherValue?: number;
   metadata?: {
     refundAmount?: number;
     refundReason?: string;
@@ -91,6 +95,32 @@ const formatDateTime = (dateString: string) => {
     hour: '2-digit',
     minute: '2-digit',
   });
+};
+
+const formatVoucherDiscount = (order: Order) => {
+  if (!order.voucherCode || !order.voucherDiscount) {
+    return null;
+  }
+
+  const discountAmount = order.voucherDiscount / 100; // Convert from pence to pounds
+  const originalTotal = (order.total + order.voucherDiscount) / 100; // Calculate original total
+
+  let discountText = '';
+  if (order.voucherType === 'percentage') {
+    discountText = `${order.voucherValue}% off`;
+  } else if (order.voucherType === 'fixed') {
+    discountText = `£${(order.voucherValue || 0) / 100} off`;
+  } else if (order.voucherType === 'free_shipping') {
+    discountText = 'Free shipping';
+  }
+
+  return {
+    code: order.voucherCode,
+    discountText,
+    discountAmount,
+    originalTotal,
+    finalTotal: order.total / 100,
+  };
 };
 
 export default function OrdersPage() {
@@ -419,22 +449,56 @@ export default function OrdersPage() {
 
                   <div className="mt-6 border-t border-gray-200 pt-6">
                     <div className="flex flex-col gap-2">
-                      <div className="flex justify-between text-sm text-gray-900">
-                        <p>Subtotal</p>
-                        <p>£{(order.total - order.shippingDetails.shippingCost).toFixed(2)}</p>
-                      </div>
-                      <div className="flex justify-between text-sm text-gray-900">
-                        <p>Shipping ({order.shippingDetails.shippingMethod})</p>
-                        <p>£{order.shippingDetails.shippingCost.toFixed(2)}</p>
-                      </div>
-                      <div className="flex justify-between text-base font-medium text-gray-900 pt-2 border-t">
-                        <p>Total</p>
-                        <p>£{order.total.toFixed(2)}</p>
-                      </div>
-                      <div className="flex justify-between mt-2 text-xs text-gray-500 italic">
-                        <span>Includes VAT (20%)</span>
-                        <span>£{order.vat.toFixed(2)}</span>
-                      </div>
+                      {(() => {
+                        const voucherInfo = formatVoucherDiscount(order);
+                        if (voucherInfo) {
+                          return (
+                            <>
+                              <div className="flex justify-between text-sm text-gray-900">
+                                <p>Subtotal</p>
+                                <p>£{(voucherInfo.originalTotal - order.shippingDetails.shippingCost).toFixed(2)}</p>
+                              </div>
+                              <div className="flex justify-between text-sm text-gray-900">
+                                <p>Shipping ({order.shippingDetails.shippingMethod})</p>
+                                <p>£{order.shippingDetails.shippingCost.toFixed(2)}</p>
+                              </div>
+                              <div className="flex justify-between text-sm text-purple-600 font-medium">
+                                <p>Discount ({voucherInfo.code})</p>
+                                <p>-£{voucherInfo.discountAmount.toFixed(2)}</p>
+                              </div>
+                              <div className="flex justify-between text-base font-medium text-gray-900 pt-2 border-t">
+                                <p>Total</p>
+                                <p>£{voucherInfo.finalTotal.toFixed(2)}</p>
+                              </div>
+                              <div className="flex justify-between mt-2 text-xs text-gray-500 italic">
+                                <span>Includes VAT (20%)</span>
+                                <span>£{order.vat.toFixed(2)}</span>
+                              </div>
+                            </>
+                          );
+                        } else {
+                          return (
+                            <>
+                              <div className="flex justify-between text-sm text-gray-900">
+                                <p>Subtotal</p>
+                                <p>£{(order.total - order.shippingDetails.shippingCost).toFixed(2)}</p>
+                              </div>
+                              <div className="flex justify-between text-sm text-gray-900">
+                                <p>Shipping ({order.shippingDetails.shippingMethod})</p>
+                                <p>£{order.shippingDetails.shippingCost.toFixed(2)}</p>
+                              </div>
+                              <div className="flex justify-between text-base font-medium text-gray-900 pt-2 border-t">
+                                <p>Total</p>
+                                <p>£{order.total.toFixed(2)}</p>
+                              </div>
+                              <div className="flex justify-between mt-2 text-xs text-gray-500 italic">
+                                <span>Includes VAT (20%)</span>
+                                <span>£{order.vat.toFixed(2)}</span>
+                              </div>
+                            </>
+                          );
+                        }
+                      })()}
                     </div>
                   </div>
 

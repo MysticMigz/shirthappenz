@@ -87,6 +87,12 @@ export async function POST(req: NextRequest) {
         const vatBase = total + (shippingDetails.shippingCost || 0);
         const vat = Number((vatBase / 1.2 * 0.2).toFixed(2));
 
+        // Extract voucher information from metadata
+        const voucherCode = paymentIntent.metadata?.voucherCode || null;
+        const voucherDiscount = voucherCode ? parseFloat(paymentIntent.metadata?.voucherDiscount || '0') : 0;
+        const voucherType = paymentIntent.metadata?.voucherType || null;
+        const voucherValue = voucherCode ? parseFloat(paymentIntent.metadata?.voucherValue || '0') : null;
+
         // Create the order
         const order = new Order({
           userId: paymentIntent.metadata?.userId || visitorId || 'guest',
@@ -98,6 +104,10 @@ export async function POST(req: NextRequest) {
           status: 'paid',
           orderSource: items?.[0]?.orderSource || undefined,
           visitorId,
+          voucherCode,
+          voucherDiscount,
+          voucherType,
+          voucherValue,
         });
         try {
           await order.save();
