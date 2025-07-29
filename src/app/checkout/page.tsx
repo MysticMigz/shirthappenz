@@ -337,7 +337,7 @@ export default function CheckoutPage() {
                   <div className="bg-white rounded-lg">
                     <StripeProvider clientSecret={step.clientSecret}>
                       <PaymentForm 
-                        total={getTotal() + step.shippingDetails.shippingCost} 
+                        total={voucherDiscount ? (voucherDiscount.newTotal / 100) : (getTotal() + step.shippingDetails.shippingCost)} 
                       />
                     </StripeProvider>
                   </div>
