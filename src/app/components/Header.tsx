@@ -30,9 +30,9 @@ const Header = () => {
     <>
       {/* Top announcement bar */}
       <div className="bg-gradient-to-r from-[var(--brand-red)] to-[var(--brand-blue)] text-white text-center py-2 px-4">
-        <p className="text-sm">
-          <strong>Important information:</strong> Orders created on or after today will be processed within 3-5 working days. 
-          Fast turnaround available!
+        <p className="text-xs sm:text-sm px-2">
+          <strong>Important:</strong> Orders processed within 3-5 working days. 
+          <span className="hidden sm:inline"> Fast turnaround available!</span>
         </p>
       </div>
 
@@ -48,7 +48,7 @@ const Header = () => {
                 alt="Mr SHIRT PERSONALISATION Logo"
                 width={600}
                 height={240}
-                className="h-28 w-auto md:h-32 lg:h-36 brightness-110 transition-transform duration-300 ease-in-out group-hover:scale-110"
+                className="h-20 w-auto sm:h-24 md:h-28 lg:h-32 brightness-110 transition-transform duration-300 ease-in-out group-hover:scale-110"
                 style={{ border: 'none', outline: 'none', boxShadow: 'none', background: 'transparent' }}
                 priority
               />
@@ -84,7 +84,7 @@ const Header = () => {
             </div>
 
             {/* Auth and Cart */}
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 sm:space-x-4">
               {user ? (
                 <div className="relative">
                   <button
@@ -152,10 +152,10 @@ const Header = () => {
               
               <Link 
                 href="/cart" 
-                className="group flex items-center bg-white text-black px-4 py-2 rounded-lg hover:shadow-lg transition-all"
+                className="group flex items-center bg-white text-black px-2 sm:px-4 py-2 rounded-lg hover:shadow-lg transition-all"
               >
                 <div className="relative">
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m1.6 8L5 3H3m4 10v6a1 1 0 001 1h8a1 1 0 001-1v-6M9 13h6" />
                   </svg>
                   {getItemCount() > 0 && (
@@ -164,7 +164,7 @@ const Header = () => {
                     </span>
                   )}
                 </div>
-                <span className="group-hover:translate-x-1 transition-transform duration-200 group-hover:bg-gradient-to-r group-hover:from-[var(--brand-red)] group-hover:to-[var(--brand-blue)] group-hover:bg-clip-text group-hover:text-transparent">
+                <span className="hidden sm:inline group-hover:translate-x-1 transition-transform duration-200 group-hover:bg-gradient-to-r group-hover:from-[var(--brand-red)] group-hover:to-[var(--brand-blue)] group-hover:bg-clip-text group-hover:text-transparent">
                   £{getTotal().toFixed(2)} ({getItemCount()})
                 </span>
               </Link>
@@ -211,50 +211,148 @@ const Header = () => {
 
         {/* Mobile menu */}
         {isMobileMenuOpen && (
-          <div className="md:hidden bg-white border-t border-gray-200">
-            <div className="px-4 py-4 space-y-4">
-              <div className="mb-4">
-                <input
-                  type="text"
-                  placeholder="Search for products..."
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  value={searchInput}
-                  onChange={e => setSearchInput(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') {
-                      router.push(`/products?search=${encodeURIComponent(searchInput)}`);
-                    }
-                  }}
-                />
-              </div>
-              {user ? (
-                <>
-                  <div className="text-black font-medium">Welcome, {user.firstName}!</div>
-                  <Link href="/profile" className="block text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium">My Profile</Link>
-                  <Link href="/orders" className="block text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium">My Orders</Link>
-                  {user.isAdmin && (
-                    <Link href="/admin/dashboard" className="block text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium">Admin Dashboard</Link>
-                  )}
+          <div className="md:hidden bg-white border-t border-gray-200 shadow-lg">
+            <div className="px-4 py-6 space-y-6">
+              {/* Search bar for mobile */}
+              <div className="mb-6">
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search for products..."
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-base"
+                    value={searchInput}
+                    onChange={e => setSearchInput(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        router.push(`/products?search=${encodeURIComponent(searchInput)}`);
+                        setIsMobileMenuOpen(false);
+                      }
+                    }}
+                  />
                   <button
-                    onClick={handleLogout}
-                    className="block text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium"
+                    onClick={() => {
+                      router.push(`/products?search=${encodeURIComponent(searchInput)}`);
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1"
                   >
-                    Logout
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
+                    </svg>
                   </button>
-                </>
+                </div>
+              </div>
+              
+              {/* User section */}
+              {user ? (
+                <div className="space-y-4">
+                  <div className="text-black font-semibold text-lg">Welcome, {user.firstName}!</div>
+                  <div className="space-y-3">
+                    <Link 
+                      href="/profile" 
+                      className="block py-3 px-4 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      My Profile
+                    </Link>
+                    <Link 
+                      href="/orders" 
+                      className="block py-3 px-4 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      My Orders
+                    </Link>
+                    {user.isAdmin && (
+                      <Link 
+                        href="/admin/dashboard" 
+                        className="block py-3 px-4 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                      >
+                        Admin Dashboard
+                      </Link>
+                    )}
+                    <button
+                      onClick={() => {
+                        handleLogout();
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className="block w-full text-left py-3 px-4 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                </div>
               ) : (
-                <>
-                  <Link href="/auth/register" className="block text-black hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium">Register</Link>
-                  <Link href="/auth/login" className="block text-black hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium">Login</Link>
-                </>
+                <div className="space-y-3">
+                  <Link 
+                    href="/auth/register" 
+                    className="block py-3 px-4 text-black hover:bg-gray-50 rounded-lg font-medium transition-colors"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Register
+                  </Link>
+                  <Link 
+                    href="/auth/login" 
+                    className="block py-3 px-4 text-black hover:bg-gray-50 rounded-lg font-medium transition-colors"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Login
+                  </Link>
+                </div>
               )}
-              <Link href="/" className="block text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium">Home</Link>
-              <Link href="/products" className="block text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium">Products</Link>
-              <Link href="/design/jersey" className="block text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium">Design Jersey</Link>
-              <Link href="/design" className="block text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium">Design Online</Link>
-              <Link href="/help" className="block text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium">Help</Link>
-              <Link href="/contact" className="block text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium">Contact</Link>
-              <Link href="/about" className="block text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium">About</Link>
+              
+              {/* Navigation links */}
+              <div className="space-y-3 border-t border-gray-200 pt-6">
+                <Link 
+                  href="/" 
+                  className="block py-3 px-4 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Home
+                </Link>
+                <Link 
+                  href="/products" 
+                  className="block py-3 px-4 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Products
+                </Link>
+                <Link 
+                  href="/design/jersey" 
+                  className="block py-3 px-4 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Design Jersey
+                </Link>
+                <Link 
+                  href="/design" 
+                  className="block py-3 px-4 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Design Online
+                </Link>
+                <Link 
+                  href="/help" 
+                  className="block py-3 px-4 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Help
+                </Link>
+                <Link 
+                  href="/contact" 
+                  className="block py-3 px-4 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Contact
+                </Link>
+                <Link 
+                  href="/about" 
+                  className="block py-3 px-4 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  About
+                </Link>
+              </div>
             </div>
           </div>
         )}

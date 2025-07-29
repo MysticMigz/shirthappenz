@@ -9,6 +9,18 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "ShirtHappenZ",
   description: "Custom T-Shirt Printing and Design Services",
+  viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no",
+  themeColor: "#FF1744",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "ShirtHappenZ"
+  },
+  formatDetection: {
+    telephone: false,
+    email: false,
+    address: false
+  }
 };
 
 export default function RootLayout({
