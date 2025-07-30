@@ -111,7 +111,7 @@ export default function CustomDesignPage() {
   // Kids sizes for dropdown
   const KIDS_SIZES = ['0–3M', '3–6M', '6–12M', '1–2Y', '2–3Y', '3–4Y', '5–6Y', '7–8Y', '9–10Y', '11–12Y', '13–14Y'];
   const ADULT_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
-  const paperSizeFee = selectedPaperSize === 'A3' ? 17.50 : 12.50;
+  const paperSizeFee = selectedPaperSize === 'A3' ? 10.00 : 6.00;
   const basePrice = selectedProduct?.basePrice ?? 24.99;
   // Normalize stock keys and selectedSize
   const normalizedStock: Record<string, number> = {};

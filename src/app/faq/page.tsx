@@ -44,7 +44,7 @@ export default function FAQPage() {
             </ul>
           </div>
           <div>
-            <span className="font-semibold">What printing methods do you offer?</span> We offer DTF and sublimation printing for a wide range of apparel and accessories.
+            <span className="font-semibold">What printing methods do you offer?</span> We offer DTF (Direct-to-Film) printing technology for a wide range of apparel and accessories.
           </div>
           <div>
             <span className="font-semibold">Can I provide my own design?</span> Absolutely! You can upload your own artwork or use our online designer to create something unique.

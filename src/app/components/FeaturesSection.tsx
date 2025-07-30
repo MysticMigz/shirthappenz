@@ -12,7 +12,7 @@ const FeaturesSection = () => {
           <div className="max-w-4xl mx-auto">
             <p className="text-lg text-gray-600 mb-6">
               If you would like a personalised t-shirt or hoodie created online and have it arrive within 
-              a couple of days, you&apos;ve found the right company. We use DTF and DTG printing processes to 
+              a couple of days, you&apos;ve found the right company. We use DTF (Direct-to-Film) printing technology to 
               achieve this. Our printed t shirts are created and dispatched within just a few days.
             </p>
             <p className="text-lg text-gray-600">
@@ -68,7 +68,7 @@ const FeaturesSection = () => {
               </svg>
             </div>
             <h4 className="text-lg font-semibold text-gray-900 mb-2">Latest Technology</h4>
-            <p className="text-gray-600">DTG, DTF, Screen printing & embroidery</p>
+            <p className="text-gray-600">DTF (Direct-to-Film) printing technology</p>
           </div>
 
           <div className="text-center">
@@ -115,17 +115,11 @@ const FeaturesSection = () => {
             <h3 className="text-2xl font-bold text-gray-900 mb-4">Our Printing Technologies</h3>
             <div className="space-y-4">
               <div className="border border-gray-200 rounded-lg p-4 hover:border-purple-300 transition-colors">
-                <h4 className="text-lg font-semibold text-purple-600 mb-2">DTG (Direct to Garment)</h4>
+                <h4 className="text-lg font-semibold text-purple-600 mb-2">DTF (Direct-to-Film)</h4>
                 <p className="text-gray-600">
-                  Perfect for single t-shirts or small runs. No setup charge, no silk screens, 
-                  just instant printing with full color capability.
-                </p>
-              </div>
-              <div className="border border-gray-200 rounded-lg p-4 hover:border-purple-300 transition-colors">
-                <h4 className="text-lg font-semibold text-purple-600 mb-2">Screen Printing</h4>
-                <p className="text-gray-600">
-                  Ideal for larger quantities. Our 6-color screen printing press delivers 
-                  vibrant, durable prints at great bulk pricing.
+                  Our advanced DTF printing technology delivers vibrant, durable transfers that work 
+                  on various fabrics and colors. Perfect for both small and large orders with 
+                  excellent color reproduction and durability.
                 </p>
               </div>
             </div>
@@ -154,38 +148,55 @@ const FeaturesSection = () => {
           </div>
         </div>
 
-        <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">
-            Our Services
-          </h2>
-          <p className="text-gray-600">DTF & Sublimation printing for all your custom apparel needs</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8">
-          {/* DTF Printing */}
-          <div className="bg-white p-6 rounded-lg shadow-lg hover:shadow-xl transition-shadow">
-            <div className="flex items-center justify-center w-12 h-12 bg-purple-100 rounded-lg mb-4">
-              <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-              </svg>
-            </div>
-            <h4 className="text-lg font-semibold text-purple-600 mb-2">DTF Printing</h4>
-            <p className="text-gray-600">
-              Direct-to-Film printing technology for vibrant, durable, and high-quality transfers that work on various fabrics and colors.
+        {/* Services Section with Enhanced Styling */}
+        <div className="bg-gradient-to-br from-gray-50 to-white rounded-2xl p-8 mb-8">
+          <div className="text-center mb-8">
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">
+              Our Premium Service
+            </h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Experience the future of custom apparel with our advanced DTF (Direct-to-Film) printing technology
             </p>
           </div>
 
-          {/* Sublimation Printing */}
-          <div className="bg-white p-6 rounded-lg shadow-lg hover:shadow-xl transition-shadow">
-            <div className="flex items-center justify-center w-12 h-12 bg-purple-100 rounded-lg mb-4">
-              <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-              </svg>
+          <div className="max-w-4xl mx-auto">
+            <div className="bg-white rounded-xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 p-8 border border-gray-100">
+              <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
+                {/* Icon Section */}
+                <div className="flex-shrink-0">
+                  <div className="bg-gradient-to-r from-purple-500 to-blue-600 w-16 h-16 rounded-xl flex items-center justify-center shadow-lg">
+                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Content Section */}
+                <div className="flex-1 text-center md:text-left">
+                  <h3 className="text-2xl font-bold text-gray-900 mb-4">DTF (Direct-to-Film) Printing</h3>
+                  <p className="text-gray-600 text-lg leading-relaxed mb-6">
+                    Our advanced DTF printing technology delivers vibrant, durable transfers that work on various fabrics and colors. 
+                    Perfect for both small and large orders with excellent color reproduction and durability.
+                  </p>
+                  
+                  {/* Features Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                    <div className="flex items-center justify-center md:justify-start gap-2">
+                      <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                      <span className="text-sm font-medium text-gray-700">Vibrant Colors</span>
+                    </div>
+                    <div className="flex items-center justify-center md:justify-start gap-2">
+                      <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                      <span className="text-sm font-medium text-gray-700">Durable Transfers</span>
+                    </div>
+                    <div className="flex items-center justify-center md:justify-start gap-2">
+                      <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                      <span className="text-sm font-medium text-gray-700">All Fabric Types</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <h4 className="text-lg font-semibold text-purple-600 mb-2">Sublimation</h4>
-            <p className="text-gray-600">
-              Full-color, edge-to-edge printing that becomes part of the fabric, perfect for all-over prints and vibrant designs on light-colored polyester garments.
-            </p>
           </div>
         </div>
       </div>
