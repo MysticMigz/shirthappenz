@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "cleanup-temp-orders": "node scripts/cleanup-temp-orders.js"
   },
   "dependencies": {
     "@paypal/react-paypal-js": "^8.8.3",

@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import { connectToDatabase } from '@/lib/mongodb';
 import Order from '@/backend/models/Order';
 import Transaction from '@/backend/models/Transaction';
+import TempOrder from '@/backend/models/TempOrder';
 import { sendOrderConfirmationEmail, sendPaymentConfirmationEmail } from '@/lib/email';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -23,8 +24,14 @@ async function updateOrderStatus(orderId: string, status: 'paid' | 'payment_fail
 
 export async function POST(req: NextRequest) {
   console.log('[Stripe Webhook] Handler triggered');
+  console.log('[Stripe Webhook] Headers:', Object.fromEntries(req.headers.entries()));
   const sig = req.headers.get('stripe-signature');
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+  
+  if (!webhookSecret) {
+    console.error('[Stripe Webhook] STRIPE_WEBHOOK_SECRET is not configured');
+    return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 });
+  }
 
   // Read the raw body as a buffer
   const rawBody = await req.arrayBuffer();
@@ -34,12 +41,16 @@ export async function POST(req: NextRequest) {
 
   try {
     event = stripe.webhooks.constructEvent(buf, sig!, webhookSecret);
+    console.log('[Stripe Webhook] Event constructed successfully:', event.type);
   } catch (err: any) {
-    console.error('Webhook signature verification failed:', err.message);
+    console.error('[Stripe Webhook] Signature verification failed:', err.message);
+    console.error('[Stripe Webhook] Webhook secret length:', webhookSecret?.length);
+    console.error('[Stripe Webhook] Signature header:', sig);
     return NextResponse.json({ error: 'Webhook signature verification failed' }, { status: 400 });
   }
 
   try {
+    console.log('[Stripe Webhook] Processing event type:', event.type);
     switch (event.type) {
       case 'payment_intent.succeeded': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
@@ -63,6 +74,34 @@ export async function POST(req: NextRequest) {
           console.error('[Stripe Webhook] Error parsing metadata:', error);
           return NextResponse.json({ error: 'Invalid metadata format' }, { status: 400 });
         }
+
+        // Retrieve full order data using the orderDataKey from database
+        const orderDataKey = paymentIntent.metadata?.orderDataKey;
+        let fullOrderData: any = null;
+        
+        if (orderDataKey) {
+          try {
+            await connectToDatabase();
+            const tempOrder = await TempOrder.findOne({ orderDataKey });
+            
+            if (tempOrder) {
+              console.log('[Stripe Webhook] Retrieved full order data for key:', orderDataKey);
+              // Use full data instead of simplified metadata
+              items = tempOrder.items;
+              shippingDetails = tempOrder.shippingDetails;
+              fullOrderData = tempOrder;
+              // Clean up temporary data
+              await TempOrder.deleteOne({ orderDataKey });
+              console.log('[Stripe Webhook] Cleaned up temporary order data');
+            } else {
+              console.log('[Stripe Webhook] No full order data found for key:', orderDataKey);
+            }
+          } catch (error) {
+            console.error('[Stripe Webhook] Error retrieving temporary order data:', error);
+          }
+        }
+
+        console.log('[Stripe Webhook] Processing order with items:', items.length);
         
         const visitorId = paymentIntent.metadata?.visitorId || '';
         const total = paymentIntent.amount / 100;
@@ -93,21 +132,21 @@ export async function POST(req: NextRequest) {
         const voucherType = paymentIntent.metadata?.voucherType || null;
         const voucherValue = voucherCode ? parseFloat(paymentIntent.metadata?.voucherValue || '0') : null;
 
-        // Create the order
+        // Create the order with full data (including image URLs and customization details)
         const order = new Order({
-          userId: paymentIntent.metadata?.userId || visitorId || 'guest',
+          userId: fullOrderData?.userId || paymentIntent.metadata?.userId || visitorId || 'guest',
           reference,
-          items,
+          items, // Now contains full data with image URLs
           shippingDetails,
           total,
           vat,
           status: 'paid',
           orderSource: items?.[0]?.orderSource || undefined,
-          visitorId,
-          voucherCode,
-          voucherDiscount,
-          voucherType,
-          voucherValue,
+          visitorId: fullOrderData?.visitorId || visitorId,
+          voucherCode: fullOrderData?.voucherCode || voucherCode,
+          voucherDiscount: fullOrderData?.voucherDiscount || voucherDiscount,
+          voucherType: fullOrderData?.voucherType || voucherType,
+          voucherValue: fullOrderData?.voucherValue || voucherValue,
         });
         try {
           await order.save();

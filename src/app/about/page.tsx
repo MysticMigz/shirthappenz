@@ -28,8 +28,8 @@ const AboutPage = () => (
       <div className="mt-8">
         <h2 className="text-2xl font-semibold mb-2 text-purple-600">Our Founders</h2>
         <ul className="list-disc pl-6 text-gray-700">
-          <li><strong>Miguel</strong> – Creative lead, designer, and co-founder</li>
-          <li><strong>Roshan</strong> – Operations, technology, and co-founder</li>
+          <li><strong>Miguel</strong> – Creative lead, designer, Tech Engineer and Co-founder</li>
+          <li><strong>Roshan</strong> – Operations, Logistics and Co-founder</li>
         </ul>
       </div>
       <div className="mt-10 text-gray-600">
@@ -45,8 +45,8 @@ const AboutPage = () => (
           <div>
             <h3 className="font-semibold text-gray-900 mb-2">Company Details</h3>
             <ul className="space-y-1">
-              <li><strong>Business Name:</strong> Mr SHIRT PERSONALISATION</li>
-              <li><strong>Legal Structure:</strong> Sole Trader</li>
+              <li><strong>Business Name:</strong> MR SHIRT PERSONALISATION LTD</li>
+              <li><strong>Legal Structure:</strong> Limited Company (Ltd)</li>
               <li><strong>Trading Address:</strong> 10 Barney Close, SE7 8SS, United Kingdom</li>
               <li><strong>Geographic Address:</strong> 10 Barney Close, SE7 8SS, United Kingdom</li>
             </ul>

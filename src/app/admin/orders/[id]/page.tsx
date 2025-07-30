@@ -278,8 +278,9 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
       canvas.height = PRINT_HEIGHT;
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
-      ctx.fillStyle = '#fff';
-      ctx.fillRect(0, 0, PRINT_WIDTH, PRINT_HEIGHT);
+      
+      // Clear canvas with transparent background (no fill)
+      ctx.clearRect(0, 0, PRINT_WIDTH, PRINT_HEIGHT);
 
       // Use stored customization controls
       const imgPreviewW = 200 * (side === 'front' ? design.frontScale ?? 1 : design.backScale ?? 1);
@@ -301,7 +302,7 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
 
       canvas.toBlob(blob => {
         if (blob) {
-          saveAs(blob, `${designName}-${side}.png`);
+          saveAs(blob, `${designName}-${side}-transparent.png`);
         }
       }, 'image/png');
     };
@@ -647,6 +648,127 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
                 </table>
               </div>
             </div>
+
+            {/* Customer Uploaded Images Section */}
+            {order.items.some(item => item.customization?.frontImage || item.customization?.backImage) && (
+              <div className="mt-8">
+                <h2 className="text-lg font-medium text-gray-900 mb-4">Customer Uploaded Images</h2>
+                <div className="bg-gray-50 rounded-lg p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {order.items.map((item, index) => {
+                      if (!item.customization?.frontImage && !item.customization?.backImage) return null;
+                      
+                      return (
+                        <div key={index} className="bg-white rounded-lg p-4 border border-gray-200">
+                          <h3 className="text-md font-semibold text-gray-900 mb-3">
+                            {item.name} - {item.size}
+                          </h3>
+                          
+                          <div className="space-y-4">
+                            {item.customization?.frontImage && (
+                              <div>
+                                <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                                  <svg className="w-4 h-4 mr-2 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                  </svg>
+                                  Front Image
+                                </h4>
+                                <div className="relative">
+                                  <img 
+                                    src={item.customization.frontImage} 
+                                    alt="Front design" 
+                                    className="w-full h-48 object-contain bg-gray-100 rounded-lg border border-gray-300"
+                                    onError={(e) => {
+                                      e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik02MCA4MGg4MHY0MEg2MHoiIGZpbGw9IiM5Q0EzQUYiLz4KPHN2ZyB4PSI3MCIgeT0iOTAiIHdpZHRoPSI2MCIgaGVpZ2h0PSI0MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM2QjcyODAiIHN0cm9rZS13aWR0aD0iMiI+CjxwYXRoIGQ9Ik0xNCAxM2g3djdoLTd6Ii8+CjxwYXRoIGQ9Ik0xMCAxN2gxMHYyaC0xMHoiLz4KPC9zdmc+Cjwvc3ZnPgo=';
+                                    }}
+                                  />
+                                  <div className="absolute top-2 right-2">
+                                    <a 
+                                      href={item.customization.frontImage} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="bg-blue-600 text-white px-2 py-1 rounded text-xs hover:bg-blue-700 transition-colors"
+                                    >
+                                      View Full Size
+                                    </a>
+                                  </div>
+                                </div>
+                                <div className="mt-2 text-xs text-gray-500">
+                                  <p><strong>Position:</strong> X: {item.customization.frontPosition?.x || 0}, Y: {item.customization.frontPosition?.y || 0}</p>
+                                  <p><strong>Scale:</strong> {item.customization.frontScale || 1}</p>
+                                  {item.customization.frontRotation && (
+                                    <p><strong>Rotation:</strong> {item.customization.frontRotation}°</p>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {item.customization?.backImage && (
+                              <div>
+                                <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                                  <svg className="w-4 h-4 mr-2 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
+                                  </svg>
+                                  Back Image
+                                </h4>
+                                <div className="relative">
+                                  <img 
+                                    src={item.customization.backImage} 
+                                    alt="Back design" 
+                                    className="w-full h-48 object-contain bg-gray-100 rounded-lg border border-gray-300"
+                                    onError={(e) => {
+                                      e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik02MCA4MGg4MHY0MEg2MHoiIGZpbGw9IiM5Q0EzQUYiLz4KPHN2ZyB4PSI3MCIgeT0iOTAiIHdpZHRoPSI2MCIgaGVpZ2h0PSI0MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM2QjcyODAiIHN0cm9rZS13aWR0aD0iMiI+CjxwYXRoIGQ9Ik0xNCAxM2g3djdoLTd6Ii8+CjxwYXRoIGQ9Ik0xMCAxN2gxMHYyaC0xMHoiLz4KPC9zdmc+Cjwvc3ZnPgo=';
+                                    }}
+                                  />
+                                  <div className="absolute top-2 right-2">
+                                    <a 
+                                      href={item.customization.backImage} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="bg-green-600 text-white px-2 py-1 rounded text-xs hover:bg-green-700 transition-colors"
+                                    >
+                                      View Full Size
+                                    </a>
+                                  </div>
+                                </div>
+                                <div className="mt-2 text-xs text-gray-500">
+                                  <p><strong>Position:</strong> X: {item.customization.backPosition?.x || 0}, Y: {item.customization.backPosition?.y || 0}</p>
+                                  <p><strong>Scale:</strong> {item.customization.backScale || 1}</p>
+                                  {item.customization.backRotation && (
+                                    <p><strong>Rotation:</strong> {item.customization.backRotation}°</p>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          
+                          <div className="mt-4 pt-4 border-t border-gray-200">
+                            <div className="flex gap-2">
+                              {item.customization?.frontImage && (
+                                <button
+                                  className="px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 text-xs"
+                                  onClick={() => exportOrderItemForDTF(item.customization, 'front', item.name)}
+                                >
+                                  Export Front for DTF
+                                </button>
+                              )}
+                              {item.customization?.backImage && (
+                                <button
+                                  className="px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 text-xs"
+                                  onClick={() => exportOrderItemForDTF(item.customization, 'back', item.name)}
+                                >
+                                  Export Back for DTF
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Refund Section */}
             {order.status === 'cancelled' && (

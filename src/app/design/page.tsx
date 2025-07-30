@@ -81,6 +81,7 @@ export default function CustomDesignPage() {
   const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
   const [selectedGender, setSelectedGender] = useState('men'); // Default to Men
   const [detailsProduct, setDetailsProduct] = useState<any | null>(null);
+  const [selectedPaperSize, setSelectedPaperSize] = useState<'A4' | 'A3'>('A4');
 
   useEffect(() => {
     // Fetch products for the selected category and gender
@@ -110,7 +111,7 @@ export default function CustomDesignPage() {
   // Kids sizes for dropdown
   const KIDS_SIZES = ['0–3M', '3–6M', '6–12M', '1–2Y', '2–3Y', '3–4Y', '5–6Y', '7–8Y', '9–10Y', '11–12Y', '13–14Y'];
   const ADULT_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'];
-  const customizationFee = 12.50;
+  const paperSizeFee = selectedPaperSize === 'A3' ? 17.50 : 12.50;
   const basePrice = selectedProduct?.basePrice ?? 24.99;
   // Normalize stock keys and selectedSize
   const normalizedStock: Record<string, number> = {};
@@ -241,14 +242,15 @@ export default function CustomDesignPage() {
         name: 'Custom Design',
         size: selectedSize,
         quantity: quantity,
-        price: basePrice + customizationFee,
+        price: basePrice + paperSizeFee,
         image: (designData.front.uploadedImage || designData.back.uploadedImage) ?? '',
         baseProductName: selectedProduct?.name || '',
         baseProductImage: selectedProduct?.images?.[0]?.url || '',
         orderSource: 'online-design',
-        customization: {
-          isCustomized: true,
-          customizationCost: customizationFee,
+        paperSize: selectedPaperSize,
+                  customization: {
+            isCustomized: true,
+            designFee: paperSizeFee,
           frontImage: designData.front.uploadedImage || undefined,
           frontPosition: designData.front.imagePosition,
           frontScale: designData.front.imageScale,
@@ -269,11 +271,17 @@ export default function CustomDesignPage() {
     }
   };
 
+  // Paper size constants (300 DPI)
+  const PAPER_SIZES = {
+    A4: { width: 2480, height: 3508 }, // 210mm x 297mm at 300 DPI
+    A3: { width: 3508, height: 4961 }  // 297mm x 420mm at 300 DPI
+  };
+
   const exportForDTF = async () => {
-    const PRINT_WIDTH = 2480; // A4 at 300 DPI
-    const PRINT_HEIGHT = 3508;
+    const selectedSize = PAPER_SIZES[selectedPaperSize];
+    const PRINT_WIDTH = selectedSize.width;
+    const PRINT_HEIGHT = selectedSize.height;
     const PREVIEW_ASPECT = 3 / 4; // matches aspect-[3/4] in preview
-    // We'll assume the preview area is mapped to the full A4 area
 
     const side = activeSide;
     const design = designData[side];
@@ -292,12 +300,13 @@ export default function CustomDesignPage() {
       canvas.height = PRINT_HEIGHT;
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
+      
       // Fill white background
       ctx.fillStyle = '#fff';
       ctx.fillRect(0, 0, PRINT_WIDTH, PRINT_HEIGHT);
 
       // Map preview controls to print area
-      // Assume preview area is centered, and image is max 200x200px in preview (see <Image width={200} height={200} ... />)
+      // Preview area dimensions (estimated from the template)
       const previewWidth = 600; // estimate, adjust if you know exact px
       const previewHeight = 800; // estimate, adjust if you know exact px
       const scaleFactor = PRINT_WIDTH / previewWidth;
@@ -320,12 +329,12 @@ export default function CustomDesignPage() {
       ctx.drawImage(img, -imgPrintW / 2, -imgPrintH / 2, imgPrintW, imgPrintH);
       ctx.restore();
 
-      // Export as PNG
+      // Export as PNG with high quality for DTF
       canvas.toBlob(blob => {
         if (blob) {
-          saveAs(blob, `${designData.designName || 'dtf-design'}-${side}.png`);
+          saveAs(blob, `dtf-design-${selectedPaperSize}-${side}-300dpi.png`);
         }
-      }, 'image/png');
+      }, 'image/png', 1.0); // Maximum quality
     };
   };
 
@@ -449,14 +458,37 @@ export default function CustomDesignPage() {
             {/* Design Preview Section */}
             <div className="space-y-6">
               <div className="bg-white rounded-lg shadow-lg p-6">
-                {/* Upload Tip */}
-                <div className="mb-4 flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 text-sm">
-                  <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 20a8 8 0 100-16 8 8 0 000 16z" /></svg>
-                  <span>Please upload images with transparent backgrounds if you want a more clean design!</span>
+                {/* Upload Tips */}
+                <div className="mb-4 space-y-2">
+                  <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 text-sm">
+                    <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 20a8 8 0 100-16 8 8 0 000 16z" /></svg>
+                    <span>Please upload images with transparent backgrounds if you want a more clean design!</span>
+                  </div>
+                  <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg text-green-800 text-sm">
+                    <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <span>Your design will be accurately scaled for {selectedPaperSize} printing. A3 provides 40% more print area than A4.</span>
+                  </div>
                 </div>
                 <h2 className="text-2xl font-semibold text-gray-900 mb-4">
                   Design Preview ({activeSide.charAt(0).toUpperCase() + activeSide.slice(1)})
                 </h2>
+                
+                {/* Paper Size Indicator */}
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <span className="text-sm font-medium text-blue-800">
+                        Export Size: {selectedPaperSize} ({selectedPaperSize === 'A4' ? '210mm × 297mm' : '297mm × 420mm'})
+                      </span>
+                    </div>
+                    <div className="text-xs text-blue-600">
+                      {selectedPaperSize === 'A3' ? 'Larger print area' : 'Standard print area'}
+                    </div>
+                  </div>
+                </div>
                 
                 {/* Shirt Template with Design */}
                 <div className="relative w-full aspect-[3/4] bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200">
@@ -659,9 +691,46 @@ export default function CustomDesignPage() {
                 <div className="space-y-4 mb-6">
                   <h3 className="text-lg font-medium text-gray-900">Design Information</h3>
                   
-                  {/* Remove the Design Name and Description fields from the Design Information section */}
-                  {/* Remove the designName and description from the designData state and validation */}
-                  {/* Update the Add to Cart button to not require designName */}
+                  {/* Paper Size Selection */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Paper Size for Export
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPaperSize('A4')}
+                        className={`px-4 py-2 rounded-lg border transition-colors ${
+                          selectedPaperSize === 'A4'
+                            ? 'border-blue-500 bg-blue-50 text-blue-700'
+                            : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                        }`}
+                      >
+                        <div className="text-sm font-medium">A4</div>
+                        <div className="text-xs text-gray-500">210mm × 297mm</div>
+                        <div className="text-xs font-medium text-green-600">£12.50</div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPaperSize('A3')}
+                        className={`px-4 py-2 rounded-lg border transition-colors ${
+                          selectedPaperSize === 'A3'
+                            ? 'border-blue-500 bg-blue-50 text-blue-700'
+                            : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                        }`}
+                      >
+                        <div className="text-sm font-medium">A3</div>
+                        <div className="text-xs text-gray-500">297mm × 420mm</div>
+                        <div className="text-xs font-medium text-green-600">£17.50</div>
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">
+                      Select the paper size for DTF (Direct to Film) export. A3 provides more space for larger designs.
+                    </p>
+                  </div>
+
+                  {/* Export Button */}
+                  {/* Removed Export for DTF button and instructions for public users */}
                 </div>
 
                 {/* Product Options */}
@@ -729,13 +798,14 @@ export default function CustomDesignPage() {
                       <span>£{basePrice.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Custom Design Fee:</span>
-                      <span>£{customizationFee.toFixed(2)}</span>
+                      <span>Design Fee ({selectedPaperSize}):</span>
+                      <span>£{paperSizeFee.toFixed(2)}</span>
                     </div>
+
                     <div className="border-t pt-2">
                       <div className="flex justify-between font-semibold">
                         <span>Total:</span>
-                        <span>£{((basePrice + customizationFee) * quantity).toFixed(2)}</span>
+                        <span>£{((basePrice + paperSizeFee) * quantity).toFixed(2)}</span>
                       </div>
                     </div>
                   </div>

@@ -113,7 +113,13 @@ interface OrderItem {
   size: string;
   quantity: number;
   price: number;
-  customization?: { isCustomized: boolean; name?: string; number?: string };
+  customization?: { 
+    isCustomized: boolean; 
+    name?: string; 
+    number?: string;
+    frontImage?: string;
+    backImage?: string;
+  };
 }
 
 export async function sendOrderConfirmationEmail(
@@ -136,17 +142,41 @@ export async function sendOrderConfirmationEmail(
     const vatIncluded = typeof vat === 'number' ? vat : Number(((subtotal + shipping) * 0.2).toFixed(2));
     const orderStatus = status || 'confirmed';
     const orderDate = createdAt ? new Date(createdAt).toLocaleDateString() : new Date().toLocaleDateString();
-    const itemsList = items.map(item => `
-      <tr>
-        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
-          <div style='font-weight: bold;'>${item.name}</div>
-          <div style='color: #6b7280; font-size: 13px;'>Size: ${item.size}</div>
-          <div style='color: #6b7280; font-size: 13px;'>Quantity: ${item.quantity}</div>
-          ${item.customization?.name || item.customization?.number ? `<div style='color: #6b7280; font-size: 13px;'>Customization: ${item.customization.name || ''} ${item.customization.number || ''}</div>` : ''}
-        </td>
-        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right; font-weight: bold;">£${(item.price * item.quantity).toFixed(2)}</td>
-      </tr>
-    `).join('');
+    const itemsList = items.map(item => {
+      let customizationInfo = '';
+      let imageInfo = '';
+      
+      if (item.customization?.isCustomized) {
+        if (item.customization.name || item.customization.number) {
+          customizationInfo = `<div style='color: #6b7280; font-size: 13px;'>Customization: ${item.customization.name || ''} ${item.customization.number || ''}</div>`;
+        }
+        
+        // Add image URLs if they exist
+        if (item.customization.frontImage || item.customization.backImage) {
+          imageInfo = '<div style="margin-top: 8px; padding: 8px; background-color: #f3f4f6; border-radius: 4px;">';
+          if (item.customization.frontImage) {
+            imageInfo += `<div style="margin-bottom: 4px;"><strong style="color: #374151; font-size: 12px;">Front Image:</strong><br><a href="${item.customization.frontImage}" target="_blank" style="color: #3b82f6; font-size: 11px; word-break: break-all;">${item.customization.frontImage}</a></div>`;
+          }
+          if (item.customization.backImage) {
+            imageInfo += `<div><strong style="color: #374151; font-size: 12px;">Back Image:</strong><br><a href="${item.customization.backImage}" target="_blank" style="color: #3b82f6; font-size: 11px; word-break: break-all;">${item.customization.backImage}</a></div>`;
+          }
+          imageInfo += '</div>';
+        }
+      }
+      
+      return `
+        <tr>
+          <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+            <div style='font-weight: bold;'>${item.name}</div>
+            <div style='color: #6b7280; font-size: 13px;'>Size: ${item.size}</div>
+            <div style='color: #6b7280; font-size: 13px;'>Quantity: ${item.quantity}</div>
+            ${customizationInfo}
+            ${imageInfo}
+          </td>
+          <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right; font-weight: bold;">£${(item.price * item.quantity).toFixed(2)}</td>
+        </tr>
+      `;
+    }).join('');
 
     await sendEmail({
       to: shippingDetails.email,
@@ -299,17 +329,41 @@ export async function sendOrderShippedEmail(
   shippedAt?: Date
 ) {
   try {
-    const itemsList = items.map(item => `
-      <tr>
-        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
-          <div style='font-weight: bold;'>${item.name}</div>
-          <div style='color: #6b7280; font-size: 13px;'>Size: ${item.size}</div>
-          <div style='color: #6b7280; font-size: 13px;'>Quantity: ${item.quantity}</div>
-          ${item.customization?.name || item.customization?.number ? `<div style='color: #6b7280; font-size: 13px;'>Customization: ${item.customization.name || ''} ${item.customization.number || ''}</div>` : ''}
-        </td>
-        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right; font-weight: bold;">£${(item.price * item.quantity).toFixed(2)}</td>
-      </tr>
-    `).join('');
+    const itemsList = items.map(item => {
+      let customizationInfo = '';
+      let imageInfo = '';
+      
+      if (item.customization?.isCustomized) {
+        if (item.customization.name || item.customization.number) {
+          customizationInfo = `<div style='color: #6b7280; font-size: 13px;'>Customization: ${item.customization.name || ''} ${item.customization.number || ''}</div>`;
+        }
+        
+        // Add image URLs if they exist
+        if (item.customization.frontImage || item.customization.backImage) {
+          imageInfo = '<div style="margin-top: 8px; padding: 8px; background-color: #f3f4f6; border-radius: 4px;">';
+          if (item.customization.frontImage) {
+            imageInfo += `<div style="margin-bottom: 4px;"><strong style="color: #374151; font-size: 12px;">Front Image:</strong><br><a href="${item.customization.frontImage}" target="_blank" style="color: #3b82f6; font-size: 11px; word-break: break-all;">${item.customization.frontImage}</a></div>`;
+          }
+          if (item.customization.backImage) {
+            imageInfo += `<div><strong style="color: #374151; font-size: 12px;">Back Image:</strong><br><a href="${item.customization.backImage}" target="_blank" style="color: #3b82f6; font-size: 11px; word-break: break-all;">${item.customization.backImage}</a></div>`;
+          }
+          imageInfo += '</div>';
+        }
+      }
+      
+      return `
+        <tr>
+          <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
+            <div style='font-weight: bold;'>${item.name}</div>
+            <div style='color: #6b7280; font-size: 13px;'>Size: ${item.size}</div>
+            <div style='color: #6b7280; font-size: 13px;'>Quantity: ${item.quantity}</div>
+            ${customizationInfo}
+            ${imageInfo}
+          </td>
+          <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right; font-weight: bold;">£${(item.price * item.quantity).toFixed(2)}</td>
+        </tr>
+      `;
+    }).join('');
     await sendEmail({
       to: shippingDetails.email,
       subject: `Your Order Has Shipped! - ${orderReference} | Mr Shirt Personalisation`,
@@ -372,20 +426,44 @@ export async function sendOrderCancellationEmail(
   voucherValue?: number
 ) {
   try {
-    const itemsList = items.map(item => `
-      <div style="border-bottom: 1px solid #e5e7eb; padding: 12px 0;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <div>
-            <p style="margin: 0; font-weight: 600; color: #111827;">${item.name}</p>
-            <p style="margin: 4px 0 0 0; color: #6b7280; font-size: 14px;">
-              Size: ${item.size} | Qty: ${item.quantity}
-              ${item.customization?.isCustomized ? ` | Custom: ${item.customization.name || ''} ${item.customization.number || ''}` : ''}
-            </p>
+    const itemsList = items.map(item => {
+      let customizationInfo = '';
+      let imageInfo = '';
+      
+      if (item.customization?.isCustomized) {
+        if (item.customization.name || item.customization.number) {
+          customizationInfo = ` | Custom: ${item.customization.name || ''} ${item.customization.number || ''}`;
+        }
+        
+        // Add image URLs if they exist
+        if (item.customization.frontImage || item.customization.backImage) {
+          imageInfo = '<div style="margin-top: 8px; padding: 8px; background-color: #f3f4f6; border-radius: 4px;">';
+          if (item.customization.frontImage) {
+            imageInfo += `<div style="margin-bottom: 4px;"><strong style="color: #374151; font-size: 12px;">Front Image:</strong><br><a href="${item.customization.frontImage}" target="_blank" style="color: #3b82f6; font-size: 11px; word-break: break-all;">${item.customization.frontImage}</a></div>`;
+          }
+          if (item.customization.backImage) {
+            imageInfo += `<div><strong style="color: #374151; font-size: 12px;">Back Image:</strong><br><a href="${item.customization.backImage}" target="_blank" style="color: #3b82f6; font-size: 11px; word-break: break-all;">${item.customization.backImage}</a></div>`;
+          }
+          imageInfo += '</div>';
+        }
+      }
+      
+      return `
+        <div style="border-bottom: 1px solid #e5e7eb; padding: 12px 0;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div style="flex: 1;">
+              <p style="margin: 0; font-weight: 600; color: #111827;">${item.name}</p>
+              <p style="margin: 4px 0 0 0; color: #6b7280; font-size: 14px;">
+                Size: ${item.size} | Qty: ${item.quantity}
+                ${customizationInfo}
+              </p>
+              ${imageInfo}
+            </div>
+            <p style="margin: 0; font-weight: 600; color: #111827;">£${item.price.toFixed(2)}</p>
           </div>
-          <p style="margin: 0; font-weight: 600; color: #111827;">£${item.price.toFixed(2)}</p>
         </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
 
     await sendEmail({
       to: shippingDetails.email,
@@ -460,20 +538,44 @@ export async function sendRefundConfirmationEmail(
   voucherValue?: number
 ) {
   try {
-    const itemsList = items.map(item => `
-      <div style="border-bottom: 1px solid #e5e7eb; padding: 12px 0;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <div>
-            <p style="margin: 0; font-weight: 600; color: #111827;">${item.name}</p>
-            <p style="margin: 4px 0 0 0; color: #6b7280; font-size: 14px;">
-              Size: ${item.size} | Qty: ${item.quantity}
-              ${item.customization?.isCustomized ? ` | Custom: ${item.customization.name || ''} ${item.customization.number || ''}` : ''}
-            </p>
+    const itemsList = items.map(item => {
+      let customizationInfo = '';
+      let imageInfo = '';
+      
+      if (item.customization?.isCustomized) {
+        if (item.customization.name || item.customization.number) {
+          customizationInfo = ` | Custom: ${item.customization.name || ''} ${item.customization.number || ''}`;
+        }
+        
+        // Add image URLs if they exist
+        if (item.customization.frontImage || item.customization.backImage) {
+          imageInfo = '<div style="margin-top: 8px; padding: 8px; background-color: #f3f4f6; border-radius: 4px;">';
+          if (item.customization.frontImage) {
+            imageInfo += `<div style="margin-bottom: 4px;"><strong style="color: #374151; font-size: 12px;">Front Image:</strong><br><a href="${item.customization.frontImage}" target="_blank" style="color: #3b82f6; font-size: 11px; word-break: break-all;">${item.customization.frontImage}</a></div>`;
+          }
+          if (item.customization.backImage) {
+            imageInfo += `<div><strong style="color: #374151; font-size: 12px;">Back Image:</strong><br><a href="${item.customization.backImage}" target="_blank" style="color: #3b82f6; font-size: 11px; word-break: break-all;">${item.customization.backImage}</a></div>`;
+          }
+          imageInfo += '</div>';
+        }
+      }
+      
+      return `
+        <div style="border-bottom: 1px solid #e5e7eb; padding: 12px 0;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div style="flex: 1;">
+              <p style="margin: 0; font-weight: 600; color: #111827;">${item.name}</p>
+              <p style="margin: 4px 0 0 0; color: #6b7280; font-size: 14px;">
+                Size: ${item.size} | Qty: ${item.quantity}
+                ${customizationInfo}
+              </p>
+              ${imageInfo}
+            </div>
+            <p style="margin: 0; font-weight: 600; color: #111827;">£${item.price.toFixed(2)}</p>
           </div>
-          <p style="margin: 0; font-weight: 600; color: #111827;">£${item.price.toFixed(2)}</p>
         </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
 
     await sendEmail({
       to: shippingDetails.email,

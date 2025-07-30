@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createPaymentIntent } from '@/lib/stripe';
+import { connectToDatabase } from '@/lib/mongodb';
+import TempOrder from '@/backend/models/TempOrder';
 
 export async function POST(request: Request) {
   if (typeof window !== 'undefined') {
@@ -30,12 +32,58 @@ export async function POST(request: Request) {
       );
     }
 
-    // Store all order/cart/shipping details in metadata
+    // Store full order data in database (production-ready)
+    const orderDataKey = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    try {
+      await connectToDatabase();
+      
+      // Store full order data in MongoDB
+      const tempOrder = new TempOrder({
+        orderDataKey,
+        items,
+        shippingDetails,
+        visitorId,
+        userId,
+        voucherCode,
+        voucherDiscount,
+        voucherType,
+        voucherValue,
+        amount
+      });
+      
+      await tempOrder.save();
+      console.log('[Payment Intent] Temporary order data stored with key:', orderDataKey);
+    } catch (error) {
+      console.error('[Payment Intent] Failed to store temporary order data:', error);
+      // Continue with payment intent creation even if temp storage fails
+      // The webhook will fall back to simplified metadata if temp data is not available
+    }
+
+    // Create simplified items data for metadata (reduce size to fit Stripe's 500 char limit)
+    const simplifiedItems = items.map((item: any) => ({
+      productId: item.productId,
+      name: item.name,
+      size: item.size,
+      quantity: item.quantity,
+      price: item.price,
+      orderSource: item.orderSource,
+      paperSize: item.paperSize,
+      // Only include essential customization data, not full URLs
+      customization: item.customization ? {
+        isCustomized: item.customization.isCustomized,
+        designFee: item.customization.designFee,
+        hasFrontImage: !!item.customization.frontImage,
+        hasBackImage: !!item.customization.backImage,
+      } : null
+    }));
+
+    // Store simplified order/cart/shipping details in metadata
     const { clientSecret, paymentIntentId } = await createPaymentIntent({
       amount,
       orderId,
       metadata: {
-        items: JSON.stringify(items),
+        items: JSON.stringify(simplifiedItems),
         shippingDetails: JSON.stringify(shippingDetails),
         visitorId: visitorId || '',
         userId: userId || '',
@@ -43,6 +91,7 @@ export async function POST(request: Request) {
         voucherDiscount: voucherDiscount?.toString() || '',
         voucherType: voucherType || '',
         voucherValue: voucherValue?.toString() || '',
+        orderDataKey, // Include the key to retrieve full data later
       },
     });
 
