@@ -29,8 +29,8 @@ export default function ContactPage() {
               <h2 className="text-3xl font-bold text-gray-900 mb-2">Contact Information</h2>
               <p className="text-gray-600 mb-4">We're here to help! Reach out to us using the form or the details below.</p>
               <div className="text-gray-700 space-y-2 text-base">
-                <div><span className="font-semibold">Business Name:</span> <span>Mr SHIRT PERSONALISATION</span></div>
-                <div><span className="font-semibold">Legal Structure:</span> <span>Sole Trader</span></div>
+                <div><span className="font-semibold">Business Name:</span> <span>MR SHIRT PERSONALISATION LTD</span></div>
+                <div><span className="font-semibold">Legal Structure:</span> <span>Limited Company</span></div>
                 <div><span className="font-semibold">Trading Address:</span> <span>10 Barney Close, SE7 8SS, United Kingdom</span></div>
                 <div><span className="font-semibold">Email:</span> <a href="mailto:customer.service@mrshirtpersonalisation.com" className="text-blue-600 underline">customer.service@mrshirtpersonalisation.com</a></div>
                 <div><span className="font-semibold">Phone:</span> <span>07954746514</span></div>

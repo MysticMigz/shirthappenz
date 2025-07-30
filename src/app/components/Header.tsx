@@ -104,7 +104,11 @@ const Header = () => {
                   />
                   <button
                     type="button"
-                    onClick={() => router.push(`/products?search=${encodeURIComponent(searchInput)}`)}
+                    onClick={() => {
+                      if (searchInput.trim()) {
+                        router.push(`/products?search=${encodeURIComponent(searchInput.trim())}`);
+                      }
+                    }}
                     className="focus:outline-none"
                   >
                     <svg className="w-5 h-5 text-gray-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -256,15 +260,19 @@ const Header = () => {
                     onChange={e => setSearchInput(e.target.value)}
                     onKeyDown={e => {
                       if (e.key === 'Enter') {
-                        router.push(`/products?search=${encodeURIComponent(searchInput)}`);
-                        setIsMobileMenuOpen(false);
+                        if (searchInput.trim()) {
+                          router.push(`/products?search=${encodeURIComponent(searchInput.trim())}`);
+                          setIsMobileMenuOpen(false);
+                        }
                       }
                     }}
                   />
                   <button
                     onClick={() => {
-                      router.push(`/products?search=${encodeURIComponent(searchInput)}`);
-                      setIsMobileMenuOpen(false);
+                      if (searchInput.trim()) {
+                        router.push(`/products?search=${encodeURIComponent(searchInput.trim())}`);
+                        setIsMobileMenuOpen(false);
+                      }
                     }}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1"
                   >

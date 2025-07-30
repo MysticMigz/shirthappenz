@@ -43,6 +43,17 @@ export default function ProductsPage() {
   const [sortBy, setSortBy] = useState<'bestsellers' | 'price-asc' | 'price-desc' | 'name-asc' | 'name-desc' | 'newest'>('bestsellers');
   const [showFilters, setShowFilters] = useState(false);
 
+  // Read search parameters from URL on component mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const searchParam = urlParams.get('search');
+      if (searchParam) {
+        setSearchQuery(searchParam);
+      }
+    }
+  }, []);
+
   const genderNav = [
     { key: 'men', label: 'Men' },
     { key: 'women', label: 'Women' },
@@ -135,6 +146,14 @@ export default function ProductsPage() {
   const handleFilterChange = (key: string, value: string) => {
     if (key === 'search') {
       setSearchQuery(value);
+      // Update URL with search parameter
+      const url = new URL(window.location.href);
+      if (value.trim()) {
+        url.searchParams.set('search', value);
+      } else {
+        url.searchParams.delete('search');
+      }
+      window.history.replaceState({}, '', url.toString());
     } else if (key === 'category') {
       setSelectedCategory(value);
     } else if (key === 'minPrice') {
