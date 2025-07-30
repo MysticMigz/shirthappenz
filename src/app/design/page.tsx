@@ -382,17 +382,18 @@ export default function CustomDesignPage() {
           </div>
 
           {/* Product Selector: Show for customizable categories */}
-          {(selectedCategory === 'jerseys' || selectedCategory === 'tshirts') && (
+          {(selectedCategory === 'jerseys' || selectedCategory === 'tshirts' || selectedCategory === 'tanktops') && (
             <div className="mb-8">
               <h2 className="text-xl font-semibold mb-2 text-center">
-                Choose a {selectedCategory === 'jerseys' ? 'Jersey' : 'T-Shirt'}
+                Choose a {selectedCategory === 'jerseys' ? 'Jersey' : selectedCategory === 'tanktops' ? 'Tank Top' : 'T-Shirt'}
               </h2>
               <div className="flex flex-wrap gap-4 justify-center">
                 {(() => {
-                  const customizableProducts = products.filter((p: any) => p.customizable && p.gender === selectedGender);
+                  const customizableProducts = products.filter((p: any) => p.customizable && p.gender === selectedGender && p.category === selectedCategory);
                   
                   if (customizableProducts.length === 0) {
-                    return <div className="text-gray-500 text-center w-full py-8">No customizable {selectedCategory} available for {selectedGender.charAt(0).toUpperCase() + selectedGender.slice(1)}.</div>;
+                    const categoryName = selectedCategory === 'jerseys' ? 'Jerseys' : selectedCategory === 'tanktops' ? 'Tank Tops' : 'T-Shirts';
+                    return <div className="text-gray-500 text-center w-full py-8">No customizable {categoryName} available for {selectedGender.charAt(0).toUpperCase() + selectedGender.slice(1)}.</div>;
                   }
                   
                   return customizableProducts.map(product => (
@@ -491,9 +492,9 @@ export default function CustomDesignPage() {
                 </div>
                 
                 {/* Shirt Template with Design */}
-                <div className="relative w-full aspect-[3/4] bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200">
+                <div className={`relative w-full ${selectedCategory === 'tanktops' ? 'aspect-[4/5]' : 'aspect-[3/4]'} bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200`}>
                   {/* Shirt Template */}
-                  <div className="absolute inset-0">
+                  <div className={`absolute inset-0 ${selectedCategory === 'tanktops' ? (activeSide === 'back' ? 'p-2' : 'p-8') : ''}`}>
                     {(() => {
                       let templateSrc = '';
                       if (selectedCategory === 'hoodies') {
@@ -502,6 +503,8 @@ export default function CustomDesignPage() {
                         templateSrc = activeSide === 'front' ? '/images/front-tshirt.png' : '/images/back-tshirt.png';
                       } else if (selectedCategory === 'jerseys') {
                         templateSrc = activeSide === 'front' ? '/images/jersey-front.png' : '/images/jersey-back.png';
+                      } else if (selectedCategory === 'tanktops') {
+                        templateSrc = activeSide === 'front' ? '/images/tank-top-front.png' : '/images/tank-top-back.png';
                       } else {
                         templateSrc = selectedProduct?.images?.[0]?.url || '/images/front-tshirt.png';
                       }
@@ -512,7 +515,7 @@ export default function CustomDesignPage() {
                           alt={selectedProduct?.name || 'Shirt template'}
                           fill
                           sizes="(max-width: 768px) 100vw, 50vw"
-                          className="object-contain"
+                          className={`object-contain ${selectedCategory === 'tanktops' && activeSide === 'back' ? 'scale-125' : ''}`}
                           priority
                         />
                       );
