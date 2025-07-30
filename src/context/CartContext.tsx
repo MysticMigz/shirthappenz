@@ -46,21 +46,55 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
 
+  // Check if localStorage is available
+  const isLocalStorageAvailable = () => {
+    try {
+      const test = 'test';
+      localStorage.setItem(test, test);
+      localStorage.removeItem(test);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  };
+
   // Load cart from localStorage on mount
   useEffect(() => {
+    if (!isLocalStorageAvailable()) {
+      console.warn('localStorage is not available (private browsing mode)');
+      return;
+    }
+
     const savedCart = localStorage.getItem('cart');
     if (savedCart) {
       try {
-        setItems(JSON.parse(savedCart));
+        const parsedCart = JSON.parse(savedCart);
+        console.log('Loading cart from localStorage:', parsedCart);
+        setItems(parsedCart);
       } catch (error) {
         console.error('Failed to parse cart from localStorage:', error);
+        // Clear corrupted localStorage
+        localStorage.removeItem('cart');
       }
+    } else {
+      console.log('No saved cart found in localStorage');
     }
   }, []);
 
   // Save cart to localStorage whenever it changes
   useEffect(() => {
-    localStorage.setItem('cart', JSON.stringify(items));
+    if (!isLocalStorageAvailable()) {
+      console.warn('localStorage is not available, cart will not persist');
+      return;
+    }
+
+    if (items.length > 0) {
+      console.log('Saving cart to localStorage:', items);
+      localStorage.setItem('cart', JSON.stringify(items));
+    } else {
+      console.log('Clearing cart from localStorage');
+      localStorage.removeItem('cart');
+    }
   }, [items]);
 
   const addItem = (newItem: CartItem) => {
@@ -127,7 +161,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
   const clearCart = () => {
+    console.log('Clearing cart');
     setItems([]);
+    if (isLocalStorageAvailable()) {
+      localStorage.removeItem('cart');
+    }
   };
 
   const getTotal = () => {

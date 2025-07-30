@@ -171,6 +171,40 @@ body {
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
   }
+  
+  /* Mobile address finder improvements */
+  .address-finder-dropdown {
+    max-height: 200px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .address-suggestion-button {
+    min-height: 44px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Mobile form improvements */
+  .mobile-form-input {
+    font-size: 16px;
+    padding: 0.75rem;
+  }
+  
+  /* Mobile address finder section */
+  .address-finder-section {
+    margin-bottom: 1.5rem;
+  }
+  
+  @media (max-width: 640px) {
+    .address-finder-section {
+      margin-bottom: 1rem;
+    }
+    
+    .address-finder-dropdown {
+      max-height: 150px;
+    }
+  }
 }
 
 .brand-text {

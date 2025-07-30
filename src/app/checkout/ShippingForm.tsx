@@ -103,7 +103,7 @@ export default function ShippingForm({ onSubmit, onShippingMethodChange, current
             </div>
           </div>
 
-          <div className="mt-4 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
             <div className="relative">
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                 Email
@@ -141,10 +141,11 @@ export default function ShippingForm({ onSubmit, onShippingMethodChange, current
         {/* Shipping Address */}
         <div className="mb-8">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Shipping Address</h3>
+          
           <div className="space-y-4">
             <div className="relative">
               <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
-                Address
+                Address *
               </label>
               <input
                 type="text"
@@ -161,7 +162,7 @@ export default function ShippingForm({ onSubmit, onShippingMethodChange, current
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="relative">
                 <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">
-                  City
+                  City *
                 </label>
                 <input
                   type="text"
@@ -176,7 +177,7 @@ export default function ShippingForm({ onSubmit, onShippingMethodChange, current
               </div>
               <div className="relative">
                 <label htmlFor="county" className="block text-sm font-medium text-gray-700 mb-1">
-                  County
+                  County *
                 </label>
                 <input
                   type="text"
@@ -189,21 +190,22 @@ export default function ShippingForm({ onSubmit, onShippingMethodChange, current
                   placeholder="Greater London"
                 />
               </div>
-              <div className="relative">
-                <label htmlFor="postcode" className="block text-sm font-medium text-gray-700 mb-1">
-                  Postcode
-                </label>
-                <input
-                  type="text"
-                  id="postcode"
-                  name="postcode"
-                  required
-                  value={formData.postcode}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
-                  placeholder="SW1A 1AA"
-                />
-              </div>
+            </div>
+
+            <div className="relative">
+              <label htmlFor="postcode" className="block text-sm font-medium text-gray-700 mb-1">
+                Postcode *
+              </label>
+              <input
+                type="text"
+                id="postcode"
+                name="postcode"
+                required
+                value={formData.postcode}
+                onChange={handleChange}
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+                placeholder="SW1A 1AA"
+              />
             </div>
           </div>
         </div>
@@ -211,7 +213,7 @@ export default function ShippingForm({ onSubmit, onShippingMethodChange, current
         {/* Shipping Method */}
         <div className="mb-8">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Shipping Method</h3>
-          <div className="space-y-4">
+          <div className="space-y-3">
             <label className="relative flex p-4 border border-gray-200 rounded-lg cursor-pointer hover:border-indigo-500 transition-all duration-200">
               <input
                 type="radio"

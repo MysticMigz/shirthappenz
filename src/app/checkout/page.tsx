@@ -191,6 +191,9 @@ export default function CheckoutPage() {
   const total = subtotal + shippingCost;
   // VAT is 20% of (subtotal + shippingCost)
   const vatIncluded = Number(((subtotal + shippingCost) * 0.2).toFixed(2));
+  
+  // Calculate final total with voucher discount
+  const finalTotal = voucherDiscount ? (voucherDiscount.newTotal / 100) : total;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 py-12 px-4">
@@ -315,7 +318,7 @@ export default function CheckoutPage() {
                       )}
                       <div className="flex justify-between text-lg font-bold text-gray-900 mt-4">
                         <span>Total</span>
-                        <span>£{voucherDiscount ? (voucherDiscount.newTotal / 100).toFixed(2) : total.toFixed(2)}</span>
+                        <span>£{finalTotal.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between mt-2 text-xs text-gray-500 italic">
                         <span>Includes VAT (20%)</span>
@@ -337,7 +340,7 @@ export default function CheckoutPage() {
                   <div className="bg-white rounded-lg">
                     <StripeProvider clientSecret={step.clientSecret}>
                       <PaymentForm 
-                        total={voucherDiscount ? (voucherDiscount.newTotal / 100) : (getTotal() + step.shippingDetails.shippingCost)} 
+                        total={finalTotal} 
                       />
                     </StripeProvider>
                   </div>
