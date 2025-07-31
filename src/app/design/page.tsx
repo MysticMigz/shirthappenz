@@ -128,16 +128,23 @@ export default function CustomDesignPage() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    // Validate file type for DTF printing
+    const allowedTypes = [
+      'image/png',           // PNG with transparent background
+      'image/svg+xml',       // SVG vector format
+      'application/pdf',     // PDF high-res
+      'image/jpeg',          // JPEG (fallback)
+      'image/jpg'            // JPG (fallback)
+    ];
+    
     if (!allowedTypes.includes(file.type)) {
-      setError('Please upload a JPEG, PNG, or WebP image');
+      setError('Please upload a PNG (with transparent background), SVG, PDF, or JPEG image for best DTF printing results');
       return;
     }
 
-    // Validate file size (5MB max)
-    if (file.size > 5 * 1024 * 1024) {
-      setError('File size must be less than 5MB');
+    // Validate file size (10MB max for vector files)
+    if (file.size > 10 * 1024 * 1024) {
+      setError('File size must be less than 10MB');
       return;
     }
 
@@ -576,12 +583,40 @@ export default function CustomDesignPage() {
                   )}
                 </div>
 
+                {/* File Upload Tips */}
+                <div className="mt-4 mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h3 className="text-sm font-semibold text-blue-900 mb-2 flex items-center">
+                    <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                    Best File Types for DTF Printing
+                  </h3>
+                  <div className="text-xs text-blue-800 space-y-1">
+                    <div className="flex items-start">
+                      <span className="text-yellow-500 mr-2">🔑</span>
+                      <span><strong>PNG (with transparent background):</strong> Best choice. Keeps background clean for precise transfers.</span>
+                    </div>
+                    <div className="flex items-start">
+                      <span className="text-pink-500 mr-2">🧠</span>
+                      <span><strong>SVG / EPS / AI:</strong> Vector formats. Great for logos, scalable without quality loss.</span>
+                    </div>
+                    <div className="flex items-start">
+                      <span className="text-green-500 mr-2">✓</span>
+                      <span><strong>PDF (High-res):</strong> Good if exported from vector or design software.</span>
+                    </div>
+                    <div className="flex items-start">
+                      <span className="text-blue-500 mr-2">📄</span>
+                      <span><strong>JPEG:</strong> Acceptable but PNG with transparency is preferred.</span>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Upload Button */}
                 <div className="mt-4">
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*"
+                    accept=".png,.svg,.pdf,.jpg,.jpeg"
                     onChange={handleFileUpload}
                     className="hidden"
                   />
@@ -590,7 +625,7 @@ export default function CustomDesignPage() {
                     disabled={uploading}
                     className="w-full bg-white text-black hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent disabled:bg-gray-400 font-medium py-3 px-6 rounded-lg transition-colors"
                   >
-                    {uploading ? 'Uploading...' : 'Upload Image'}
+                    {uploading ? 'Uploading...' : 'Upload Design File'}
                   </button>
                 </div>
               </div>
