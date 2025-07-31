@@ -141,7 +141,7 @@ export default function CartPage() {
                                         <p className="text-sm text-gray-600">
                                           Name: {item.customization.name}
                                           <span className="text-xs text-gray-500 ml-2">
-                                            ({item.customization.name.length} characters × £2)
+                                            ({item.customization.name.replace(/\s/g, '').length} characters × £2)
                                           </span>
                                         </p>
                                       )}
@@ -214,15 +214,38 @@ export default function CartPage() {
                 <div className="bg-white rounded-lg shadow p-6">
                   <h2 className="text-lg font-medium text-gray-900 mb-4">Order Summary</h2>
                   
-                  <div className="space-y-4">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Subtotal</span>
-                      <span className="text-gray-900">£{getTotal().toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Shipping</span>
-                      <span className="text-gray-900">Calculated at checkout</span>
-                    </div>
+                                     <div className="space-y-4">
+                     {/* Item Details */}
+                     {items.map((item) => (
+                       <div key={`${item.productId}-${item.size}`} className="border-b border-gray-200 pb-3">
+                         <div className="flex justify-between items-start">
+                           <div className="flex-1">
+                             <p className="text-sm font-medium text-gray-900">{item.name}</p>
+                             <p className="text-xs text-gray-500">Size: {item.size} | Qty: {item.quantity}</p>
+                             {item.customization?.isCustomized && (
+                               <div className="mt-1 text-xs text-gray-600">
+                                 {item.customization.name && (
+                                   <p>Name: {item.customization.name} ({item.customization.name.replace(/\s/g, '').length} chars)</p>
+                                 )}
+                                 {item.customization.number && (
+                                   <p>Number: {item.customization.number} ({item.customization.number.length} digits)</p>
+                                 )}
+                               </div>
+                             )}
+                           </div>
+                           <span className="text-sm font-medium text-gray-900">£{(item.price * item.quantity).toFixed(2)}</span>
+                         </div>
+                       </div>
+                     ))}
+                     
+                     <div className="flex justify-between">
+                       <span className="text-gray-600">Subtotal</span>
+                       <span className="text-gray-900">£{getTotal().toFixed(2)}</span>
+                     </div>
+                     <div className="flex justify-between">
+                       <span className="text-gray-600">Shipping</span>
+                       <span className="text-gray-900">Calculated at checkout</span>
+                     </div>
                     <div className="border-t border-gray-200 pt-4">
                       <div className="flex justify-between">
                         <span className="text-lg font-medium text-gray-900">Total</span>

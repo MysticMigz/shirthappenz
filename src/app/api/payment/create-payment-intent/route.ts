@@ -70,9 +70,11 @@ export async function POST(request: Request) {
       price: item.price,
       orderSource: item.orderSource,
       paperSize: item.paperSize,
-      // Only include essential customization data, not full URLs
+      // Include essential customization data including name and number
       customization: item.customization ? {
         isCustomized: item.customization.isCustomized,
+        name: item.customization.name,
+        number: item.customization.number,
         designFee: item.customization.designFee,
         hasFrontImage: !!item.customization.frontImage,
         hasBackImage: !!item.customization.backImage,

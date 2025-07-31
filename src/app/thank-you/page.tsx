@@ -61,6 +61,7 @@ export default function ThankYouPage() {
 
   useEffect(() => {
     const orderId = searchParams.get('orderId');
+    const reference = searchParams.get('reference');
     const paymentIntent = searchParams.get('payment_intent');
     const redirectStatus = searchParams.get('redirect_status');
     
@@ -261,6 +262,18 @@ export default function ThankYouPage() {
                     )}
                     <p className="text-xs text-gray-500">Size: {item.size}</p>
                     <p className="text-xs text-gray-500">Quantity: {item.quantity}</p>
+                    {/* Show customization details if available */}
+                    {item.customization && (item.customization.name || item.customization.number) && (
+                      <div className="mt-2 text-xs text-purple-600">
+                        <p className="font-medium">Customization:</p>
+                        {item.customization.name && (
+                          <p>Name: {item.customization.name}</p>
+                        )}
+                        {item.customization.number && (
+                          <p>Number: {item.customization.number}</p>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <span className="font-semibold text-gray-900 text-sm lg:text-base">£{(item.price * item.quantity).toFixed(2)}</span>
                 </div>
@@ -292,12 +305,12 @@ export default function ThankYouPage() {
             </div>
 
             <div className="mt-8 text-center space-y-3">
-              <Link
-                href={`/orders${visitorId ? `?visitorId=${visitorId}` : ''}`}
+              <a
+                href="https://www.mrshirtpersonalisation.co.uk/orders"
                 className="inline-block bg-indigo-600 text-white py-2 px-6 rounded-md hover:bg-indigo-700 mr-3"
               >
                 View All Orders
-              </Link>
+              </a>
               <Link
                 href="/"
                 className="inline-block bg-gray-100 text-indigo-700 py-2 px-6 rounded-md hover:bg-gray-200"

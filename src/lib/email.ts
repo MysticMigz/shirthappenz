@@ -297,7 +297,7 @@ export async function sendOrderConfirmationEmail(
                 ${voucherCode && voucherDiscount ? `
                 <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
                   <span style="color: #8b5cf6; font-weight: 500;">Discount (${voucherCode})</span>
-                  <span style="color: #8b5cf6; font-weight: 500;">-£${(voucherDiscount / 100).toFixed(2)}</span>
+                  <span style="color: #8b5cf6; font-weight: 500;">-£${voucherDiscount.toFixed(2)}</span>
                 </div>
                 ` : ''}
                 <div style="display: flex; justify-content: space-between; font-size: 18px; font-weight: bold; margin-top: 16px;">
@@ -313,7 +313,7 @@ export async function sendOrderConfirmationEmail(
                 <p style="color: #6b7280; font-size: 14px; margin-bottom: 16px;">
                   📎 Your invoice is attached to this email for your records.
                 </p>
-                <a href="https://shirthappenz.com/orders" style="display: inline-block; background: #6366f1; color: #fff; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: 600;">View All Orders</a>
+                <a href="https://www.mrshirtpersonalisation.co.uk/orders" style="display: inline-block; background: #6366f1; color: #fff; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: 600;">View All Orders</a>
               </div>
             </div>
           </div>
@@ -539,7 +539,7 @@ export async function sendOrderCancellationEmail(
                   ${voucherCode && voucherDiscount ? `
                   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                     <p style="margin: 0; color: #8b5cf6; font-weight: 500;">Discount (${voucherCode})</p>
-                    <p style="margin: 0; color: #8b5cf6; font-weight: 500;">-£${(voucherDiscount / 100).toFixed(2)}</p>
+                    <p style="margin: 0; color: #8b5cf6; font-weight: 500;">-£${voucherDiscount.toFixed(2)}</p>
                   </div>
                   ` : ''}
                   <div style="display: flex; justify-content: space-between; align-items: center;">

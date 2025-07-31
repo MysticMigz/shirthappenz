@@ -104,14 +104,14 @@ const formatVoucherDiscount = (order: Order) => {
     return null;
   }
 
-  // Simply convert the stored voucher discount from pence to pounds
-  const discountAmount = order.voucherDiscount / 100;
+  // Display the exact voucher discount value from database without any conversion
+  const discountAmount = order.voucherDiscount;
 
   let discountText = '';
   if (order.voucherType === 'percentage') {
     discountText = `${order.voucherValue}% off`;
   } else if (order.voucherType === 'fixed') {
-    discountText = `£${(order.voucherValue || 0) / 100} off`;
+    discountText = `£${order.voucherValue || 0} off`;
   } else if (order.voucherType === 'free_shipping') {
     discountText = 'Free shipping';
   }
@@ -436,8 +436,12 @@ export default function OrdersPage() {
                             <div className="mt-1 text-sm text-gray-500">
                               <p>Customization:</p>
                               <ul className="ml-2">
-                                <li>Name: {item.customization.name}</li>
-                                <li>Number: {item.customization.number}</li>
+                                {item.customization.name && (
+                                  <li>Name: {item.customization.name}</li>
+                                )}
+                                {item.customization.number && (
+                                  <li>Number: {item.customization.number}</li>
+                                )}
                               </ul>
                             </div>
                           )}

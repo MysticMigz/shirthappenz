@@ -108,11 +108,8 @@ const formatVoucherDiscount = (order: Order) => {
     return null;
   }
 
-  // Convert voucherDiscount from pence to pounds
-  const discountAmount = order.voucherDiscount / 100;
-  
-  // Calculate original total: final total + discount amount
-  const originalTotal = order.total + discountAmount;
+  // Display the exact voucher discount value from database without any conversion
+  const discountAmount = order.voucherDiscount;
 
   let discountText = '';
   if (order.voucherType === 'percentage') {
@@ -127,8 +124,8 @@ const formatVoucherDiscount = (order: Order) => {
     code: order.voucherCode,
     discountText,
     discountAmount,
-    originalTotal,
-    finalTotal: order.total, // Total is already in pounds
+    originalTotal: order.total, // Use the total as stored in database
+    finalTotal: order.total, // Use the total as stored in database
   };
 };
 

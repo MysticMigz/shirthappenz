@@ -92,7 +92,7 @@ export default function JerseyLetteringPage() {
   };
 
   const isValidNameChar = (char: string) => {
-    return /^[A-ZÀ-ÿ.']+$/i.test(char);
+    return /^[A-ZÀ-ÿ.\s']+$/i.test(char);
   };
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -105,7 +105,7 @@ export default function JerseyLetteringPage() {
       .join('');
 
     if (value !== validValue) {
-      setNameError('Only letters, dots, and apostrophes allowed');
+      setNameError('Only letters, spaces, dots, and apostrophes allowed');
       setTimeout(() => setNameError(''), 3000);
     } else if (value.length > 12) {
       setNameError('Maximum 12 characters allowed');
@@ -129,12 +129,16 @@ export default function JerseyLetteringPage() {
       setError('Name contains invalid characters');
       return false;
     }
+    if (name && name.length > 12) {
+      setError('Name must be 12 characters or less');
+      return false;
+    }
     return true;
   };
 
   const calculateCustomizationCost = () => {
     let cost = 0;
-    if (name) cost += name.length * 2;
+    if (name) cost += name.replace(/\s/g, '').length * 2; // Ignore spaces in cost calculation
     if (number) cost += number.length * 2;
     return cost;
   };
@@ -162,9 +166,9 @@ export default function JerseyLetteringPage() {
       const customizationCost = calculateCustomizationCost();
       const totalPrice = basePrice + customizationCost;
 
-      const customization = (name || number) ? {
-        name: name.trim(),
-        number: number.trim(),
+      const customization = (name.trim() || number.trim()) ? {
+        name: name.trim() || undefined,
+        number: number.trim() || undefined,
         isCustomized: true,
         nameCharacters: name.length,
         numberCharacters: number.length,
@@ -390,12 +394,28 @@ export default function JerseyLetteringPage() {
                       <span>Base Price:</span>
                       <span>£{selectedJersey?.basePrice.toFixed(2)}</span>
                     </div>
-                    {calculateCustomizationCost() > 0 && (
-                      <div className="flex justify-between">
-                        <span>Customization:</span>
-                        <span>£{calculateCustomizationCost().toFixed(2)}</span>
-                      </div>
-                    )}
+                                         {calculateCustomizationCost() > 0 && (
+                       <>
+                         <div className="flex justify-between">
+                           <span>Customization:</span>
+                           <span>£{calculateCustomizationCost().toFixed(2)}</span>
+                         </div>
+                         <div className="text-xs text-gray-600 ml-4 space-y-1">
+                           {name && (
+                             <div className="flex justify-between">
+                               <span>Name ({name.replace(/\s/g, '').length} chars):</span>
+                               <span>£{(name.replace(/\s/g, '').length * 2).toFixed(2)}</span>
+                             </div>
+                           )}
+                           {number && (
+                             <div className="flex justify-between">
+                               <span>Number ({number.length} chars):</span>
+                               <span>£{(number.length * 2).toFixed(2)}</span>
+                             </div>
+                           )}
+                         </div>
+                       </>
+                     )}
                     <div className="flex justify-between">
                       <span>Quantity:</span>
                       <span>x{quantity}</span>

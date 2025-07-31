@@ -12,12 +12,9 @@ const formatVoucherDiscount = (order: Order) => {
     return null;
   }
 
-  // Convert voucherDiscount from pence to pounds
-  const discountAmount = order.voucherDiscount / 100;
+  // Display the exact voucher discount value from database without any conversion
+  const discountAmount = order.voucherDiscount;
   
-  // Calculate original total: final total + discount amount
-  const originalTotal = order.total + discountAmount;
-
   let discountText = '';
   if (order.voucherType === 'percentage') {
     discountText = `${order.voucherValue}% off`;
@@ -31,8 +28,8 @@ const formatVoucherDiscount = (order: Order) => {
     code: order.voucherCode,
     discountText,
     discountAmount,
-    originalTotal,
-    finalTotal: order.total, // Total is already in pounds
+    originalTotal: order.total, // Use the total as stored in database
+    finalTotal: order.total, // Use the total as stored in database
   };
 };
 
@@ -44,6 +41,12 @@ interface OrderItem {
   size: string;
   color?: string;
   customization?: {
+    isCustomized?: boolean;
+    name?: string;
+    number?: string;
+    nameCharacters?: number;
+    numberCharacters?: number;
+    customizationCost?: number;
     frontImage?: string;
     backImage?: string;
     frontPosition: { x: number; y: number };
@@ -52,7 +55,6 @@ interface OrderItem {
     backScale: number;
     frontRotation?: number;
     backRotation?: number;
-    name?: string;
   };
 }
 
@@ -90,6 +92,7 @@ interface Order {
     city: string;
     postcode: string;
     shippingMethod: string;
+    shippingCost: number;
   };
 }
 
@@ -540,6 +543,9 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
                         Color
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Customization
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Quantity
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -564,6 +570,55 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
                             {item.color || '-'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {item.customization?.isCustomized ? (
+                              <div className="space-y-1">
+                                {item.customization.name && (
+                                  <div className="text-xs">
+                                    <span className="font-medium">Name:</span> {item.customization.name}
+                                    {item.customization.nameCharacters && (
+                                      <span className="text-gray-500 ml-1">({item.customization.nameCharacters} chars)</span>
+                                    )}
+                                  </div>
+                                )}
+                                {item.customization.number && (
+                                  <div className="text-xs">
+                                    <span className="font-medium">Number:</span> {item.customization.number}
+                                    {item.customization.numberCharacters && (
+                                      <span className="text-gray-500 ml-1">({item.customization.numberCharacters} chars)</span>
+                                    )}
+                                  </div>
+                                )}
+                                {item.customization.customizationCost && (
+                                  <div className="text-xs text-purple-600">
+                                    Cost: £{item.customization.customizationCost.toFixed(2)}
+                                  </div>
+                                )}
+                                {(item.customization?.frontImage || item.customization?.backImage) && (
+                                  <div className="mt-2 flex flex-col gap-1">
+                                    {item.customization?.frontImage && (
+                                      <button
+                                        className="px-2 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 text-xs"
+                                        onClick={() => exportOrderItemForDTF(item.customization, 'front', item.customization?.name || item.name)}
+                                      >
+                                        Export Front for DTF
+                                      </button>
+                                    )}
+                                    {item.customization?.backImage && (
+                                      <button
+                                        className="px-2 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 text-xs"
+                                        onClick={() => exportOrderItemForDTF(item.customization, 'back', item.customization?.name || item.name)}
+                                      >
+                                        Export Back for DTF
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {item.quantity}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -572,28 +627,6 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             £{(item.price * item.quantity).toFixed(2)}
                           </td>
-                          {item.customization && (
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              <div className="mt-2 flex flex-col gap-1">
-                                {item.customization?.frontImage && (
-                                  <button
-                                    className="px-2 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 text-xs"
-                                    onClick={() => exportOrderItemForDTF(item.customization, 'front', item.customization?.name || item.name)}
-                                  >
-                                    Export Front for DTF
-                                  </button>
-                                )}
-                                {item.customization?.backImage && (
-                                  <button
-                                    className="px-2 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 text-xs"
-                                    onClick={() => exportOrderItemForDTF(item.customization, 'back', item.customization?.name || item.name)}
-                                  >
-                                    Export Back for DTF
-                                  </button>
-                                )}
-                              </div>
-                            </td>
-                          )}
                         </tr>
                       ))
                     ) : (
@@ -606,29 +639,26 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
                                          {(() => {
                        const voucherInfo = formatVoucherDiscount(order);
                        if (voucherInfo) {
-                         // Calculate subtotal from items
-                         const subtotal = order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-                         
                          return (
                            <>
-                             <tr className="bg-gray-50">
-                               <td colSpan={5} className="px-6 py-4 text-sm font-medium text-gray-900 text-right">
-                                 Subtotal
-                               </td>
-                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                 £{subtotal.toFixed(2)}
-                               </td>
-                             </tr>
                              <tr className="bg-purple-50">
-                               <td colSpan={5} className="px-6 py-4 text-sm font-medium text-purple-700 text-right">
+                               <td colSpan={6} className="px-6 py-4 text-sm font-medium text-purple-700 text-right">
                                  Discount ({voucherInfo.code})
                                </td>
                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-purple-700">
                                  -£{voucherInfo.discountAmount.toFixed(2)}
                                </td>
                              </tr>
+                             <tr className="bg-blue-50">
+                               <td colSpan={6} className="px-6 py-4 text-sm font-medium text-blue-700 text-right">
+                                 Shipping ({order.shippingDetails.shippingMethod})
+                               </td>
+                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-700">
+                                 £{order.shippingDetails.shippingCost.toFixed(2)}
+                               </td>
+                             </tr>
                              <tr className="bg-gray-50">
-                               <td colSpan={5} className="px-6 py-4 text-sm font-medium text-gray-900 text-right">
+                               <td colSpan={6} className="px-6 py-4 text-sm font-medium text-gray-900 text-right">
                                  Total
                                </td>
                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -640,14 +670,24 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
                        } else {
                          // No voucher - show the actual total from database
                          return (
-                           <tr className="bg-gray-50">
-                             <td colSpan={5} className="px-6 py-4 text-sm font-medium text-gray-900 text-right">
-                               Total
-                             </td>
-                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                               £{order.total.toFixed(2)}
-                             </td>
-                           </tr>
+                           <>
+                             <tr className="bg-blue-50">
+                               <td colSpan={6} className="px-6 py-4 text-sm font-medium text-blue-700 text-right">
+                                 Shipping ({order.shippingDetails.shippingMethod})
+                               </td>
+                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-700">
+                                 £{order.shippingDetails.shippingCost.toFixed(2)}
+                               </td>
+                             </tr>
+                             <tr className="bg-gray-50">
+                               <td colSpan={6} className="px-6 py-4 text-sm font-medium text-gray-900 text-right">
+                                 Total
+                               </td>
+                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                 £{order.total.toFixed(2)}
+                               </td>
+                             </tr>
+                           </>
                          );
                        }
                      })()}

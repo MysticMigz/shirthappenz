@@ -132,8 +132,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           ...newItem.customization,
           nameCharacters: newItem.customization.name?.length || 0,
           numberCharacters: newItem.customization.number?.length || 0,
-          customizationCost: ((newItem.customization.name?.length || 0) + 
-                            (newItem.customization.number?.length || 0)) * 2
+                  customizationCost: ((newItem.customization.name?.replace(/\s/g, '').length || 0) + 
+                          (newItem.customization.number?.length || 0)) * 2
         } : undefined
       }];
     });

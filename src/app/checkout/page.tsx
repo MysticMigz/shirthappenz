@@ -15,6 +15,17 @@ interface CheckoutStep {
   shippingDetails?: ShippingDetails & { shippingCost: number };
   clientSecret?: string;
   orderId?: string;
+  orderData?: {
+    items: any[];
+    shippingDetails: any;
+    voucherCode?: string;
+    voucherDiscount?: number;
+    voucherType?: string;
+    voucherValue?: number;
+    voucherId?: string;
+    visitorId?: string;
+    userId?: string;
+  };
 }
 
 interface VoucherDiscount {
@@ -39,6 +50,7 @@ export default function CheckoutPage() {
   const { items, getTotal } = useCart();
   const [step, setStep] = useState<CheckoutStep>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [isProcessingOrder, setIsProcessingOrder] = useState(false);
   const [error, setError] = useState<string>();
   const [currentShippingMethod, setCurrentShippingMethod] = useState<keyof typeof SHIPPING_COSTS>(DEFAULT_SHIPPING_METHOD);
   const [voucherCode, setVoucherCode] = useState('');
@@ -49,10 +61,12 @@ export default function CheckoutPage() {
   const { user } = useUser();
 
   useEffect(() => {
-    if (!items.length) {
+    // Only redirect to cart if we're not in the middle of a payment process
+    // and we're not loading or processing an order
+    if (!items.length && !step.clientSecret && !isLoading && !isProcessingOrder) {
       router.push('/cart');
     }
-  }, [items, router]);
+  }, [items, router, step.clientSecret, isLoading, isProcessingOrder]);
 
   const handleShippingMethodChange = (shippingMethod: keyof typeof SHIPPING_COSTS) => {
     setCurrentShippingMethod(shippingMethod);
@@ -161,11 +175,29 @@ export default function CheckoutPage() {
 
       const { clientSecret } = await paymentResponse.json();
 
-      setStep({
-        shippingDetails,
-        clientSecret,
-        // orderId: orderData.orderId // No orderId yet, will be created after payment
-      });
+             console.log('Setting up payment form with order data:', {
+         itemsCount: items.length,
+         hasShippingDetails: !!shippingDetails,
+         hasVoucher: !!voucherDiscount,
+         visitorId,
+         userId: user?._id
+       });
+       
+       setStep({
+         shippingDetails,
+         clientSecret,
+         orderData: {
+           items,
+           shippingDetails,
+           voucherCode: voucherDiscount?.code || undefined,
+           voucherDiscount: voucherDiscount?.discountAmount || undefined,
+           voucherType: voucherDiscount?.type || undefined,
+           voucherValue: voucherDiscount?.value || undefined,
+           voucherId: voucherDiscount?.voucherId || undefined,
+           visitorId,
+           userId: user?._id ? user._id : undefined,
+         },
+       });
     } catch (err: any) {
       console.error('Checkout error:', err);
       setError(err.message);
@@ -309,6 +341,16 @@ export default function CheckoutPage() {
                           )}
                           <p className="text-xs text-gray-500">Size: {item.size}</p>
                           <p className="text-xs text-gray-500">Quantity: {item.quantity}</p>
+                          {item.customization?.isCustomized && (
+                            <div className="mt-1 text-xs text-gray-600">
+                              {item.customization.name && (
+                                <p>Name: {item.customization.name} ({item.customization.name.replace(/\s/g, '').length} chars)</p>
+                              )}
+                              {item.customization.number && (
+                                <p>Number: {item.customization.number} ({item.customization.number.length} digits)</p>
+                              )}
+                            </div>
+                          )}
                         </div>
                         <span className="font-semibold text-gray-900 text-sm lg:text-base">£{(item.price * item.quantity).toFixed(2)}</span>
                       </div>
@@ -400,11 +442,13 @@ export default function CheckoutPage() {
                   </div>
                 ) : step.clientSecret && step.shippingDetails ? (
                   <div className="bg-white rounded-lg">
-                    <StripeProvider clientSecret={step.clientSecret}>
-                      <PaymentForm 
-                        total={finalTotal} 
-                      />
-                    </StripeProvider>
+                                         <StripeProvider clientSecret={step.clientSecret}>
+                       <PaymentForm 
+                         total={finalTotal}
+                         orderData={step.orderData}
+                         onOrderProcessing={setIsProcessingOrder}
+                       />
+                     </StripeProvider>
                   </div>
                 ) : (
                   <ShippingForm 
