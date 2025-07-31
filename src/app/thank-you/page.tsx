@@ -61,6 +61,16 @@ export default function ThankYouPage() {
 
   useEffect(() => {
     const orderId = searchParams.get('orderId');
+    const paymentIntent = searchParams.get('payment_intent');
+    const redirectStatus = searchParams.get('redirect_status');
+    
+    // Clear cart immediately if payment was successful (even without orderId)
+    if (redirectStatus === 'succeeded') {
+      clearCart();
+      // Set a flag in localStorage to indicate successful order
+      localStorage.setItem('orderCompleted', 'true');
+    }
+    
     if (!orderId) {
       setOrder(null);
       setError(null);
@@ -82,9 +92,10 @@ export default function ThankYouPage() {
         console.log('Order data:', orderData);
         setOrder(orderData);
         
-        // Clear the cart only if the order is paid
+        // Clear the cart if order status is paid
         if (orderData.status === 'paid') {
           clearCart();
+          localStorage.setItem('orderCompleted', 'true');
         }
       } catch (err: any) {
         console.error('Error fetching order:', err);
@@ -95,7 +106,7 @@ export default function ThankYouPage() {
     }
 
     fetchOrder();
-  }, [searchParams, clearCart]);
+  }, [searchParams]);
 
   if (loading) {
     return (
@@ -280,12 +291,18 @@ export default function ThankYouPage() {
               </div>
             </div>
 
-            <div className="mt-8 text-center">
+            <div className="mt-8 text-center space-y-3">
               <Link
                 href={`/orders${visitorId ? `?visitorId=${visitorId}` : ''}`}
-                className="inline-block bg-indigo-600 text-white py-2 px-6 rounded-md hover:bg-indigo-700"
+                className="inline-block bg-indigo-600 text-white py-2 px-6 rounded-md hover:bg-indigo-700 mr-3"
               >
                 View All Orders
+              </Link>
+              <Link
+                href="/"
+                className="inline-block bg-gray-100 text-indigo-700 py-2 px-6 rounded-md hover:bg-gray-200"
+              >
+                Continue Shopping
               </Link>
             </div>
           </div>

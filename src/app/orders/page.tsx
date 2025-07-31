@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
+import { useCart } from '@/context/CartContext';
 import Header from '@/app/components/Header';
 import Footer from '@/app/components/Footer';
 import CancellationModal from '@/app/components/CancellationModal';
@@ -125,6 +126,7 @@ export default function OrdersPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { clearCart } = useCart();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -136,6 +138,13 @@ export default function OrdersPage() {
   const [cancellationLoading, setCancellationLoading] = useState(false);
 
   useEffect(() => {
+    // Check if an order was recently completed and clear cart
+    const orderCompleted = localStorage.getItem('orderCompleted');
+    if (orderCompleted === 'true') {
+      clearCart();
+      localStorage.removeItem('orderCompleted');
+    }
+
     const fetchOrders = async () => {
       try {
         let url = '/api/orders';
@@ -177,7 +186,7 @@ export default function OrdersPage() {
     if (status === 'authenticated' || status === 'unauthenticated') {
       fetchOrders();
     }
-  }, [status, router, searchParams]);
+  }, [status, router, searchParams, clearCart]);
 
   const handleCancellationRequest = async (reason: string, notes: string) => {
     setCancellationLoading(true);
