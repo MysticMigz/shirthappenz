@@ -73,31 +73,44 @@ interface OrderItemDB {
 
 export async function GET(request: Request) {
   try {
-    // Check authentication
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
-
     await connectToDatabase();
 
-    // Get user from database to get the correct user ID
-    const user = await User.findOne({ email: session.user.email });
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
+    // Check authentication
+    const session = await getServerSession(authOptions);
+    
+    if (session?.user?.email) {
+      // User is logged in - get their orders by user ID
+      const user = await User.findOne({ email: session.user.email });
+      if (!user) {
+        return NextResponse.json(
+          { error: 'User not found' },
+          { status: 404 }
+        );
+      }
+
+      // Get user's orders using the user's ObjectId
+      const orders = await Order.find({ userId: user._id.toString() })
+        .sort({ createdAt: -1 });
+
+      return NextResponse.json(orders);
+    } else {
+      // User is not logged in - check for visitor ID in query params
+      const { searchParams } = new URL(request.url);
+      const visitorId = searchParams.get('visitorId');
+      
+      if (!visitorId) {
+        return NextResponse.json(
+          { error: 'Authentication required or visitor ID needed' },
+          { status: 401 }
+        );
+      }
+
+      // Get orders by visitor ID for guest users
+      const orders = await Order.find({ visitorId })
+        .sort({ createdAt: -1 });
+
+      return NextResponse.json(orders);
     }
-
-    // Get user's orders using the user's ObjectId
-    const orders = await Order.find({ userId: user._id.toString() })
-      .sort({ createdAt: -1 });
-
-    return NextResponse.json(orders);
   } catch (error) {
     console.error('Error fetching orders:', error);
     return NextResponse.json(

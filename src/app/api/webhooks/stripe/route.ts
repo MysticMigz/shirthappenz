@@ -104,7 +104,43 @@ export async function POST(req: NextRequest) {
         console.log('[Stripe Webhook] Processing order with items:', items.length);
         
         const visitorId = paymentIntent.metadata?.visitorId || '';
-        const total = paymentIntent.amount / 100;
+        
+        // Recalculate the total based on items and voucher information
+        const subtotal = items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
+        const shippingCost = shippingDetails.shippingCost || 0;
+        
+        // Get voucher information for calculation
+        const calcVoucherCode = paymentIntent.metadata?.voucherCode || null;
+        const calcVoucherDiscount = calcVoucherCode ? parseFloat(paymentIntent.metadata?.voucherDiscount || '0') : 0;
+        
+        // Calculate final total
+        let total;
+        if (calcVoucherCode && calcVoucherDiscount > 0) {
+          const discountAmount = calcVoucherDiscount / 100; // Convert from pence to pounds
+          const discountedSubtotal = Number((subtotal - discountAmount).toFixed(2));
+          total = Number((discountedSubtotal + shippingCost).toFixed(2));
+        } else {
+          total = Number((subtotal + shippingCost).toFixed(2));
+        }
+        
+        console.log('[Stripe Webhook] Recalculated total:', {
+          subtotal,
+          shippingCost,
+          voucherCode: calcVoucherCode,
+          voucherDiscount: calcVoucherDiscount,
+          discountAmountInPounds: calcVoucherDiscount / 100,
+          total,
+          paymentIntentAmount: paymentIntent.amount / 100
+        });
+        
+        console.log('[Stripe Webhook] Order calculation:', {
+          paymentIntentAmount: paymentIntent.amount,
+          total,
+          voucherCode: paymentIntent.metadata?.voucherCode,
+          voucherDiscount: paymentIntent.metadata?.voucherDiscount,
+          voucherType: paymentIntent.metadata?.voucherType,
+          voucherValue: paymentIntent.metadata?.voucherValue
+        });
 
         // Only create the order if payment is successful
         await connectToDatabase();
@@ -123,14 +159,23 @@ export async function POST(req: NextRequest) {
         const reference = `SH-${year}${month}${day}-${sequence}`;
 
         // Calculate VAT (UK VAT 20%)
-        const vatBase = total + (shippingDetails.shippingCost || 0);
-        const vat = Number((vatBase / 1.2 * 0.2).toFixed(2));
+        // The total already includes shipping cost, so we calculate VAT on the final total
+        const vat = Number((total * 0.2).toFixed(2));
 
         // Extract voucher information from metadata
         const voucherCode = paymentIntent.metadata?.voucherCode || null;
         const voucherDiscount = voucherCode ? parseFloat(paymentIntent.metadata?.voucherDiscount || '0') : 0;
         const voucherType = paymentIntent.metadata?.voucherType || null;
         const voucherValue = voucherCode ? parseFloat(paymentIntent.metadata?.voucherValue || '0') : null;
+        
+        console.log('[Stripe Webhook] Voucher information:', {
+          voucherCode,
+          voucherDiscount,
+          voucherType,
+          voucherValue,
+          fullOrderDataVoucherCode: fullOrderData?.voucherCode,
+          fullOrderDataVoucherDiscount: fullOrderData?.voucherDiscount
+        });
 
         // Create the order with full data (including image URLs and customization details)
         const order = new Order({

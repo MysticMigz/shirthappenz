@@ -104,14 +104,14 @@ voucherSchema.methods.isValid = function(): boolean {
   );
 };
 
-// Method to check if voucher can be applied to an order
-voucherSchema.methods.canApplyToOrder = function(orderTotal: number, items: any[]): boolean {
+// Method to check if voucher can be applied to an order (using subtotal only)
+voucherSchema.methods.canApplyToOrder = function(subtotal: number, items: any[]): boolean {
   if (!this.isValid()) {
     return false;
   }
 
-  // Check minimum order amount
-  if (this.minimumOrderAmount && orderTotal < this.minimumOrderAmount) {
+  // Check minimum subtotal amount (shipping not included)
+  if (this.minimumOrderAmount && subtotal < this.minimumOrderAmount) {
     return false;
   }
 
@@ -138,13 +138,13 @@ voucherSchema.methods.canApplyToOrder = function(orderTotal: number, items: any[
   return true;
 };
 
-// Method to calculate discount amount
-voucherSchema.methods.calculateDiscount = function(orderTotal: number): number {
+// Method to calculate discount amount (based on subtotal only, not including shipping)
+voucherSchema.methods.calculateDiscount = function(subtotal: number): number {
   let discount = 0;
 
   switch (this.type) {
     case 'percentage':
-      discount = (orderTotal * this.value) / 100;
+      discount = (subtotal * this.value) / 100;
       if (this.maximumDiscount) {
         discount = Math.min(discount, this.maximumDiscount);
       }
@@ -158,7 +158,7 @@ voucherSchema.methods.calculateDiscount = function(orderTotal: number): number {
       break;
   }
 
-  return Math.min(discount, orderTotal); // Don't discount more than the order total
+  return Math.min(discount, subtotal); // Don't discount more than the subtotal
 };
 
 // Method to increment usage count

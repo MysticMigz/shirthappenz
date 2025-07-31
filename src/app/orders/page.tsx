@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
@@ -102,8 +102,8 @@ const formatVoucherDiscount = (order: Order) => {
     return null;
   }
 
-  const discountAmount = order.voucherDiscount / 100; // Convert from pence to pounds
-  const originalTotal = (order.total + order.voucherDiscount) / 100; // Calculate original total
+  // Simply convert the stored voucher discount from pence to pounds
+  const discountAmount = order.voucherDiscount / 100;
 
   let discountText = '';
   if (order.voucherType === 'percentage') {
@@ -118,14 +118,13 @@ const formatVoucherDiscount = (order: Order) => {
     code: order.voucherCode,
     discountText,
     discountAmount,
-    originalTotal,
-    finalTotal: order.total / 100,
   };
 };
 
 export default function OrdersPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -137,14 +136,31 @@ export default function OrdersPage() {
   const [cancellationLoading, setCancellationLoading] = useState(false);
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/auth/login');
-      return;
-    }
-
     const fetchOrders = async () => {
       try {
-        const response = await fetch('/api/orders');
+        let url = '/api/orders';
+        
+        // If not authenticated, try to get visitor ID from URL params, localStorage, or cookies
+        if (status === 'unauthenticated') {
+          const getCookie = (name: string) => {
+            const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+            return match ? decodeURIComponent(match[2]) : null;
+          };
+          
+          const visitorId = searchParams.get('visitorId') || 
+                           localStorage.getItem('visitorId') || 
+                           getCookie('visitorId');
+          
+          if (visitorId) {
+            url += `?visitorId=${visitorId}`;
+          } else {
+            // No visitor ID available, redirect to login
+            router.push('/auth/login');
+            return;
+          }
+        }
+
+        const response = await fetch(url);
         if (!response.ok) {
           throw new Error('Failed to fetch orders');
         }
@@ -158,10 +174,10 @@ export default function OrdersPage() {
       }
     };
 
-    if (status === 'authenticated') {
+    if (status === 'authenticated' || status === 'unauthenticated') {
       fetchOrders();
     }
-  }, [status, router]);
+  }, [status, router, searchParams]);
 
   const handleCancellationRequest = async (reason: string, notes: string) => {
     setCancellationLoading(true);
@@ -456,7 +472,7 @@ export default function OrdersPage() {
                             <>
                               <div className="flex justify-between text-sm text-gray-900">
                                 <p>Subtotal</p>
-                                <p>£{(voucherInfo.originalTotal - order.shippingDetails.shippingCost).toFixed(2)}</p>
+                                <p>£{(order.total - order.shippingDetails.shippingCost + voucherInfo.discountAmount).toFixed(2)}</p>
                               </div>
                               <div className="flex justify-between text-sm text-gray-900">
                                 <p>Shipping ({order.shippingDetails.shippingMethod})</p>
@@ -466,10 +482,10 @@ export default function OrdersPage() {
                                 <p>Discount ({voucherInfo.code})</p>
                                 <p>-£{voucherInfo.discountAmount.toFixed(2)}</p>
                               </div>
-                              <div className="flex justify-between text-base font-medium text-gray-900 pt-2 border-t">
-                                <p>Total</p>
-                                <p>£{voucherInfo.finalTotal.toFixed(2)}</p>
-                              </div>
+                                                             <div className="flex justify-between text-base font-medium text-gray-900 pt-2 border-t">
+                                 <p>Total</p>
+                                 <p>£{order.total.toFixed(2)}</p>
+                               </div>
                               <div className="flex justify-between mt-2 text-xs text-gray-500 italic">
                                 <span>Includes VAT (20%)</span>
                                 <span>£{order.vat.toFixed(2)}</span>

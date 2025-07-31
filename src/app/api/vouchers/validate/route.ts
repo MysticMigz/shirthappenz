@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
 
     if (!orderTotal || orderTotal <= 0) {
       return NextResponse.json(
-        { error: 'Valid order total is required' },
+        { error: 'Valid subtotal is required' },
         { status: 400 }
       );
     }
@@ -43,11 +43,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if voucher can be applied to this order
+    // Check if voucher can be applied to this order (using subtotal only)
     if (!voucher.canApplyToOrder(orderTotal, items || [])) {
       if (voucher.minimumOrderAmount && orderTotal < voucher.minimumOrderAmount) {
         return NextResponse.json(
-          { error: `Minimum order amount of £${(voucher.minimumOrderAmount / 100).toFixed(2)} required` },
+          { error: `Minimum subtotal of £${(voucher.minimumOrderAmount / 100).toFixed(2)} required (shipping not included)` },
           { status: 400 }
         );
       }
@@ -58,8 +58,21 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate discount
+    console.log('Voucher validation calculation:', {
+      voucherCode: voucher.code,
+      voucherType: voucher.type,
+      voucherValue: voucher.value,
+      orderTotal,
+      orderTotalInPounds: orderTotal / 100
+    });
     const discountAmount = voucher.calculateDiscount(orderTotal);
     const newTotal = orderTotal - discountAmount;
+    console.log('Voucher discount result:', {
+      discountAmount,
+      discountAmountInPounds: discountAmount / 100,
+      newTotal,
+      newTotalInPounds: newTotal / 100
+    });
 
     return NextResponse.json({
       success: true,

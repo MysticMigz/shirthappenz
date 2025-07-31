@@ -55,6 +55,8 @@ export default function CheckoutPage() {
 
   const handleShippingMethodChange = (shippingMethod: keyof typeof SHIPPING_COSTS) => {
     setCurrentShippingMethod(shippingMethod);
+    // No need to recalculate voucher discount - it should remain the same
+    // Only the total will change based on the new shipping cost
   };
 
   const handleVoucherValidation = async () => {
@@ -69,24 +71,26 @@ export default function CheckoutPage() {
     try {
       const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
       const shippingCost = SHIPPING_COSTS[currentShippingMethod];
-      const orderTotal = subtotal + shippingCost;
-
+      
+      // Only use subtotal for voucher validation, not the total with shipping
       const response = await fetch('/api/vouchers/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           code: voucherCode.trim(),
-          orderTotal: orderTotal * 100, // Convert to pence
+          orderTotal: subtotal * 100, // Convert to pence - only subtotal, not including shipping
           items
         }),
       });
 
       const data = await response.json();
 
-      if (response.ok) {
-        setVoucherDiscount(data.voucher);
-        setVoucherError(null);
-      } else {
+             if (response.ok) {
+         // The voucher validation returns discountAmount in pence
+         const voucher = data.voucher;
+         setVoucherDiscount(voucher);
+         setVoucherError(null);
+       } else {
         setVoucherError(data.error);
         setVoucherDiscount(null);
       }
@@ -112,8 +116,25 @@ export default function CheckoutPage() {
       const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
       const total = subtotal + shippingDetails.shippingCost;
       
-      // Apply voucher discount if available
-      const finalTotal = voucherDiscount ? voucherDiscount.newTotal / 100 : total;
+             // Apply voucher discount if available
+       let finalTotal;
+       if (voucherDiscount) {
+         // Calculate: (subtotal - discount) + shipping
+         const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+         const discountAmount = voucherDiscount.discountAmount / 100; // Convert from pence to pounds
+         const discountedSubtotal = Number((subtotal - discountAmount).toFixed(2));
+         finalTotal = Number((discountedSubtotal + shippingDetails.shippingCost).toFixed(2));
+         
+         console.log('Payment intent calculation:', {
+           subtotal,
+           discountAmount,
+           discountedSubtotal,
+           shippingCost: shippingDetails.shippingCost,
+           finalTotal
+         });
+       } else {
+         finalTotal = total;
+       }
 
       // Do NOT create order first. Instead, send all data to payment intent creation.
       const paymentResponse = await fetch('/api/payment/create-payment-intent', {
@@ -184,16 +205,49 @@ export default function CheckoutPage() {
     return null;
   }
 
-  // Calculate subtotal, VAT (included), and total for display
-  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    // Calculate subtotal, VAT (included), and total for display
+  console.log('Cart items:', items);
+  const subtotal = items.reduce((sum, item) => {
+    const itemTotal = item.price * item.quantity;
+    console.log(`Item: ${item.name}, Price: £${item.price}, Quantity: ${item.quantity}, Total: £${itemTotal}`);
+    return sum + itemTotal;
+  }, 0);
+  console.log('Calculated subtotal:', subtotal);
+  
+  // Debug voucher discount calculation
+  if (voucherDiscount) {
+    console.log('Voucher discount details:', {
+      code: voucherDiscount.code,
+      type: voucherDiscount.type,
+      value: voucherDiscount.value,
+      discountAmount: voucherDiscount.discountAmount,
+      discountAmountInPounds: voucherDiscount.discountAmount / 100
+    });
+  }
   const shippingCost = SHIPPING_COSTS[currentShippingMethod];
   const vatRate = 0.2;
   const total = subtotal + shippingCost;
-  // VAT is 20% of (subtotal + shippingCost)
-  const vatIncluded = Number(((subtotal + shippingCost) * 0.2).toFixed(2));
-  
+   
   // Calculate final total with voucher discount
-  const finalTotal = voucherDiscount ? (voucherDiscount.newTotal / 100) : total;
+  let finalTotal;
+  if (voucherDiscount) {
+    // If voucher is applied, calculate: (subtotal - discount) + shipping
+    const discountAmount = voucherDiscount.discountAmount / 100;
+    const discountedSubtotal = Number((subtotal - discountAmount).toFixed(2));
+    finalTotal = Number((discountedSubtotal + shippingCost).toFixed(2));
+    console.log('Final total calculation:', {
+      subtotal,
+      discountAmount,
+      discountedSubtotal,
+      shippingCost,
+      finalTotal
+    });
+  } else {
+    finalTotal = total;
+  }
+  
+  // VAT is 20% of the final total (after voucher discount)
+  const vatIncluded = Number((finalTotal * 0.2).toFixed(2));
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 py-12 px-4">

@@ -8,6 +8,7 @@ import Image from 'next/image';
 import Header from '@/app/components/Header';
 import Footer from '@/app/components/Footer';
 import { getImageUrl } from '@/lib/utils';
+import { useVisitorId } from '../providers';
 
 interface OrderDetails {
   _id: string;
@@ -53,6 +54,7 @@ export default function ThankYouPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { clearCart } = useCart();
+  const visitorId = useVisitorId();
   const [order, setOrder] = useState<OrderDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -110,7 +112,7 @@ export default function ThankYouPage() {
           <h2 className="text-green-700 text-2xl font-bold mb-4">Thank You for Your Order!</h2>
           <p className="text-gray-700 mb-6">Your payment was successful. You will receive an order confirmation email shortly with your order details.</p>
           <Link
-            href="/orders"
+            href={`/orders${visitorId ? `?visitorId=${visitorId}` : ''}`}
             className="block w-full bg-indigo-600 text-white text-center py-2 px-4 rounded hover:bg-indigo-700 mb-3"
           >
             View My Orders
@@ -280,7 +282,7 @@ export default function ThankYouPage() {
 
             <div className="mt-8 text-center">
               <Link
-                href="/orders"
+                href={`/orders${visitorId ? `?visitorId=${visitorId}` : ''}`}
                 className="inline-block bg-indigo-600 text-white py-2 px-6 rounded-md hover:bg-indigo-700"
               >
                 View All Orders
