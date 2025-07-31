@@ -294,26 +294,22 @@ export const generateCustomerInvoicePDF = async (order: CustomerOrder) => {
       const base64 = Buffer.from(arrayBuffer).toString('base64');
       const dataUrl = `data:image/png;base64,${base64}`;
       
-      // Add logo to PDF (positioned at top left)
-      doc.addImage(dataUrl, 'PNG', 20, 15, 40, 20);
+      // Add logo to PDF (positioned at top left, stretched vertically)
+      doc.addImage(dataUrl, 'PNG', 20, 15, 60, 40);
       
-      // Add company name next to logo
+      // Add company name below the logo with spacing
       doc.setFontSize(18);
       doc.setTextColor(99, 102, 241); // Indigo color
-      doc.text('MR SHIRT PERSONALISATION', 70, 30);
+      doc.text('MR SHIRT PERSONALISATION LTD', 20, 65);
     } catch (logoError) {
       console.warn('Failed to load logo, using text only:', logoError);
       // Fallback to text only if logo fails to load
       doc.setFontSize(18);
       doc.setTextColor(99, 102, 241); // Indigo color
-      doc.text('MR SHIRT PERSONALISATION', 20, 30);
+      doc.text('MR SHIRT PERSONALISATION', 20, 65);
     }
     
-    // Add company details
-    doc.setFontSize(10);
-    doc.setTextColor(107, 114, 128); // Gray color
-    doc.text('https://mrshirtpersonalisation.co.uk', 20, 45);
-    doc.text('customer.service@mrshirtpersonalisation.com', 20, 50);
+    // Company details will be moved to bottom of page
     
     // Add invoice title
     doc.setFontSize(18);
@@ -415,7 +411,7 @@ export const generateCustomerInvoicePDF = async (order: CustomerOrder) => {
     // Calculate totals
     const subtotal = order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const shipping = order.shippingDetails.shippingCost;
-    const discount = order.voucherDiscount ? order.voucherDiscount / 100 : 0;
+    const discount = order.voucherDiscount || 0; // Use raw value from database
     const total = order.total;
 
     // Add totals section
@@ -430,17 +426,21 @@ export const generateCustomerInvoicePDF = async (order: CustomerOrder) => {
 
     if (order.voucherCode && discount > 0) {
       doc.setTextColor(139, 92, 246); // Purple for discount
-      doc.text(`Discount (${order.voucherCode}):`, 140, yPosition);
+      doc.text('Discount:', 140, yPosition);
       doc.text(`-£${discount.toFixed(2)}`, 170, yPosition);
+      yPosition += 8;
+      doc.setFontSize(8);
+      doc.text(`(${order.voucherCode})`, 140, yPosition);
+      doc.setFontSize(10);
       doc.setTextColor(0, 0, 0); // Reset to black
       yPosition += 8;
     }
 
     doc.setFontSize(12);
-    doc.setFont(undefined, 'bold');
+    doc.setFont('helvetica', 'bold');
     doc.text('Total:', 140, yPosition);
     doc.text(`£${total.toFixed(2)}`, 170, yPosition);
-    doc.setFont(undefined, 'normal');
+    doc.setFont('helvetica', 'normal');
     yPosition += 8;
 
     doc.setFontSize(8);
@@ -452,11 +452,13 @@ export const generateCustomerInvoicePDF = async (order: CustomerOrder) => {
     yPosition += 20;
     doc.setFontSize(10);
     doc.setTextColor(0, 0, 0);
-    doc.text('Thank you for your business!', 20, yPosition);
+    doc.text('Thank you for your purchase!', 20, yPosition);
     yPosition += 8;
     doc.setFontSize(8);
     doc.setTextColor(107, 114, 128);
     doc.text('For any questions, please contact us at customer.service@mrshirtpersonalisation.com', 20, yPosition);
+    yPosition += 8;
+    doc.text('https://mrshirtpersonalisation.co.uk', 20, yPosition);
 
     // Add page numbers
     const pageCount = doc.getNumberOfPages();
