@@ -813,7 +813,7 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
                           <h4 className="text-sm font-semibold text-green-800 mb-2">Refund Details</h4>
                           <div className="text-sm text-green-700 space-y-1">
                             <p><strong>Refund ID:</strong> {refundInfo.transaction.refundId || order.metadata?.stripeRefundId || 'N/A'}</p>
-                            <p><strong>Amount:</strong> £{(refundInfo.transaction.metadata?.refundAmount || order.metadata?.refundAmount || 0).toFixed(2)}</p>
+                            <p><strong>Amount:</strong> £{Number(refundInfo.transaction.metadata?.refundAmount || order.metadata?.refundAmount || 0).toFixed(2)}</p>
                             <p><strong>Reason:</strong> {refundInfo.transaction.metadata?.refundReason || order.metadata?.refundReason || 'N/A'}</p>
                             {refundInfo.transaction.metadata?.refundNotes || order.metadata?.refundNotes ? (
                               <p><strong>Notes:</strong> {refundInfo.transaction.metadata?.refundNotes || order.metadata?.refundNotes}</p>

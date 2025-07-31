@@ -1,12 +1,18 @@
 import nodemailer from 'nodemailer';
+import { generateCustomerInvoicePDF } from './pdf';
 
 interface EmailOptions {
   to: string;
   subject: string;
   html: string;
+  attachments?: Array<{
+    filename: string;
+    content: Buffer;
+    contentType: string;
+  }>;
 }
 
-export async function sendEmail({ to, subject, html }: EmailOptions) {
+export async function sendEmail({ to, subject, html, attachments }: EmailOptions) {
   const transporter = nodemailer.createTransport({
     host: process.env.EMAIL_SERVER_HOST,
     port: Number(process.env.EMAIL_SERVER_PORT),
@@ -23,6 +29,7 @@ export async function sendEmail({ to, subject, html }: EmailOptions) {
     to,
     subject,
     html,
+    attachments,
   });
 }
 
@@ -142,6 +149,40 @@ export async function sendOrderConfirmationEmail(
     const vatIncluded = typeof vat === 'number' ? vat : Number(((subtotal + shipping) * 0.2).toFixed(2));
     const orderStatus = status || 'confirmed';
     const orderDate = createdAt ? new Date(createdAt).toLocaleDateString() : new Date().toLocaleDateString();
+
+    // Generate invoice PDF
+    let invoiceAttachment = null;
+    try {
+      const orderData = {
+        _id: orderReference,
+        reference: orderReference,
+        status: orderStatus,
+        total: total,
+        vat: vatIncluded,
+        items: items,
+        shippingDetails: {
+          ...shippingDetails,
+          county: shippingDetails.county || '',
+          country: shippingDetails.country || 'United Kingdom'
+        },
+        voucherCode: voucherCode,
+        voucherDiscount: voucherDiscount,
+        voucherType: voucherType,
+        voucherValue: voucherValue,
+        createdAt: createdAt || new Date().toISOString()
+      };
+
+                   const pdfDoc = await generateCustomerInvoicePDF(orderData);
+      const pdfBuffer = pdfDoc.output('arraybuffer');
+      invoiceAttachment = {
+        filename: `Invoice-${orderReference}.pdf`,
+        content: Buffer.from(pdfBuffer),
+        contentType: 'application/pdf'
+      };
+      console.log('[Email] Invoice PDF generated successfully');
+    } catch (error) {
+      console.error('[Email] Failed to generate invoice PDF:', error);
+    }
     const itemsList = items.map(item => {
       let customizationInfo = '';
       let imageInfo = '';
@@ -269,12 +310,16 @@ export async function sendOrderConfirmationEmail(
                 </div>
               </div>
               <div style="margin-top: 32px; text-align: center;">
+                <p style="color: #6b7280; font-size: 14px; margin-bottom: 16px;">
+                  📎 Your invoice is attached to this email for your records.
+                </p>
                 <a href="https://shirthappenz.com/orders" style="display: inline-block; background: #6366f1; color: #fff; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: 600;">View All Orders</a>
               </div>
             </div>
           </div>
         </div>
       `,
+      attachments: invoiceAttachment ? [invoiceAttachment] : undefined,
     });
   } catch (error) {
     console.error('Failed to send order confirmation email:', error);
