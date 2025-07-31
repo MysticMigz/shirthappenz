@@ -15,8 +15,8 @@ export async function POST(request: Request) {
     // Debug request
     console.log('Creating payment intent...');
 
-    const { amount, orderId, items, shippingDetails, visitorId, userId, voucherCode, voucherDiscount, voucherType, voucherValue } = await request.json();
-    console.log('Payment intent request:', { amount, orderId, items, shippingDetails, visitorId, voucherCode, voucherDiscount, voucherType, voucherValue });
+    const { amount, orderId, items, shippingDetails, visitorId, userId, voucherCode, voucherDiscount, voucherType, voucherValue, voucherId } = await request.json();
+    console.log('Payment intent request:', { amount, orderId, items, shippingDetails, visitorId, voucherCode, voucherDiscount, voucherType, voucherValue, voucherId });
 
     if (!amount) {
       return NextResponse.json(
@@ -49,6 +49,7 @@ export async function POST(request: Request) {
         voucherDiscount,
         voucherType,
         voucherValue,
+        voucherId,
         amount
       });
       
@@ -91,6 +92,7 @@ export async function POST(request: Request) {
         voucherDiscount: voucherDiscount?.toString() || '',
         voucherType: voucherType || '',
         voucherValue: voucherValue?.toString() || '',
+        voucherId: voucherId || '',
         orderDataKey, // Include the key to retrieve full data later
       },
     });

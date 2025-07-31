@@ -44,8 +44,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if voucher can be applied to this order (using subtotal only)
-    if (!voucher.canApplyToOrder(orderTotal, items || [])) {
-      if (voucher.minimumOrderAmount && orderTotal < voucher.minimumOrderAmount) {
+    if (!voucher.canApplyToOrder(orderTotal * 100, items || [])) {
+      if (voucher.minimumOrderAmount && orderTotal * 100 < voucher.minimumOrderAmount) {
         return NextResponse.json(
           { error: `Minimum subtotal of £${(voucher.minimumOrderAmount / 100).toFixed(2)} required (shipping not included)` },
           { status: 400 }
@@ -57,21 +57,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Calculate discount
+    // Calculate discount using the voucher's stored calculation method
     console.log('Voucher validation calculation:', {
       voucherCode: voucher.code,
       voucherType: voucher.type,
       voucherValue: voucher.value,
       orderTotal,
-      orderTotalInPounds: orderTotal / 100
+      orderTotalInPounds: orderTotal
     });
-    const discountAmount = voucher.calculateDiscount(orderTotal);
+    
+    // Use the voucher's calculateDiscount method to get the actual discount amount
+    const discountAmount = voucher.calculateDiscount(orderTotal * 100) / 100; // Convert to pence for calculation, then back to pounds
     const newTotal = orderTotal - discountAmount;
+    
     console.log('Voucher discount result:', {
       discountAmount,
-      discountAmountInPounds: discountAmount / 100,
+      discountAmountInPounds: discountAmount,
       newTotal,
-      newTotalInPounds: newTotal / 100
+      newTotalInPounds: newTotal
     });
 
     return NextResponse.json({
@@ -82,7 +85,9 @@ export async function POST(request: NextRequest) {
         value: voucher.value,
         description: voucher.description,
         discountAmount,
-        newTotal
+        newTotal,
+        // Store the voucher ID for reference
+        voucherId: voucher._id
       }
     });
 

@@ -210,6 +210,10 @@ const OrderSchema = new mongoose.Schema({
     type: Number,
     default: null,
   },
+  voucherId: {
+    type: String,
+    default: null,
+  },
   createdAt: {
     type: Date,
     default: Date.now,

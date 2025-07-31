@@ -12,14 +12,17 @@ const formatVoucherDiscount = (order: Order) => {
     return null;
   }
 
-  const discountAmount = order.voucherDiscount / 100; // Convert from pence to pounds
-  const originalTotal = (order.total + order.voucherDiscount) / 100; // Calculate original total
+  // Convert voucherDiscount from pence to pounds
+  const discountAmount = order.voucherDiscount / 100;
+  
+  // Calculate original total: final total + discount amount
+  const originalTotal = order.total + discountAmount;
 
   let discountText = '';
   if (order.voucherType === 'percentage') {
     discountText = `${order.voucherValue}% off`;
   } else if (order.voucherType === 'fixed') {
-    discountText = `£${(order.voucherValue || 0) / 100} off`;
+    discountText = `£${order.voucherValue || 0} off`;
   } else if (order.voucherType === 'free_shipping') {
     discountText = 'Free shipping';
   }
@@ -29,7 +32,7 @@ const formatVoucherDiscount = (order: Order) => {
     discountText,
     discountAmount,
     originalTotal,
-    finalTotal: order.total / 100,
+    finalTotal: order.total, // Total is already in pounds
   };
 };
 
@@ -600,50 +603,54 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
                         </td>
                       </tr>
                     )}
-                    {(() => {
-                      const voucherInfo = formatVoucherDiscount(order);
-                      if (voucherInfo) {
-                        return (
-                          <>
-                            <tr className="bg-gray-50">
-                              <td colSpan={5} className="px-6 py-4 text-sm font-medium text-gray-900 text-right">
-                                Subtotal
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 line-through">
-                                £{voucherInfo.originalTotal.toFixed(2)}
-                              </td>
-                            </tr>
-                            <tr className="bg-purple-50">
-                              <td colSpan={5} className="px-6 py-4 text-sm font-medium text-purple-700 text-right">
-                                Discount ({voucherInfo.code})
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-purple-700">
-                                -£{voucherInfo.discountAmount.toFixed(2)}
-                              </td>
-                            </tr>
-                            <tr className="bg-gray-50">
-                              <td colSpan={5} className="px-6 py-4 text-sm font-medium text-gray-900 text-right">
-                                Total
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                £{voucherInfo.finalTotal.toFixed(2)}
-                              </td>
-                            </tr>
-                          </>
-                        );
-                      } else {
-                        return (
-                          <tr className="bg-gray-50">
-                            <td colSpan={5} className="px-6 py-4 text-sm font-medium text-gray-900 text-right">
-                              Total
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                              £{order.total.toFixed(2)}
-                            </td>
-                          </tr>
-                        );
-                      }
-                    })()}
+                                         {(() => {
+                       const voucherInfo = formatVoucherDiscount(order);
+                       if (voucherInfo) {
+                         // Calculate subtotal from items
+                         const subtotal = order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                         
+                         return (
+                           <>
+                             <tr className="bg-gray-50">
+                               <td colSpan={5} className="px-6 py-4 text-sm font-medium text-gray-900 text-right">
+                                 Subtotal
+                               </td>
+                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                 £{subtotal.toFixed(2)}
+                               </td>
+                             </tr>
+                             <tr className="bg-purple-50">
+                               <td colSpan={5} className="px-6 py-4 text-sm font-medium text-purple-700 text-right">
+                                 Discount ({voucherInfo.code})
+                               </td>
+                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-purple-700">
+                                 -£{voucherInfo.discountAmount.toFixed(2)}
+                               </td>
+                             </tr>
+                             <tr className="bg-gray-50">
+                               <td colSpan={5} className="px-6 py-4 text-sm font-medium text-gray-900 text-right">
+                                 Total
+                               </td>
+                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                 £{order.total.toFixed(2)}
+                               </td>
+                             </tr>
+                           </>
+                         );
+                       } else {
+                         // No voucher - show the actual total from database
+                         return (
+                           <tr className="bg-gray-50">
+                             <td colSpan={5} className="px-6 py-4 text-sm font-medium text-gray-900 text-right">
+                               Total
+                             </td>
+                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                               £{order.total.toFixed(2)}
+                             </td>
+                           </tr>
+                         );
+                       }
+                     })()}
                   </tbody>
                 </table>
               </div>
@@ -813,7 +820,7 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
                           <h4 className="text-sm font-semibold text-green-800 mb-2">Refund Details</h4>
                           <div className="text-sm text-green-700 space-y-1">
                             <p><strong>Refund ID:</strong> {refundInfo.transaction.refundId || order.metadata?.stripeRefundId || 'N/A'}</p>
-                            <p><strong>Amount:</strong> £{Number(refundInfo.transaction.metadata?.refundAmount || order.metadata?.refundAmount || 0).toFixed(2)}</p>
+                            <p><strong>Amount:</strong> £{(Number(refundInfo.transaction.metadata?.refundAmount || order.metadata?.refundAmount || 0) / 100).toFixed(2)}</p>
                             <p><strong>Reason:</strong> {refundInfo.transaction.metadata?.refundReason || order.metadata?.refundReason || 'N/A'}</p>
                             {refundInfo.transaction.metadata?.refundNotes || order.metadata?.refundNotes ? (
                               <p><strong>Notes:</strong> {refundInfo.transaction.metadata?.refundNotes || order.metadata?.refundNotes}</p>

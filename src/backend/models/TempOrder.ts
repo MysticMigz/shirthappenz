@@ -55,6 +55,7 @@ const tempOrderSchema = new mongoose.Schema({
   voucherDiscount: Number,
   voucherType: String,
   voucherValue: Number,
+  voucherId: String,
   amount: Number,
   createdAt: {
     type: Date,

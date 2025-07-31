@@ -109,18 +109,58 @@ export async function POST(req: NextRequest) {
         const subtotal = items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
         const shippingCost = shippingDetails.shippingCost || 0;
         
+        console.log('[Stripe Webhook] Shipping details:', shippingDetails);
+        console.log('[Stripe Webhook] Shipping cost extracted:', shippingCost);
+        
         // Get voucher information for calculation
         const calcVoucherCode = paymentIntent.metadata?.voucherCode || null;
         const calcVoucherDiscount = calcVoucherCode ? parseFloat(paymentIntent.metadata?.voucherDiscount || '0') : 0;
         
-        // Calculate final total
+        // If we have a voucher, fetch it from the database to get the actual stored values
+        let voucherFromDB = null;
+        if (calcVoucherCode) {
+          try {
+            const Voucher = (await import('@/backend/models/Voucher')).default;
+            voucherFromDB = await Voucher.findOne({ code: calcVoucherCode });
+            console.log('[Stripe Webhook] Fetched voucher from database:', {
+              voucherId: voucherFromDB?._id,
+              voucherCode: voucherFromDB?.code,
+              voucherType: voucherFromDB?.type,
+              voucherValue: voucherFromDB?.value
+            });
+          } catch (error) {
+            console.error('[Stripe Webhook] Error fetching voucher from database:', error);
+          }
+        }
+        
+        // Calculate final total using voucher from database if available
         let total;
         if (calcVoucherCode && calcVoucherDiscount > 0) {
           const discountAmount = calcVoucherDiscount / 100; // Convert from pence to pounds
           const discountedSubtotal = Number((subtotal - discountAmount).toFixed(2));
           total = Number((discountedSubtotal + shippingCost).toFixed(2));
+          
+          console.log('[Stripe Webhook] Voucher calculation:', {
+            subtotal,
+            discountAmount,
+            discountedSubtotal,
+            shippingCost,
+            total,
+            voucherFromDB: voucherFromDB ? {
+              id: voucherFromDB._id,
+              code: voucherFromDB.code,
+              type: voucherFromDB.type,
+              value: voucherFromDB.value
+            } : null
+          });
         } else {
           total = Number((subtotal + shippingCost).toFixed(2));
+          
+          console.log('[Stripe Webhook] No voucher calculation:', {
+            subtotal,
+            shippingCost,
+            total
+          });
         }
         
         console.log('[Stripe Webhook] Recalculated total:', {
@@ -167,6 +207,17 @@ export async function POST(req: NextRequest) {
         const voucherDiscount = voucherCode ? parseFloat(paymentIntent.metadata?.voucherDiscount || '0') : 0;
         const voucherType = paymentIntent.metadata?.voucherType || null;
         const voucherValue = voucherCode ? parseFloat(paymentIntent.metadata?.voucherValue || '0') : null;
+        const voucherId = paymentIntent.metadata?.voucherId || null;
+        
+        console.log('[Stripe Webhook] Voucher metadata extraction:', {
+          voucherCode,
+          voucherDiscount,
+          voucherType,
+          voucherValue,
+          voucherId,
+          fullOrderDataVoucherDiscount: fullOrderData?.voucherDiscount,
+          fullOrderDataVoucherId: fullOrderData?.voucherId
+        });
         
         console.log('[Stripe Webhook] Voucher information:', {
           voucherCode,
@@ -188,10 +239,11 @@ export async function POST(req: NextRequest) {
           status: 'paid',
           orderSource: items?.[0]?.orderSource || undefined,
           visitorId: fullOrderData?.visitorId || visitorId,
-          voucherCode: fullOrderData?.voucherCode || voucherCode,
+          voucherCode: voucherFromDB?.code || fullOrderData?.voucherCode || voucherCode,
           voucherDiscount: fullOrderData?.voucherDiscount || voucherDiscount,
-          voucherType: fullOrderData?.voucherType || voucherType,
-          voucherValue: fullOrderData?.voucherValue || voucherValue,
+          voucherType: voucherFromDB?.type || fullOrderData?.voucherType || voucherType,
+          voucherValue: voucherFromDB?.value || fullOrderData?.voucherValue || voucherValue,
+          voucherId: voucherFromDB?._id?.toString() || fullOrderData?.voucherId || voucherId,
         });
         try {
           await order.save();

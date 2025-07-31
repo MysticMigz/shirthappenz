@@ -108,14 +108,17 @@ const formatVoucherDiscount = (order: Order) => {
     return null;
   }
 
-  const discountAmount = order.voucherDiscount / 100; // Convert from pence to pounds
-  const originalTotal = (order.total + order.voucherDiscount) / 100; // Calculate original total
+  // Convert voucherDiscount from pence to pounds
+  const discountAmount = order.voucherDiscount / 100;
+  
+  // Calculate original total: final total + discount amount
+  const originalTotal = order.total + discountAmount;
 
   let discountText = '';
   if (order.voucherType === 'percentage') {
     discountText = `${order.voucherValue}% off`;
   } else if (order.voucherType === 'fixed') {
-    discountText = `£${(order.voucherValue || 0) / 100} off`;
+    discountText = `£${order.voucherValue || 0} off`;
   } else if (order.voucherType === 'free_shipping') {
     discountText = 'Free shipping';
   }
@@ -125,7 +128,7 @@ const formatVoucherDiscount = (order: Order) => {
     discountText,
     discountAmount,
     originalTotal,
-    finalTotal: order.total / 100,
+    finalTotal: order.total, // Total is already in pounds
   };
 };
 
@@ -448,7 +451,7 @@ export default function AdminOrdersPage() {
                           } else {
                             return (
                               <div className="text-sm font-medium">
-                                £{(order.total / 100).toFixed(2)}
+                                £{order.total.toFixed(2)}
                               </div>
                             );
                           }

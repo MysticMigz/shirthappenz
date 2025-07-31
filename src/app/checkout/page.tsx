@@ -24,6 +24,7 @@ interface VoucherDiscount {
   description?: string;
   discountAmount: number;
   newTotal: number;
+  voucherId?: string;
 }
 
 const DEFAULT_SHIPPING_METHOD = 'Standard Delivery';
@@ -78,7 +79,7 @@ export default function CheckoutPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           code: voucherCode.trim(),
-          orderTotal: subtotal * 100, // Convert to pence - only subtotal, not including shipping
+          orderTotal: subtotal, // Send subtotal in pounds, not pence
           items
         }),
       });
@@ -121,7 +122,7 @@ export default function CheckoutPage() {
        if (voucherDiscount) {
          // Calculate: (subtotal - discount) + shipping
          const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-         const discountAmount = voucherDiscount.discountAmount / 100; // Convert from pence to pounds
+         const discountAmount = voucherDiscount.discountAmount; // Already in pounds
          const discountedSubtotal = Number((subtotal - discountAmount).toFixed(2));
          finalTotal = Number((discountedSubtotal + shippingDetails.shippingCost).toFixed(2));
          
@@ -136,22 +137,23 @@ export default function CheckoutPage() {
          finalTotal = total;
        }
 
-      // Do NOT create order first. Instead, send all data to payment intent creation.
-      const paymentResponse = await fetch('/api/payment/create-payment-intent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: finalTotal,
-          items,
-          shippingDetails,
-          voucherCode: voucherDiscount?.code || null,
-          voucherDiscount: voucherDiscount ? voucherDiscount.discountAmount : 0,
-          voucherType: voucherDiscount?.type || null,
-          voucherValue: voucherDiscount?.value || null,
-          visitorId, // Add visitorId to payment intent metadata
-          userId: user?._id || null // Pass userId if logged in
-        }),
-      });
+              // Do NOT create order first. Instead, send all data to payment intent creation.
+        const paymentResponse = await fetch('/api/payment/create-payment-intent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: finalTotal,
+            items,
+            shippingDetails,
+            voucherCode: voucherDiscount?.code || null,
+            voucherDiscount: voucherDiscount ? voucherDiscount.discountAmount * 100 : 0, // Convert to pence for storage
+            voucherType: voucherDiscount?.type || null,
+            voucherValue: voucherDiscount?.value || null,
+            voucherId: voucherDiscount?.voucherId || null, // Store voucher ID for reference
+            visitorId, // Add visitorId to payment intent metadata
+            userId: user?._id || null // Pass userId if logged in
+          }),
+        });
 
       if (!paymentResponse.ok) {
         throw new Error('Failed to create payment intent');
@@ -221,7 +223,7 @@ export default function CheckoutPage() {
       type: voucherDiscount.type,
       value: voucherDiscount.value,
       discountAmount: voucherDiscount.discountAmount,
-      discountAmountInPounds: voucherDiscount.discountAmount / 100
+      discountAmountInPounds: voucherDiscount.discountAmount
     });
   }
   const shippingCost = SHIPPING_COSTS[currentShippingMethod];
@@ -231,11 +233,11 @@ export default function CheckoutPage() {
   // Calculate final total with voucher discount
   let finalTotal;
   if (voucherDiscount) {
-    // If voucher is applied, calculate: (subtotal - discount) + shipping
-    const discountAmount = voucherDiscount.discountAmount / 100;
+    // Calculate: Subtotal - Discount + Shipping = Total
+    const discountAmount = voucherDiscount.discountAmount; // Already in pounds
     const discountedSubtotal = Number((subtotal - discountAmount).toFixed(2));
     finalTotal = Number((discountedSubtotal + shippingCost).toFixed(2));
-    console.log('Final total calculation:', {
+    console.log('Final total calculation (Subtotal - Discount + Shipping):', {
       subtotal,
       discountAmount,
       discountedSubtotal,
@@ -243,7 +245,13 @@ export default function CheckoutPage() {
       finalTotal
     });
   } else {
-    finalTotal = total;
+    // No voucher: Subtotal + Shipping = Total
+    finalTotal = Number((subtotal + shippingCost).toFixed(2));
+    console.log('Final total calculation (Subtotal + Shipping):', {
+      subtotal,
+      shippingCost,
+      finalTotal
+    });
   }
   
   // VAT is 20% of the final total (after voucher discount)
@@ -333,9 +341,9 @@ export default function CheckoutPage() {
                           <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md">
                             <div className="flex items-center justify-between">
                               <div>
-                                <p className="text-sm font-medium text-green-800">
-                                  {voucherDiscount.code} - {voucherDiscount.type === 'percentage' ? `${voucherDiscount.value}% off` : `£${(voucherDiscount.value / 100).toFixed(2)} off`}
-                                </p>
+                                                                 <p className="text-sm font-medium text-green-800">
+                                   {voucherDiscount.code} - {voucherDiscount.type === 'percentage' ? `${voucherDiscount.value}% off` : `£${voucherDiscount.value.toFixed(2)} off`}
+                                 </p>
                                 {voucherDiscount.description && (
                                   <p className="text-xs text-green-600">{voucherDiscount.description}</p>
                                 )}
@@ -364,12 +372,12 @@ export default function CheckoutPage() {
                         <span>Shipping ({currentShippingMethod})</span>
                         <span>£{shippingCost.toFixed(2)}</span>
                       </div>
-                      {voucherDiscount && (
-                        <div className="flex justify-between mb-2 text-sm text-green-600">
-                          <span>Discount ({voucherDiscount.code})</span>
-                          <span>-£{(voucherDiscount.discountAmount / 100).toFixed(2)}</span>
-                        </div>
-                      )}
+                                             {voucherDiscount && (
+                         <div className="flex justify-between mb-2 text-sm text-green-600">
+                           <span>Discount ({voucherDiscount.code})</span>
+                           <span>-£{voucherDiscount.discountAmount.toFixed(2)}</span>
+                         </div>
+                       )}
                       <div className="flex justify-between text-lg font-bold text-gray-900 mt-4">
                         <span>Total</span>
                         <span>£{finalTotal.toFixed(2)}</span>
