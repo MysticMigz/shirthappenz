@@ -10,11 +10,6 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "ShirtHappenZ",
   description: "Custom T-Shirt Printing and Design Services",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "ShirtHappenZ"
-  },
   formatDetection: {
     telephone: false,
     email: false,
