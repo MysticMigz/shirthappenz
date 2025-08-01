@@ -1,36 +1,143 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Mr SHIRT PERSONALISATION - Custom Apparel E-commerce
 
-## Getting Started
+A modern Next.js e-commerce platform for custom apparel and personalized clothing with DTF printing capabilities.
 
-First, run the development server:
+## 🚀 Features
+
+- **Custom Design Tool**: Interactive design interface for apparel customization
+- **DTF Printing Support**: Optimized file uploads for Direct-to-Film printing
+- **Payment Processing**: Stripe integration for secure payments
+- **Order Management**: Complete admin dashboard for order tracking
+- **Email Notifications**: Automated order confirmations with PDF invoices
+- **Responsive Design**: Mobile-first approach with Tailwind CSS
+- **SEO Optimized**: Built-in SEO features and meta tags
+
+## 🛠️ Tech Stack
+
+- **Frontend**: Next.js 14, React 18, TypeScript
+- **Styling**: Tailwind CSS
+- **Database**: MongoDB with Mongoose
+- **Payment**: Stripe
+- **Authentication**: NextAuth.js
+- **File Storage**: Cloudinary
+- **Email**: Nodemailer
+- **PDF Generation**: jsPDF
+
+## 📋 Prerequisites
+
+- Node.js 18+ 
+- MongoDB database
+- Stripe account
+- Cloudinary account
+- SMTP email service
+
+## 🔧 Environment Variables
+
+Create `.env.local` for development:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Database
+MONGODB_URI=your_mongodb_connection_string
+
+# Stripe
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+
+# NextAuth
+NEXTAUTH_SECRET=your_nextauth_secret
+NEXTAUTH_URL=http://localhost:3000
+
+# Email (SMTP)
+EMAIL_SERVER_HOST=smtp.gmail.com
+EMAIL_SERVER_PORT=587
+EMAIL_SERVER_USER=your_email@gmail.com
+EMAIL_SERVER_PASSWORD=your_app_password
+EMAIL_FROM=your_email@gmail.com
+ADMIN_EMAIL=admin@yourdomain.com
+
+# Cloudinary
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🚀 Getting Started
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd shirthappenz
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-## Learn More
+3. **Set up environment variables**
+   ```bash
+   cp .env.example .env.local
+   # Edit .env.local with your values
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+4. **Run the development server**
+   ```bash
+   npm run dev
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+5. **Open [http://localhost:3000](http://localhost:3000)**
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 📦 Available Scripts
 
-## Deploy on Vercel
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint
+- `npm run cleanup-temp-orders` - Clean up temporary orders
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🌐 Deployment
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Vercel (Recommended)
+
+1. **Connect your repository to Vercel**
+2. **Add environment variables** in Vercel dashboard
+3. **Deploy automatically** on push to main branch
+
+### Other Platforms
+
+- **Netlify**: Use `npm run build` and `npm run start`
+- **Railway**: Automatic deployment from GitHub
+- **DigitalOcean App Platform**: Container deployment
+
+## 🔒 Security Features
+
+- Content Security Policy (CSP)
+- XSS Protection
+- CSRF Protection
+- Rate Limiting
+- Input Validation
+- Secure Headers
+
+## 📱 PWA Features
+
+- Service Worker support
+- Offline capabilities
+- App-like experience
+- Push notifications (configurable)
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
+
+## 📄 License
+
+This project is licensed under the MIT License.
+
+## 🆘 Support
+
+For support, email support@mrshirtpersonalisation.co.uk or create an issue in the repository.

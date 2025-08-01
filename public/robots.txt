@@ -1,0 +1,21 @@
+User-agent: *
+Allow: /
+
+# Disallow admin and sensitive areas
+Disallow: /admin/
+Disallow: /api/admin/
+Disallow: /api/auth/
+Disallow: /api/webhooks/
+
+# Allow important pages
+Allow: /
+Allow: /products
+Allow: /design
+Allow: /about
+Allow: /contact
+Allow: /faq
+Allow: /privacy
+Allow: /terms
+
+# Sitemap
+Sitemap: https://mrshirtpersonalisation.co.uk/sitemap.xml 
