@@ -157,6 +157,21 @@ export default function AdminOrdersPage() {
   const [sortBy, setSortBy] = useState<'priority' | 'production' | 'date'>('priority');
   const [editingNotes, setEditingNotes] = useState<string | null>(null);
   const [notesText, setNotesText] = useState('');
+  
+  // Filter states
+  const [showFilters, setShowFilters] = useState(false);
+  const [referenceFilter, setReferenceFilter] = useState('');
+  const [customerNameFilter, setCustomerNameFilter] = useState('');
+  const [emailFilter, setEmailFilter] = useState('');
+  const [dateFromFilter, setDateFromFilter] = useState('');
+  const [dateToFilter, setDateToFilter] = useState('');
+  const [totalMinFilter, setTotalMinFilter] = useState('');
+  const [totalMaxFilter, setTotalMaxFilter] = useState('');
+  const [priorityMinFilter, setPriorityMinFilter] = useState('');
+  const [priorityMaxFilter, setPriorityMaxFilter] = useState('');
+  const [shippingMethodFilter, setShippingMethodFilter] = useState('all');
+  const [hasVoucherFilter, setHasVoucherFilter] = useState('all');
+  const [hasCustomizationFilter, setHasCustomizationFilter] = useState('all');
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -171,6 +186,18 @@ export default function AdminOrdersPage() {
           sortBy,
           ...(selectedStatus !== 'all' && { status: selectedStatus }),
           ...(selectedProductionStatus !== 'all' && { productionStatus: selectedProductionStatus }),
+          ...(referenceFilter && { reference: referenceFilter }),
+          ...(customerNameFilter && { customerName: customerNameFilter }),
+          ...(emailFilter && { email: emailFilter }),
+          ...(dateFromFilter && { dateFrom: dateFromFilter }),
+          ...(dateToFilter && { dateTo: dateToFilter }),
+          ...(totalMinFilter && { totalMin: totalMinFilter }),
+          ...(totalMaxFilter && { totalMax: totalMaxFilter }),
+          ...(priorityMinFilter && { priorityMin: priorityMinFilter }),
+          ...(priorityMaxFilter && { priorityMax: priorityMaxFilter }),
+          ...(shippingMethodFilter !== 'all' && { shippingMethod: shippingMethodFilter }),
+          ...(hasVoucherFilter !== 'all' && { hasVoucher: hasVoucherFilter }),
+          ...(hasCustomizationFilter !== 'all' && { hasCustomization: hasCustomizationFilter }),
         });
         
         const response = await fetch(`/api/admin/orders?${params}`);
@@ -189,7 +216,24 @@ export default function AdminOrdersPage() {
     if (session?.user) {
       fetchOrders();
     }
-  }, [session, sortBy, selectedStatus, selectedProductionStatus]);
+  }, [
+    session, 
+    sortBy, 
+    selectedStatus, 
+    selectedProductionStatus,
+    referenceFilter,
+    customerNameFilter,
+    emailFilter,
+    dateFromFilter,
+    dateToFilter,
+    totalMinFilter,
+    totalMaxFilter,
+    priorityMinFilter,
+    priorityMaxFilter,
+    shippingMethodFilter,
+    hasVoucherFilter,
+    hasCustomizationFilter
+  ]);
 
   const handleStatusChange = async (orderId: string, newStatus: string) => {
     try {
@@ -281,6 +325,36 @@ export default function AdminOrdersPage() {
     return 'text-gray-600';
   };
 
+  const clearAllFilters = () => {
+    setReferenceFilter('');
+    setCustomerNameFilter('');
+    setEmailFilter('');
+    setDateFromFilter('');
+    setDateToFilter('');
+    setTotalMinFilter('');
+    setTotalMaxFilter('');
+    setPriorityMinFilter('');
+    setPriorityMaxFilter('');
+    setShippingMethodFilter('all');
+    setHasVoucherFilter('all');
+    setHasCustomizationFilter('all');
+  };
+
+  const hasActiveFilters = () => {
+    return referenceFilter || 
+           customerNameFilter || 
+           emailFilter || 
+           dateFromFilter || 
+           dateToFilter || 
+           totalMinFilter || 
+           totalMaxFilter || 
+           priorityMinFilter || 
+           priorityMaxFilter || 
+           shippingMethodFilter !== 'all' || 
+           hasVoucherFilter !== 'all' || 
+           hasCustomizationFilter !== 'all';
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 p-6">
@@ -345,8 +419,258 @@ export default function AdminOrdersPage() {
               <option value="ready_to_ship">Ready to Ship</option>
               <option value="completed">Completed</option>
             </select>
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                showFilters 
+                  ? 'bg-purple-600 text-white hover:bg-purple-700' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {showFilters ? 'Hide Filters' : 'Show Filters'}
+            </button>
           </div>
         </div>
+
+        {/* Advanced Filters */}
+        {showFilters && (
+          <div className="mb-6 bg-white rounded-lg shadow-sm p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-medium text-gray-900">Advanced Filters</h2>
+              {hasActiveFilters() && (
+                <button
+                  onClick={clearAllFilters}
+                  className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition-colors"
+                >
+                  Clear All Filters
+                </button>
+              )}
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {/* Reference Number Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Reference Number</label>
+                <input
+                  type="text"
+                  value={referenceFilter}
+                  onChange={(e) => setReferenceFilter(e.target.value)}
+                  placeholder="e.g., SH-241201-0001"
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
+                />
+              </div>
+
+              {/* Customer Name Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name</label>
+                <input
+                  type="text"
+                  value={customerNameFilter}
+                  onChange={(e) => setCustomerNameFilter(e.target.value)}
+                  placeholder="First or last name"
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
+                />
+              </div>
+
+              {/* Email Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input
+                  type="email"
+                  value={emailFilter}
+                  onChange={(e) => setEmailFilter(e.target.value)}
+                  placeholder="customer@example.com"
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
+                />
+              </div>
+
+              {/* Date Range Filters */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Date From</label>
+                <input
+                  type="date"
+                  value={dateFromFilter}
+                  onChange={(e) => setDateFromFilter(e.target.value)}
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Date To</label>
+                <input
+                  type="date"
+                  value={dateToFilter}
+                  onChange={(e) => setDateToFilter(e.target.value)}
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
+                />
+              </div>
+
+              {/* Total Range Filters */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Total Min (£)</label>
+                <input
+                  type="number"
+                  value={totalMinFilter}
+                  onChange={(e) => setTotalMinFilter(e.target.value)}
+                  placeholder="0.00"
+                  step="0.01"
+                  min="0"
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Total Max (£)</label>
+                <input
+                  type="number"
+                  value={totalMaxFilter}
+                  onChange={(e) => setTotalMaxFilter(e.target.value)}
+                  placeholder="1000.00"
+                  step="0.01"
+                  min="0"
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
+                />
+              </div>
+
+              {/* Priority Range Filters */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Priority Min</label>
+                <input
+                  type="number"
+                  value={priorityMinFilter}
+                  onChange={(e) => setPriorityMinFilter(e.target.value)}
+                  placeholder="0"
+                  min="0"
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Priority Max</label>
+                <input
+                  type="number"
+                  value={priorityMaxFilter}
+                  onChange={(e) => setPriorityMaxFilter(e.target.value)}
+                  placeholder="200"
+                  min="0"
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
+                />
+              </div>
+
+              {/* Shipping Method Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Shipping Method</label>
+                <select
+                  value={shippingMethodFilter}
+                  onChange={(e) => setShippingMethodFilter(e.target.value)}
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
+                >
+                  <option value="all">All Methods</option>
+                  <option value="Standard Delivery">Standard Delivery</option>
+                  <option value="Express Delivery">Express Delivery</option>
+                  <option value="Next Day Delivery">Next Day Delivery</option>
+                </select>
+              </div>
+
+              {/* Voucher Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Voucher Used</label>
+                <select
+                  value={hasVoucherFilter}
+                  onChange={(e) => setHasVoucherFilter(e.target.value)}
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
+                >
+                  <option value="all">All Orders</option>
+                  <option value="yes">With Voucher</option>
+                  <option value="no">Without Voucher</option>
+                </select>
+              </div>
+
+              {/* Customization Filter */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Customization</label>
+                <select
+                  value={hasCustomizationFilter}
+                  onChange={(e) => setHasCustomizationFilter(e.target.value)}
+                  className="w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
+                >
+                  <option value="all">All Orders</option>
+                  <option value="yes">With Customization</option>
+                  <option value="no">Without Customization</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Active Filters Summary */}
+            {hasActiveFilters() && (
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <h3 className="text-sm font-medium text-gray-700 mb-2">Active Filters:</h3>
+                <div className="flex flex-wrap gap-2">
+                  {referenceFilter && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                      Reference: {referenceFilter}
+                    </span>
+                  )}
+                  {customerNameFilter && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                      Customer: {customerNameFilter}
+                    </span>
+                  )}
+                  {emailFilter && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                      Email: {emailFilter}
+                    </span>
+                  )}
+                  {dateFromFilter && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                      From: {dateFromFilter}
+                    </span>
+                  )}
+                  {dateToFilter && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                      To: {dateToFilter}
+                    </span>
+                  )}
+                  {totalMinFilter && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                      Min Total: £{totalMinFilter}
+                    </span>
+                  )}
+                  {totalMaxFilter && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                      Max Total: £{totalMaxFilter}
+                    </span>
+                  )}
+                  {priorityMinFilter && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                      Min Priority: {priorityMinFilter}
+                    </span>
+                  )}
+                  {priorityMaxFilter && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                      Max Priority: {priorityMaxFilter}
+                    </span>
+                  )}
+                  {shippingMethodFilter !== 'all' && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                      Shipping: {shippingMethodFilter}
+                    </span>
+                  )}
+                  {hasVoucherFilter !== 'all' && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                      Voucher: {hasVoucherFilter === 'yes' ? 'Yes' : 'No'}
+                    </span>
+                  )}
+                  {hasCustomizationFilter !== 'all' && (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                      Customization: {hasCustomizationFilter === 'yes' ? 'Yes' : 'No'}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="bg-white shadow-sm rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
