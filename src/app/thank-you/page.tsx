@@ -16,6 +16,12 @@ interface OrderDetails {
   status: string;
   total: number;
   vat?: number;
+  // Voucher fields
+  voucherCode?: string;
+  voucherDiscount?: number;
+  voucherType?: string;
+  voucherValue?: number;
+  voucherId?: string;
   items: Array<{
     name: string;
     quantity: number;
@@ -151,13 +157,30 @@ export default function ThankYouPage() {
     );
   }
 
-  // Calculate subtotal, VAT (included), and total for display
+  // Use database values instead of calculating
   const subtotal = order.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const shipping = order.shippingDetails.shippingCost;
-  const total = subtotal + shipping;
-  const vatIncluded = typeof order.vat === 'number'
-    ? order.vat
-    : Number(((subtotal + shipping) * 0.2).toFixed(2));
+  const total = order.total; // Use the total from database
+  const vatIncluded = order.vat || 0; // Use VAT from database
+  
+  // Calculate the pre-discount total for display purposes
+  const preDiscountTotal = subtotal + shipping;
+  
+  // Helper function to format discount description
+  const getDiscountDescription = () => {
+    if (!order.voucherCode || !order.voucherDiscount || order.voucherDiscount <= 0) return '';
+    
+    switch (order.voucherType) {
+      case 'percentage':
+        return ` - ${order.voucherValue}%`;
+      case 'fixed':
+        return ` - £${order.voucherValue}`;
+      case 'free_shipping':
+        return ' - Free Shipping';
+      default:
+        return '';
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -294,6 +317,17 @@ export default function ThankYouPage() {
                   £{shipping.toFixed(2)}
                 </span>
               </div>
+              {/* Discount Code Display */}
+              {order.voucherCode && order.voucherDiscount && order.voucherDiscount > 0 && (
+                <div className="flex justify-between mb-2">
+                  <span className="text-gray-600">
+                    Discount ({order.voucherCode}){getDiscountDescription()}
+                  </span>
+                  <span className="font-medium text-green-600">
+                    -£{order.voucherDiscount.toFixed(2)}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between text-lg font-bold mt-4">
                 <span>Total</span>
                 <span>£{total.toFixed(2)}</span>

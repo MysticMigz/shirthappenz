@@ -104,6 +104,13 @@ export async function GET(
       reference: order.reference,
       status: order.status,
       total: order.total,
+      vat: order.vat,
+      // Voucher fields
+      voucherCode: order.voucherCode,
+      voucherDiscount: order.voucherDiscount,
+      voucherType: order.voucherType,
+      voucherValue: order.voucherValue,
+      voucherId: order.voucherId,
       items: order.items.map((item: any) => ({
         productId: item.productId,
         name: item.name,
@@ -112,6 +119,8 @@ export async function GET(
         size: item.size,
         color: item.color,
         image: item.image,
+        baseProductName: item.baseProductName,
+        baseProductImage: item.baseProductImage,
         customization: item.customization ? {
           name: item.customization.name,
           number: item.customization.number,
