@@ -93,6 +93,9 @@ interface Order {
     postcode: string;
     shippingMethod: string;
     shippingCost: number;
+    trackingNumber?: string;
+    courier?: string;
+    shippedAt?: string;
   };
 }
 
@@ -428,6 +431,56 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
                 </div>
               </div>
             </div>
+
+            {/* Tracking Information */}
+            {(order.shippingDetails?.trackingNumber || order.shippingDetails?.courier) && (
+              <div className="mt-8">
+                <h2 className="text-lg font-medium text-gray-900 mb-4">Tracking Information</h2>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {order.shippingDetails?.trackingNumber && (
+                      <div>
+                        <h3 className="text-sm font-medium text-blue-900 mb-2">Tracking Number</h3>
+                        <p className="text-sm text-blue-700 font-mono bg-blue-100 px-3 py-2 rounded border">
+                          {order.shippingDetails.trackingNumber}
+                        </p>
+                      </div>
+                    )}
+                    {order.shippingDetails?.courier && (
+                      <div>
+                        <h3 className="text-sm font-medium text-blue-900 mb-2">Courier</h3>
+                        <p className="text-sm text-blue-700">
+                          {order.shippingDetails.courier}
+                        </p>
+                      </div>
+                    )}
+                    {order.shippingDetails?.shippedAt && (
+                      <div>
+                        <h3 className="text-sm font-medium text-blue-900 mb-2">Shipped Date</h3>
+                        <p className="text-sm text-blue-700">
+                          {new Date(order.shippingDetails.shippedAt).toLocaleDateString()} at {new Date(order.shippingDetails.shippedAt).toLocaleTimeString()}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  {order.shippingDetails?.trackingNumber && order.shippingDetails?.courier && (
+                    <div className="mt-4 pt-4 border-t border-blue-200">
+                      <a
+                        href={`https://www.google.com/search?q=${order.shippingDetails.courier}+tracking+${order.shippingDetails.trackingNumber}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium transition-colors"
+                      >
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                        Track Package
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Production Information */}
             <div className="mt-8">
