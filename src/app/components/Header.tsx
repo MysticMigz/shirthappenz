@@ -219,7 +219,7 @@ const Header = () => {
 
           {/* Navigation menu */}
           <nav className="hidden md:block border-t border-gray-200">
-            <div className="flex items-center space-x-8 py-4">
+            <div className="flex items-center justify-center space-x-8 py-4">
               <Link href="/" className="text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium transition">
                 Home
               </Link>
