@@ -34,8 +34,8 @@ interface CartItem {
 interface CartContextType {
   items: CartItem[];
   addItem: (item: CartItem) => void;
-  removeItem: (productId: string, size: string) => void;
-  updateQuantity: (productId: string, size: string, quantity: number) => void;
+  removeItem: (productId: string, size: string, customization?: { name?: string; number?: string }) => void;
+  updateQuantity: (productId: string, size: string, quantity: number, customization?: { name?: string; number?: string }) => void;
   clearCart: () => void;
   getTotal: () => number;
   getItemCount: () => number;
@@ -139,24 +139,84 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const removeItem = (productId: string, size: string) => {
+  const removeItem = (productId: string, size: string, customization?: { name?: string; number?: string }) => {
     setItems(currentItems =>
-      currentItems.filter(item => !(item.productId === productId && item.size === size))
+      currentItems.filter(item => {
+        // Basic product and size match
+        const basicMatch = item.productId === productId && item.size === size;
+        
+        // If no customization specified, remove all items with this product and size
+        if (!customization) {
+          return !basicMatch;
+        }
+        
+        // If customization specified, also check customization details
+        if (basicMatch) {
+          const itemCustomization = item.customization;
+          
+          // If item has no customization but we're looking for one, don't remove
+          if (!itemCustomization?.isCustomized && (customization.name || customization.number)) {
+            return true;
+          }
+          
+          // If item has customization but we're not looking for one, don't remove
+          if (itemCustomization?.isCustomized && !customization.name && !customization.number) {
+            return true;
+          }
+          
+          // Check customization match
+          const nameMatch = !customization.name || itemCustomization?.name === customization.name;
+          const numberMatch = !customization.number || itemCustomization?.number === customization.number;
+          
+          return !(nameMatch && numberMatch);
+        }
+        
+        return true;
+      })
     );
   };
 
-  const updateQuantity = (productId: string, size: string, quantity: number) => {
+  const updateQuantity = (productId: string, size: string, quantity: number, customization?: { name?: string; number?: string }) => {
     if (quantity <= 0) {
-      removeItem(productId, size);
+      removeItem(productId, size, customization);
       return;
     }
 
     setItems(currentItems =>
-      currentItems.map(item =>
-        item.productId === productId && item.size === size
-          ? { ...item, quantity: Math.min(10, quantity) }
-          : item
-      )
+      currentItems.map(item => {
+        // Basic product and size match
+        const basicMatch = item.productId === productId && item.size === size;
+        
+        if (!basicMatch) return item;
+        
+        // If no customization specified, update all items with this product and size
+        if (!customization) {
+          return { ...item, quantity: Math.min(10, quantity) };
+        }
+        
+        // If customization specified, also check customization details
+        const itemCustomization = item.customization;
+        
+        // If item has no customization but we're looking for one, don't update
+        if (!itemCustomization?.isCustomized && (customization.name || customization.number)) {
+          return item;
+        }
+        
+        // If item has customization but we're not looking for one, don't update
+        if (itemCustomization?.isCustomized && !customization.name && !customization.number) {
+          return item;
+        }
+        
+        // Check customization match
+        const nameMatch = !customization.name || itemCustomization?.name === customization.name;
+        const numberMatch = !customization.number || itemCustomization?.number === customization.number;
+        
+        if (nameMatch && numberMatch) {
+          return { ...item, quantity: Math.min(10, quantity) };
+        }
+        
+        return item;
+      })
     );
   };
 

@@ -13,9 +13,9 @@ export default function CartPage() {
   const { items, removeItem, updateQuantity, getTotal, clearCart } = useCart();
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleQuantityChange = (productId: string, size: string, newQuantity: number) => {
+  const handleQuantityChange = (productId: string, size: string, newQuantity: number, customization?: { name?: string; number?: string }) => {
     if (newQuantity >= 0 && newQuantity <= 10) {
-      updateQuantity(productId, size, newQuantity);
+      updateQuantity(productId, size, newQuantity, customization);
     }
   };
 
@@ -171,7 +171,14 @@ export default function CartPage() {
                               </div>
                               
                               <button
-                                onClick={() => removeItem(item.productId, item.size)}
+                                onClick={() => removeItem(
+                                  item.productId, 
+                                  item.size, 
+                                  item.customization?.isCustomized ? {
+                                    name: item.customization.name,
+                                    number: item.customization.number
+                                  } : undefined
+                                )}
                                 className="text-sm text-red-600 hover:text-red-800"
                               >
                                 Remove
@@ -185,7 +192,15 @@ export default function CartPage() {
                               </label>
                               <div className="flex items-center border rounded-md">
                                 <button
-                                  onClick={() => handleQuantityChange(item.productId, item.size, item.quantity - 1)}
+                                  onClick={() => handleQuantityChange(
+                                    item.productId, 
+                                    item.size, 
+                                    item.quantity - 1,
+                                    item.customization?.isCustomized ? {
+                                      name: item.customization.name,
+                                      number: item.customization.number
+                                    } : undefined
+                                  )}
                                   className="px-3 py-1 border-r hover:bg-gray-50"
                                   disabled={item.quantity <= 1}
                                 >
@@ -193,7 +208,15 @@ export default function CartPage() {
                                 </button>
                                 <span className="px-4 py-1">{item.quantity}</span>
                                 <button
-                                  onClick={() => handleQuantityChange(item.productId, item.size, item.quantity + 1)}
+                                  onClick={() => handleQuantityChange(
+                                    item.productId, 
+                                    item.size, 
+                                    item.quantity + 1,
+                                    item.customization?.isCustomized ? {
+                                      name: item.customization.name,
+                                      number: item.customization.number
+                                    } : undefined
+                                  )}
                                   className="px-3 py-1 border-l hover:bg-gray-50"
                                   disabled={item.quantity >= 10}
                                 >

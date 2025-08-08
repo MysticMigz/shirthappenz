@@ -70,7 +70,7 @@ export default function JerseyLetteringPage() {
     if (showSuccess) {
       const timer = setTimeout(() => {
         setShowSuccess(false);
-      }, 3000);
+      }, 5000); // 5 seconds to match main design page
       return () => clearTimeout(timer);
     }
   }, [showSuccess]);
@@ -161,7 +161,7 @@ export default function JerseyLetteringPage() {
     }
 
     try {
-      setLoading(true);
+      setAddingToCart(true);
       const basePrice = selectedJersey.basePrice;
       const customizationCost = calculateCustomizationCost();
       const totalPrice = basePrice + customizationCost;
@@ -186,11 +186,23 @@ export default function JerseyLetteringPage() {
       };
 
       addItem(cartItem);
-      router.push('/cart');
+      
+      // Reset form
+      setName('');
+      setNumber('');
+      setQuantity(1);
+      setNameError('');
+      
+      // Show success message
+      setShowSuccess(true);
+      
+      // Clear any existing errors
+      setError('');
+      
     } catch (error) {
       setError('Failed to add item to cart');
     } finally {
-      setLoading(false);
+      setAddingToCart(false);
     }
   };
 
@@ -225,8 +237,19 @@ export default function JerseyLetteringPage() {
           )}
 
           {showSuccess && (
-            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-6">
-              Item added to cart successfully!
+            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-6 flex items-center justify-between">
+              <div className="flex items-center">
+                <svg className="h-5 w-5 text-green-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span>Item added to cart successfully! You can continue adding more designs or view your cart.</span>
+              </div>
+              <button
+                onClick={() => router.push('/cart')}
+                className="text-sm text-green-600 hover:text-green-800 underline"
+              >
+                View Cart
+              </button>
             </div>
           )}
 
