@@ -129,7 +129,7 @@ const Footer = () => {
         <div className="container mx-auto px-4 py-6">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="text-sm text-blue-100 mb-4 md:mb-0">
-              <div>© Mr SHIRT PERSONALISATION 2025. All rights reserved.</div>
+              <div>© MR SHIRT PERSONALISATION 2025. All rights reserved.</div>
               <div className="mt-1 text-xs">
                 Trading Address: 10 Barney Close, SE7 8SS, United Kingdom | 
                 Email: customer.service@mrshirtpersonalisation.com | 

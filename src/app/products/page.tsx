@@ -29,6 +29,19 @@ interface Category {
   icon: JSX.Element;
 }
 
+interface CategoryVisibility {
+  category: string;
+  displayName: string;
+  description: string;
+  sortOrder: number;
+  genderVisibility: {
+    men: boolean;
+    women: boolean;
+    unisex: boolean;
+    kids: boolean;
+  };
+}
+
 export default function ProductsPage() {
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
@@ -42,6 +55,8 @@ export default function ProductsPage() {
   const [priceRange, setPriceRange] = useState<{ min: number; max: number | null }>({ min: 0, max: null });
   const [sortBy, setSortBy] = useState<'bestsellers' | 'price-asc' | 'price-desc' | 'name-asc' | 'name-desc' | 'newest'>('bestsellers');
   const [showFilters, setShowFilters] = useState(false);
+  const [categoryVisibility, setCategoryVisibility] = useState<CategoryVisibility[]>([]);
+  const [categoryVisibilityLoading, setCategoryVisibilityLoading] = useState(true);
 
   // Read search parameters from URL on component mount
   useEffect(() => {
@@ -53,6 +68,10 @@ export default function ProductsPage() {
       }
     }
   }, []);
+
+  useEffect(() => {
+    fetchCategoryVisibility();
+  }, [selectedGender]);
 
   const genderNav = [
     { key: 'men', label: 'Men' },
@@ -117,6 +136,98 @@ export default function ProductsPage() {
     fetchProducts();
   }, [searchQuery, selectedCategory, priceRange, sortBy]);
 
+  useEffect(() => {
+    fetchCategoryVisibility();
+  }, [selectedGender]);
+
+  // Refresh category visibility when products change to ensure proper filtering
+  useEffect(() => {
+    if (products.length > 0 && !categoryVisibilityLoading) {
+      // Force a re-render of categories when products change
+      // This ensures categories are properly filtered based on available products
+    }
+  }, [products, categoryVisibilityLoading]);
+
+  const fetchCategoryVisibility = async () => {
+    try {
+      setCategoryVisibilityLoading(true);
+      const response = await fetch(`/api/category-visibility?gender=${selectedGender}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch category visibility');
+      }
+      const data = await response.json();
+      setCategoryVisibility(data.categories || []);
+    } catch (err: any) {
+      console.error('Error fetching category visibility:', err);
+      // Fallback to default categories if API fails
+      setCategoryVisibility([]);
+      // Show a subtle error message in the console for admins
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('Category visibility API failed, using default categories');
+      }
+    } finally {
+      setCategoryVisibilityLoading(false);
+    }
+  };
+
+  // Function to get filtered categories based on visibility settings
+  const getFilteredCategories = (gender: string) => {
+    if (categoryVisibilityLoading) {
+      // While loading, show default categories but filter out those with no products
+      const defaultCategories = allCategories[gender] || [];
+      return defaultCategories.filter(cat => {
+        const hasProducts = products.some(product => {
+          const matchesCategory = product.category === cat.key;
+          const matchesGender = product.gender === gender || 
+            (product.gender === 'unisex' && (gender === 'men' || gender === 'women'));
+          return matchesCategory && matchesGender;
+        });
+        return hasProducts;
+      });
+    }
+
+    if (categoryVisibility.length === 0) {
+      // Fallback to default categories if visibility settings haven't loaded yet
+      // But still filter out categories with no products
+      const defaultCategories = allCategories[gender] || [];
+      return defaultCategories.filter(cat => {
+        const hasProducts = products.some(product => {
+          const matchesCategory = product.category === cat.key;
+          const matchesGender = product.gender === gender || 
+            (product.gender === 'unisex' && (gender === 'men' || gender === 'women'));
+          return matchesCategory && matchesGender;
+        });
+        return hasProducts;
+      });
+    }
+
+    // Filter categories based on visibility settings
+    const visibleCategories = categoryVisibility
+      .filter(cat => cat.genderVisibility[gender as keyof typeof cat.genderVisibility])
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+
+    // Filter out categories that have no products for the selected gender
+    const categoriesWithProducts = visibleCategories.filter(cat => {
+      const hasProducts = products.some(product => {
+        const matchesCategory = product.category === cat.category;
+        const matchesGender = product.gender === gender || 
+          (product.gender === 'unisex' && (gender === 'men' || gender === 'women'));
+        return matchesCategory && matchesGender;
+      });
+      return hasProducts;
+    });
+
+    // Map visibility settings to category objects with custom display names
+    return categoriesWithProducts.map(cat => {
+      const defaultCategory = allCategories[gender]?.find(c => c.key === cat.category);
+      return {
+        key: cat.category,
+        label: cat.displayName || defaultCategory?.label || cat.category,
+        icon: defaultCategory?.icon || <span className="w-8 h-8 bg-gray-300 rounded"></span>
+      };
+    });
+  };
+
   const fetchProducts = async () => {
     try {
       let url = '/api/products?';
@@ -174,19 +285,43 @@ export default function ProductsPage() {
     setSelectedCategory(key);
   };
 
+  // Reset selected category if it's not visible for the current gender
+  useEffect(() => {
+    if (selectedCategory && categoryVisibility.length > 0) {
+      const categoryIsVisible = categoryVisibility.some(cat => 
+        cat.category === selectedCategory && 
+        cat.genderVisibility[selectedGender as keyof typeof cat.genderVisibility]
+      );
+      
+      if (!categoryIsVisible) {
+        setSelectedCategory('');
+      }
+    }
+  }, [selectedGender, categoryVisibility, selectedCategory]);
+
   const filteredProducts = products
     .filter(product => {
       const matchesSearch = searchQuery === '' || 
         product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         product.description.toLowerCase().includes(searchQuery.toLowerCase());
       
-      const matchesGender = selectedGender === '' || product.gender === selectedGender;
+      const matchesGender = selectedGender === '' || 
+        product.gender === selectedGender || 
+        (product.gender === 'unisex' && (selectedGender === 'men' || selectedGender === 'women'));
+      
+      // Check if the product's category is visible for the selected gender
+      const categoryIsVisible = categoryVisibility.length === 0 || 
+        categoryVisibility.some(cat => 
+          cat.category === product.category && 
+          cat.genderVisibility[selectedGender as keyof typeof cat.genderVisibility]
+        );
+      
       const matchesCategory = selectedCategory === '' || product.category.toLowerCase().replace(/\s/g, '') === selectedCategory;
       
       const matchesPriceRange = (priceRange.max === null || product.basePrice <= priceRange.max) &&
         product.basePrice >= priceRange.min;
 
-      return matchesSearch && matchesGender && matchesCategory && matchesPriceRange;
+      return matchesSearch && matchesGender && categoryIsVisible && matchesCategory && matchesPriceRange;
     })
     .sort((a, b) => {
       switch (sortBy) {
@@ -250,27 +385,49 @@ export default function ProductsPage() {
 
         {/* Category Cards for selected gender */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:flex lg:flex-wrap gap-3 sm:gap-4 justify-center mb-6 sm:mb-8">
-          {allCategories[selectedGender].map((cat: Category) => (
-            <button
-              key={cat.key}
-              onClick={() => handleCategoryClick(cat.key)}
-              className={`flex flex-col items-center px-3 sm:px-4 md:px-6 py-3 sm:py-4 rounded-lg border border-black bg-white text-black transition-all duration-300 ease-in-out
-                focus-visible:ring-2 focus-visible:ring-[var(--brand-red)] focus-visible:ring-offset-2
-                ${selectedCategory === cat.key ? 'shadow-[0_2px_0_0_var(--brand-red)]' : ''}
-                group hover:scale-105 focus:scale-105 hover:shadow-[0_4px_0_0_var(--brand-red)] focus:shadow-[0_4px_0_0_var(--brand-red)] active:scale-100`
-              }
-            >
-              <span className="mb-1 sm:mb-2 w-8 h-8 sm:w-10 sm:h-10">{cat.icon}</span>
-              <span className="text-xs sm:text-sm font-medium transition text-black group-hover:bg-gradient-to-r group-hover:from-[var(--brand-red)] group-hover:to-[var(--brand-blue)] group-hover:bg-clip-text group-hover:text-transparent text-center">
-                {cat.label}
-              </span>
-            </button>
-          ))}
+          {categoryVisibilityLoading ? (
+            // Show loading skeleton while fetching category visibility
+            Array.from({ length: 6 }).map((_, index) => (
+              <div key={index} className="flex flex-col items-center px-3 sm:px-4 md:px-6 py-3 sm:py-4 rounded-lg border border-gray-200 bg-gray-50 animate-pulse">
+                <div className="mb-1 sm:mb-2 w-8 h-8 sm:w-10 sm:h-10 bg-gray-300 rounded"></div>
+                <div className="w-16 h-4 bg-gray-300 rounded"></div>
+              </div>
+            ))
+          ) : getFilteredCategories(selectedGender).length > 0 ? (
+            getFilteredCategories(selectedGender).map((cat: Category) => (
+              <button
+                key={cat.key}
+                onClick={() => handleCategoryClick(cat.key)}
+                className={`flex flex-col items-center px-3 sm:px-4 md:px-6 py-3 sm:py-4 rounded-lg border border-black bg-white text-black transition-all duration-300 ease-in-out
+                  focus-visible:ring-2 focus-visible:ring-[var(--brand-red)] focus-visible:ring-offset-2
+                  ${selectedCategory === cat.key ? 'shadow-[0_2px_0_0_var(--brand-red)]' : ''}
+                  group hover:scale-105 focus:scale-105 hover:shadow-[0_4px_0_0_var(--brand-red)] focus:shadow-[0_4px_0_0_var(--brand-red)] active:scale-100`
+                }
+              >
+                <span className="mb-1 sm:mb-2 w-8 h-8 sm:w-10 sm:h-10">{cat.icon}</span>
+                <span className="text-xs sm:text-sm font-medium transition text-black group-hover:bg-gradient-to-r group-hover:from-[var(--brand-red)] group-hover:to-[var(--brand-blue)] group-hover:bg-clip-text group-hover:text-transparent text-center">
+                  {cat.label}
+                </span>
+              </button>
+            ))
+          ) : (
+            <div className="col-span-full text-center py-8">
+              <p className="text-gray-500 text-lg">
+                No categories available for {selectedGender === 'men' ? 'men' : selectedGender === 'women' ? 'women' : selectedGender === 'unisex' ? 'unisex' : 'kids'} at the moment.
+              </p>
+              <p className="text-gray-400 text-sm mt-2">
+                Please check back later or contact support.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Add attribution for Icons8 below the categories section */}
         <div className="text-xs text-gray-400 text-center mt-2 mb-4">
           Icons by <a href="https://icons8.com" target="_blank" rel="noopener noreferrer" className="underline">Icons8</a>
+          {categoryVisibility.length === 0 && !categoryVisibilityLoading && (
+            <span className="ml-2 text-orange-500">• Using default categories</span>
+          )}
         </div>
 
         {/* Search and Filter Controls */}

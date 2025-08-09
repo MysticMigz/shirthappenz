@@ -85,12 +85,12 @@ const FeaturesSection = () => {
         {/* Printing services section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
           <div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-4">Why use ShirtHappenZ for your garment printing?</h3>
+            <h3 className="text-2xl font-bold text-gray-900 mb-4">Why use Mr Shirt Personalisation for your garment printing?</h3>
             <div className="space-y-4">
               <div>
                 <h4 className="text-lg font-semibold text-purple-600 mb-2">History and Mission</h4>
                 <p className="text-gray-600">
-                  Here at ShirtHappenZ we have years of experience in the print industry. We use both 
+                  Here at Mr Shirt Personalisation we have years of experience in the print industry. We use both 
                   traditional and modern printing equipment, making us experts when it comes to print.
                 </p>
               </div>

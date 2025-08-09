@@ -91,7 +91,10 @@ export default function CustomDesignPage() {
         const data = await res.json();
         const allProducts = data.products || [];
         const customizableProducts = allProducts.filter((p: any) => p.customizable);
-        const firstCustomizable = customizableProducts.find((p: any) => p.gender === selectedGender) || customizableProducts[0] || null;
+        const firstCustomizable = customizableProducts.find((p: any) => 
+          p.gender === selectedGender || 
+          (p.gender === 'unisex' && (selectedGender === 'men' || selectedGender === 'women'))
+        ) || customizableProducts[0] || null;
         setProducts(allProducts);
         setSelectedProduct(firstCustomizable);
       } catch (err) {
@@ -101,6 +104,35 @@ export default function CustomDesignPage() {
     };
     fetchProducts();
   }, [selectedCategory, selectedGender]);
+
+  // Reset selected category if it's not available for the current gender
+  useEffect(() => {
+    if (products.length > 0 && selectedCategory) {
+      const categoryIsAvailable = products.some(product => {
+        const matchesCategory = product.category === selectedCategory;
+        const matchesGender = product.gender === selectedGender || 
+          (product.gender === 'unisex' && (selectedGender === 'men' || selectedGender === 'women'));
+        return matchesCategory && matchesGender;
+      });
+      
+      if (!categoryIsAvailable) {
+        // Find the first available category
+        const availableCategories = CATEGORIES.filter(cat => {
+          const hasProducts = products.some(product => {
+            const matchesCategory = product.category === cat.key;
+            const matchesGender = product.gender === selectedGender || 
+              (product.gender === 'unisex' && (selectedGender === 'men' || selectedGender === 'women'));
+            return matchesCategory && matchesGender;
+          });
+          return hasProducts;
+        });
+        
+        if (availableCategories.length > 0) {
+          setSelectedCategory(availableCategories[0].key);
+        }
+      }
+    }
+  }, [products, selectedGender, selectedCategory]);
 
   // Auto-dismiss success message
   useEffect(() => {
@@ -391,21 +423,34 @@ export default function CustomDesignPage() {
           </div>
           {/* Category Selector */}
           <div className="flex flex-wrap gap-6 justify-center mb-8">
-            {CATEGORIES.map(cat => (
-              <button
-                key={cat.key}
-                className={`px-8 py-2 rounded-full font-semibold border border-black bg-white text-black transition-all duration-300 ease-in-out
-                  focus-visible:ring-2 focus-visible:ring-[var(--brand-red)] focus-visible:ring-offset-2
-                  ${selectedCategory === cat.key ? 'shadow-[0_2px_0_0_var(--brand-red)]' : ''}
-                  group hover:scale-105 focus:scale-105 hover:shadow-[0_4px_0_0_var(--brand-red)] focus:shadow-[0_4px_0_0_var(--brand-red)] active:scale-100`
-                }
-                style={selectedCategory === cat.key ? { boxShadow: '0 2px 0 0 var(--brand-red)' } : {}}
-                onClick={() => setSelectedCategory(cat.key)}
-                tabIndex={0}
-              >
-                <span className="transition text-black group-hover:bg-gradient-to-r group-hover:from-[var(--brand-red)] group-hover:to-[var(--brand-blue)] group-hover:bg-clip-text group-hover:text-transparent">{cat.label}</span>
-              </button>
-            ))}
+            {(() => {
+              // Filter categories to only show those with available products for the selected gender
+              const availableCategories = CATEGORIES.filter(cat => {
+                const hasProducts = products.some(product => {
+                  const matchesCategory = product.category === cat.key;
+                  const matchesGender = product.gender === selectedGender || 
+                    (product.gender === 'unisex' && (selectedGender === 'men' || selectedGender === 'women'));
+                  return matchesCategory && matchesGender;
+                });
+                return hasProducts;
+              });
+
+              return availableCategories.map(cat => (
+                <button
+                  key={cat.key}
+                  className={`px-8 py-2 rounded-full font-semibold border border-black bg-white text-black transition-all duration-300 ease-in-out
+                    focus-visible:ring-2 focus-visible:ring-[var(--brand-red)] focus-visible:ring-offset-2
+                    ${selectedCategory === cat.key ? 'shadow-[0_2px_0_0_var(--brand-red)]' : ''}
+                    group hover:scale-105 focus:scale-105 hover:shadow-[0_4px_0_0_var(--brand-red)] focus:shadow-[0_4px_0_0_var(--brand-red)] active:scale-100`
+                  }
+                  style={selectedCategory === cat.key ? { boxShadow: '0 2px 0 0 var(--brand-red)' } : {}}
+                  onClick={() => setSelectedCategory(cat.key)}
+                  tabIndex={0}
+                >
+                  <span className="transition text-black group-hover:bg-gradient-to-r group-hover:from-[var(--brand-red)] group-hover:to-[var(--brand-blue)] group-hover:bg-clip-text group-hover:text-transparent">{cat.label}</span>
+                </button>
+              ));
+            })()}
           </div>
 
           {/* Product Selector: Show for customizable categories */}
@@ -416,7 +461,10 @@ export default function CustomDesignPage() {
               </h2>
               <div className="flex flex-wrap gap-4 justify-center">
                 {(() => {
-                  const customizableProducts = products.filter((p: any) => p.customizable && p.gender === selectedGender && p.category === selectedCategory);
+                  const customizableProducts = products.filter((p: any) => p.customizable && 
+                    (p.gender === selectedGender || 
+                     (p.gender === 'unisex' && (selectedGender === 'men' || selectedGender === 'women'))) && 
+                    p.category === selectedCategory);
                   
                   if (customizableProducts.length === 0) {
                     const categoryName = selectedCategory === 'jerseys' ? 'Jerseys' : selectedCategory === 'tanktops' ? 'Tank Tops' : 'T-Shirts';

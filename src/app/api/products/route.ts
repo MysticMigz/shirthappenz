@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
     // Get query parameters
     const { searchParams } = new URL(request.url);
     const category = searchParams.get('category');
+    const gender = searchParams.get('gender');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
     const sortBy = searchParams.get('sortBy');
@@ -20,6 +21,17 @@ export async function GET(request: NextRequest) {
     const query: any = {};
     if (category) {
       query.category = category;
+    }
+    if (gender) {
+      // Include unisex products in both men's and women's categories
+      if (gender === 'men' || gender === 'women') {
+        query.$or = [
+          { gender: gender },
+          { gender: 'unisex' }
+        ];
+      } else {
+        query.gender = gender;
+      }
     }
     if (search) {
       query.$text = { $search: search };
