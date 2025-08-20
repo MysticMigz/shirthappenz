@@ -76,11 +76,11 @@ const Header = () => {
             {/* Logo */}
             <Link href="/" className="flex items-center group">
               <Image
-                src="https://res.cloudinary.com/dfjgvffou/image/upload/v1753210261/logo_yqmosx.png"
-                alt="Mr SHIRT PERSONALISATION Logo"
+                src="/images/logo.png"
+                alt="MR SHIRT PERSONALISATION Logo"
                 width={600}
                 height={240}
-                className="h-20 w-auto sm:h-24 md:h-28 lg:h-32 brightness-110 transition-transform duration-300 ease-in-out group-hover:scale-110"
+                                 className="h-24 w-auto sm:h-28 md:h-32 lg:h-36 brightness-110 transition-transform duration-300 ease-in-out group-hover:scale-110"
                 style={{ border: 'none', outline: 'none', boxShadow: 'none', background: 'transparent' }}
                 priority
               />
@@ -226,11 +226,8 @@ const Header = () => {
               <Link href="/products" className="text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium transition">
                 Products
               </Link>
-              <Link href="/design/jersey" className="text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium transition">
-                Design Jersey
-              </Link>
               <Link href="/design" className="text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium transition">
-                Online Design
+                Custom Design
               </Link>
               <Link href="/help" className="text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium transition">
                 Help
@@ -358,18 +355,11 @@ const Header = () => {
                   Products
                 </Link>
                 <Link 
-                  href="/design/jersey" 
-                  className="block py-3 px-4 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Design Jersey
-                </Link>
-                <Link 
                   href="/design" 
                   className="block py-3 px-4 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  Design Online
+                  Custom Design
                 </Link>
                 <Link 
                   href="/help" 

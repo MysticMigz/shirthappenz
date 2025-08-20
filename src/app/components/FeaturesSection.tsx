@@ -128,22 +128,22 @@ const FeaturesSection = () => {
 
         {/* CTA section */}
         <div className="text-center bg-gradient-to-r from-[var(--brand-red)] to-[var(--brand-blue)] rounded-lg p-8 text-white">
-          <h3 className="text-2xl font-bold mb-4">Ready to Create Your Custom Design?</h3>
+          <h3 className="text-2xl font-bold mb-4">Ready to Order Your Custom Apparel?</h3>
           <p className="text-lg mb-6 opacity-90">
-            Start designing today and receive your custom t-shirt within days!
+            Browse our products and place your order today for fast delivery!
           </p>
           <div className="space-x-4">
             <Link
-              href="/design"
+              href="/products"
               className="inline-block bg-white text-black px-8 py-3 rounded-lg font-bold hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent transition-colors"
             >
-              Start Designing
+              Browse Products
             </Link>
             <Link
-              href="/products"
+              href="/contact"
               className="inline-block border-2 border-white text-white px-8 py-3 rounded-lg font-bold hover:bg-white hover:text-black transition-colors"
             >
-              Browse Products
+              Contact Us
             </Link>
           </div>
         </div>

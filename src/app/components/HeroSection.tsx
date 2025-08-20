@@ -16,7 +16,7 @@ const HeroSection = () => {
       subtitle: "from £5 per item",
       description: "Professional Sports Kit Printing - Perfect for Teams!",
       buttonText: "ORDER NOW",
-      buttonLink: "/design/jersey",
+      buttonLink: "/products/jerseys",
       bgGradient: "from-blue-500 to-indigo-600",
       textColor: "text-white"
     },
@@ -24,9 +24,9 @@ const HeroSection = () => {
       id: 2,
       title: "T-shirt with Full Colour Print",
       subtitle: "for only £12",
-      description: "Design Today - Receive it This Week!",
+      description: "High Quality Custom T-Shirts - Fast Delivery!",
       buttonText: "ORDER NOW",
-      buttonLink: "/design",
+      buttonLink: "/products/tshirts",
       bgGradient: "from-purple-600 to-pink-600",
       textColor: "text-white"
     },
@@ -34,9 +34,9 @@ const HeroSection = () => {
       id: 3,
       title: "Custom Hoodies",
       subtitle: "Starting at £20",
-      description: "Perfect for any season - Design yours today!",
+      description: "Perfect for any season - Order yours today!",
       buttonText: "ORDER NOW",
-      buttonLink: "/design/hoodie",
+      buttonLink: "/products/hoodies",
       bgGradient: "from-blue-600 to-purple-600",
       textColor: "text-white"
     },
@@ -46,7 +46,7 @@ const HeroSection = () => {
       subtitle: "Trendy & Comfortable",
       description: "Available in all sizes and colors",
       buttonText: "ORDER NOW",
-      buttonLink: "/design/oversized",
+      buttonLink: "/products/tshirts",
       bgGradient: "from-orange-500 to-red-600",
       textColor: "text-white"
     },

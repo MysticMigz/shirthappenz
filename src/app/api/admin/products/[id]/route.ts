@@ -55,6 +55,43 @@ export async function PUT(
     
     const data = await request.json();
     
+    // Validate barcode data if present
+    if (data.barcodes && Array.isArray(data.barcodes)) {
+      for (let i = 0; i < data.barcodes.length; i++) {
+        const barcode = data.barcodes[i];
+        if (!barcode.colorName || barcode.colorName.trim() === '') {
+          return NextResponse.json(
+            { error: `Barcode ${i + 1}: colorName is required and cannot be empty` },
+            { status: 400 }
+          );
+        }
+        if (!barcode.colorHex || barcode.colorHex.trim() === '') {
+          return NextResponse.json(
+            { error: `Barcode ${i + 1}: colorHex is required and cannot be empty` },
+            { status: 400 }
+          );
+        }
+        if (!barcode.value || barcode.value.trim() === '') {
+          return NextResponse.json(
+            { error: `Barcode ${i + 1}: value is required and cannot be empty` },
+            { status: 400 }
+          );
+        }
+        if (!barcode.size || barcode.size.trim() === '') {
+          return NextResponse.json(
+            { error: `Barcode ${i + 1}: size is required and cannot be empty` },
+            { status: 400 }
+          );
+        }
+        if (!barcode.sizeCode || barcode.sizeCode.trim() === '') {
+          return NextResponse.json(
+            { error: `Barcode ${i + 1}: sizeCode is required and cannot be empty` },
+            { status: 400 }
+          );
+        }
+      }
+    }
+    
     // If only updating stock, skip other validations
     if (Object.keys(data).length === 1 && data.stock) {
       // Validate stock data

@@ -356,10 +356,10 @@ export default function QuickTipsPage() {
               Contact Our Team
             </Link>
             <Link 
-              href="/design" 
+              href="/products" 
               className="inline-flex items-center justify-center px-6 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition-colors"
             >
-              Start Designing
+              Browse Products
             </Link>
           </div>
         </section>

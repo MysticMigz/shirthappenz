@@ -80,18 +80,19 @@ const Footer = () => {
 
           {/* Quick Actions */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <Link href="/design" className="text-gray-300 hover:text-purple-400 transition-colors">
-                  Start Designing
-                </Link>
-              </li>
-              <li>
-                <Link href="/help/quick-tips" className="text-gray-300 hover:text-purple-400 transition-colors">
-                  Quick Tips
-                </Link>
-              </li>
+                          <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
+              <ul className="space-y-2 text-sm">
+                <li>
+                  <Link href="/design" className="text-gray-300 hover:text-purple-400 transition-colors">
+                    Custom Design
+                  </Link>
+                </li>
+
+                <li>
+                  <Link href="/help/quick-tips" className="text-gray-300 hover:text-purple-400 transition-colors">
+                    Quick Tips
+                  </Link>
+                </li>
               <li>
                 <Link href="/faq" className="text-gray-300 hover:text-purple-400 transition-colors">
                   FAQs
