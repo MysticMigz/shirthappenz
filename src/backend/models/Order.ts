@@ -115,7 +115,8 @@ const OrderSchema = new mongoose.Schema({
     shippingMethod: {
       type: String,
       required: true,
-      enum: ['Standard Delivery', 'Express Delivery', 'Next Day Delivery']
+      enum: ['Standard Delivery'],
+      default: 'Standard Delivery'
     },
     shippingCost: {
       type: Number,

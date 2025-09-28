@@ -40,9 +40,7 @@ interface VoucherDiscount {
 
 const DEFAULT_SHIPPING_METHOD = 'Standard Delivery';
 const SHIPPING_COSTS = { 
-  'Standard Delivery': 5.99, 
-  'Express Delivery': 12.99,
-  'Next Day Delivery': 19.99 
+  'Standard Delivery': 5.99
 };
 
 export default function CheckoutPage() {
@@ -52,7 +50,7 @@ export default function CheckoutPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isProcessingOrder, setIsProcessingOrder] = useState(false);
   const [error, setError] = useState<string>();
-  const [currentShippingMethod, setCurrentShippingMethod] = useState<keyof typeof SHIPPING_COSTS>(DEFAULT_SHIPPING_METHOD);
+  const currentShippingMethod = DEFAULT_SHIPPING_METHOD;
   const [voucherCode, setVoucherCode] = useState('');
   const [voucherDiscount, setVoucherDiscount] = useState<VoucherDiscount | null>(null);
   const [isValidatingVoucher, setIsValidatingVoucher] = useState(false);
@@ -68,11 +66,6 @@ export default function CheckoutPage() {
     }
   }, [items, router, step.clientSecret, isLoading, isProcessingOrder]);
 
-  const handleShippingMethodChange = (shippingMethod: keyof typeof SHIPPING_COSTS) => {
-    setCurrentShippingMethod(shippingMethod);
-    // No need to recalculate voucher discount - it should remain the same
-    // Only the total will change based on the new shipping cost
-  };
 
   const handleVoucherValidation = async () => {
     if (!voucherCode.trim()) {
@@ -453,8 +446,6 @@ export default function CheckoutPage() {
                 ) : (
                   <ShippingForm 
                     onSubmit={handleShippingSubmit}
-                    onShippingMethodChange={handleShippingMethodChange}
-                    currentShippingMethod={currentShippingMethod}
                   />
                 )}
               </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 export interface ShippingDetails {
   firstName: string;
@@ -11,22 +11,18 @@ export interface ShippingDetails {
   city: string;
   county: string;
   postcode: string;
-  shippingMethod: 'Standard Delivery' | 'Express Delivery' | 'Next Day Delivery';
+  shippingMethod: 'Standard Delivery';
 }
 
 interface ShippingFormProps {
   onSubmit: (shippingDetails: ShippingDetails & { shippingCost: number }) => void;
-  onShippingMethodChange?: (shippingMethod: keyof typeof SHIPPING_COSTS) => void;
-  currentShippingMethod?: keyof typeof SHIPPING_COSTS;
 }
 
 const SHIPPING_COSTS = {
-  'Standard Delivery': 5.99,
-  'Express Delivery': 12.99,
-  'Next Day Delivery': 19.99
+  'Standard Delivery': 5.99
 };
 
-export default function ShippingForm({ onSubmit, onShippingMethodChange, currentShippingMethod }: ShippingFormProps) {
+export default function ShippingForm({ onSubmit }: ShippingFormProps) {
   const [formData, setFormData] = useState<ShippingDetails>({
     firstName: '',
     lastName: '',
@@ -36,15 +32,8 @@ export default function ShippingForm({ onSubmit, onShippingMethodChange, current
     city: '',
     county: '',
     postcode: '',
-    shippingMethod: currentShippingMethod || 'Standard Delivery'
+    shippingMethod: 'Standard Delivery'
   });
-
-  // Update form data when currentShippingMethod prop changes
-  useEffect(() => {
-    if (currentShippingMethod && currentShippingMethod !== formData.shippingMethod) {
-      setFormData(prev => ({ ...prev, shippingMethod: currentShippingMethod }));
-    }
-  }, [currentShippingMethod]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,11 +46,6 @@ export default function ShippingForm({ onSubmit, onShippingMethodChange, current
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    
-    // If shipping method changed, notify parent component
-    if (name === 'shippingMethod' && onShippingMethodChange) {
-      onShippingMethodChange(value as keyof typeof SHIPPING_COSTS);
-    }
   };
 
   return (
@@ -213,82 +197,27 @@ export default function ShippingForm({ onSubmit, onShippingMethodChange, current
         {/* Shipping Method */}
         <div className="mb-8">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Shipping Method</h3>
-          <div className="space-y-3">
-            <label className="relative flex p-4 border border-gray-200 rounded-lg cursor-pointer hover:border-indigo-500 transition-all duration-200">
-              <input
-                type="radio"
-                name="shippingMethod"
-                value="Standard Delivery"
-                checked={formData.shippingMethod === 'Standard Delivery'}
-                onChange={handleChange}
-                className="sr-only"
-              />
+          <div className="p-4 border border-indigo-200 rounded-lg bg-indigo-50">
+            <div className="flex items-center justify-between">
               <div className="flex items-center">
-                <div className={`w-5 h-5 rounded-full border-2 ${formData.shippingMethod === 'Standard Delivery' ? 'border-indigo-500 bg-indigo-500' : 'border-gray-300'} flex items-center justify-center`}>
-                  {formData.shippingMethod === 'Standard Delivery' && (
-                    <div className="w-2 h-2 rounded-full bg-white"></div>
-                  )}
+                <div className="w-5 h-5 rounded-full border-2 border-indigo-500 bg-indigo-500 flex items-center justify-center">
+                  <div className="w-2 h-2 rounded-full bg-white"></div>
                 </div>
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-900">Standard Delivery</p>
-                  <p className="text-sm text-gray-500">3-5 business days</p>
+                  <p className="text-sm text-gray-600">3-5 business days</p>
                 </div>
               </div>
-              <div className="ml-auto">
+              <div>
                 <p className="text-sm font-medium text-gray-900">£5.99</p>
               </div>
-            </label>
-
-            <label className="relative flex p-4 border border-gray-200 rounded-lg cursor-pointer hover:border-indigo-500 transition-all duration-200">
-              <input
-                type="radio"
-                name="shippingMethod"
-                value="Express Delivery"
-                checked={formData.shippingMethod === 'Express Delivery'}
-                onChange={handleChange}
-                className="sr-only"
-              />
-              <div className="flex items-center">
-                <div className={`w-5 h-5 rounded-full border-2 ${formData.shippingMethod === 'Express Delivery' ? 'border-indigo-500 bg-indigo-500' : 'border-gray-300'} flex items-center justify-center`}>
-                  {formData.shippingMethod === 'Express Delivery' && (
-                    <div className="w-2 h-2 rounded-full bg-white"></div>
-                  )}
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-900">Express Delivery</p>
-                  <p className="text-sm text-gray-500">1-2 business days</p>
-                </div>
-              </div>
-              <div className="ml-auto">
-                <p className="text-sm font-medium text-gray-900">£12.99</p>
-              </div>
-            </label>
-
-            <label className="relative flex p-4 border border-gray-200 rounded-lg cursor-pointer hover:border-indigo-500 transition-all duration-200">
-              <input
-                type="radio"
-                name="shippingMethod"
-                value="Next Day Delivery"
-                checked={formData.shippingMethod === 'Next Day Delivery'}
-                onChange={handleChange}
-                className="sr-only"
-              />
-              <div className="flex items-center">
-                <div className={`w-5 h-5 rounded-full border-2 ${formData.shippingMethod === 'Next Day Delivery' ? 'border-indigo-500 bg-indigo-500' : 'border-gray-300'} flex items-center justify-center`}>
-                  {formData.shippingMethod === 'Next Day Delivery' && (
-                    <div className="w-2 h-2 rounded-full bg-white"></div>
-                  )}
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-900">Next Day Delivery</p>
-                  <p className="text-sm text-gray-500">Next business day</p>
-                </div>
-              </div>
-              <div className="ml-auto">
-                <p className="text-sm font-medium text-gray-900">£19.99</p>
-              </div>
-            </label>
+            </div>
           </div>
+          <input
+            type="hidden"
+            name="shippingMethod"
+            value="Standard Delivery"
+          />
         </div>
       </div>
 

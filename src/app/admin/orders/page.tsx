@@ -325,6 +325,23 @@ export default function AdminOrdersPage() {
     return 'text-gray-600';
   };
 
+  const getCancellationWindowInfo = (order: Order) => {
+    const orderDate = new Date(order.createdAt);
+    const currentDate = new Date();
+    const hoursSinceOrder = (currentDate.getTime() - orderDate.getTime()) / (1000 * 60 * 60);
+    const remainingHours = Math.max(0, 24 - hoursSinceOrder);
+    
+    if (hoursSinceOrder > 24) {
+      return { expired: true, message: '24-hour window expired' };
+    }
+    
+    return { 
+      expired: false, 
+      message: `${Math.floor(remainingHours)} hours remaining`,
+      hoursRemaining: Math.floor(remainingHours)
+    };
+  };
+
   const clearAllFilters = () => {
     setReferenceFilter('');
     setCustomerNameFilter('');
@@ -380,15 +397,15 @@ export default function AdminOrdersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
+    <div className="min-h-screen bg-gray-100 p-2 sm:p-4 lg:p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-6 flex flex-col lg:flex-row justify-between items-start lg:items-center space-y-4 lg:space-y-0">
-          <h1 className="text-2xl font-semibold text-gray-900">Production & Orders Management</h1>
-          <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
+        <div className="mb-4 sm:mb-6 flex flex-col lg:flex-row justify-between items-start lg:items-center space-y-4 lg:space-y-0">
+          <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Production & Orders Management</h1>
+          <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 lg:space-x-4 w-full lg:w-auto">
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as 'priority' | 'production' | 'date')}
-              className="rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+              className="rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
             >
               <option value="priority">Sort by Delivery Priority</option>
               <option value="production">Sort by Production Status</option>
@@ -397,7 +414,7 @@ export default function AdminOrdersPage() {
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+              className="rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
             >
               <option value="all">All Order Statuses</option>
               <option value="payment_failed">Payment Failed</option>
@@ -410,7 +427,7 @@ export default function AdminOrdersPage() {
             <select
               value={selectedProductionStatus}
               onChange={(e) => setSelectedProductionStatus(e.target.value)}
-              className="rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+              className="rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-sm"
             >
               <option value="all">All Production Statuses</option>
               <option value="not_started">Not Started</option>
@@ -421,7 +438,7 @@ export default function AdminOrdersPage() {
             </select>
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                 showFilters 
                   ? 'bg-purple-600 text-white hover:bg-purple-700' 
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -677,34 +694,34 @@ export default function AdminOrdersPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">
                     Priority
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
                     Reference
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28">
                     Date & Time
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
                     Customer & Delivery
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40">
                     Items
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
                     Total & Discount
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
                     Order Status
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-28">
                     Production Status
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48">
                     Actions
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
                     Details
                   </th>
                 </tr>
@@ -712,44 +729,51 @@ export default function AdminOrdersPage() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {orders.map((order) => (
                   <tr key={order._id} className="hover:bg-gray-50">
-                    <td className="px-4 py-4 whitespace-nowrap">
+                    <td className="px-3 py-4 whitespace-nowrap">
                       <span className={`text-sm ${getPriorityColor(order.deliveryPriority)}`}>
                         {order.deliveryPriority}
                       </span>
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {order.reference}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDateTime(order.createdAt)}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-500">
-                      <div>
-                        <div className="font-medium">{order.shippingDetails.firstName} {order.shippingDetails.lastName}</div>
-                        <div className="text-xs text-gray-400">{order.shippingDetails.shippingMethod}</div>
-                        <div className="text-xs text-gray-400">{order.shippingDetails.address}</div>
-                        {order.shippingDetails.addressLine2 && (
-                          <div className="text-xs text-gray-400">{order.shippingDetails.addressLine2}</div>
-                        )}
-                        <div className="text-xs text-gray-400">{order.shippingDetails.city}, {order.shippingDetails.county}</div>
-                        <div className="text-xs text-gray-400">{order.shippingDetails.postcode}</div>
-                        <div className="text-xs text-gray-400">{order.shippingDetails.country}</div>
+                    <td className="px-3 py-4 text-sm font-medium text-gray-900">
+                      <div className="truncate max-w-32" title={order.reference}>
+                        {order.reference}
                       </div>
                     </td>
-                    <td className="px-4 py-4 text-sm text-gray-500">
-                      <div className="space-y-1">
+                    <td className="px-3 py-4 text-sm text-gray-500">
+                      <div className="text-xs">
+                        {formatDateTime(order.createdAt)}
+                      </div>
+                    </td>
+                    <td className="px-3 py-4 text-sm text-gray-500">
+                      <div className="max-w-48">
+                        <div className="font-medium truncate">{order.shippingDetails.firstName} {order.shippingDetails.lastName}</div>
+                        <div className="text-xs text-gray-400 truncate">{order.shippingDetails.shippingMethod}</div>
+                        <div className="text-xs text-gray-400 truncate">{order.shippingDetails.address}</div>
+                        {order.shippingDetails.addressLine2 && (
+                          <div className="text-xs text-gray-400 truncate">{order.shippingDetails.addressLine2}</div>
+                        )}
+                        <div className="text-xs text-gray-400 truncate">{order.shippingDetails.city}, {order.shippingDetails.county}</div>
+                        <div className="text-xs text-gray-400 truncate">{order.shippingDetails.postcode}</div>
+                        <div className="text-xs text-gray-400 truncate">{order.shippingDetails.country}</div>
+                      </div>
+                    </td>
+                    <td className="px-3 py-4 text-sm text-gray-500">
+                      <div className="space-y-1 max-w-40">
                         {order.items.map((item, index) => (
                           <div key={index} className="text-xs">
-                            {item.quantity}x {item.name} ({item.size})
+                            <div className="truncate">
+                              {item.quantity}x {item.name}
+                            </div>
+                            <div className="text-gray-400">({item.size})</div>
                             {item.customization?.isCustomized && (
-                              <span className="ml-1 text-purple-600">• Custom</span>
+                              <span className="text-purple-600">• Custom</span>
                             )}
                           </div>
                         ))}
                       </div>
                     </td>
-                    <td className="px-4 py-4 text-sm text-gray-500">
-                      <div className="space-y-1">
+                    <td className="px-3 py-4 text-sm text-gray-500">
+                      <div className="space-y-1 max-w-32">
                         {(() => {
                           const voucherInfo = formatVoucherDiscount(order);
                           if (voucherInfo) {
@@ -761,7 +785,7 @@ export default function AdminOrdersPage() {
                                 <div className="text-sm font-medium text-green-600">
                                   £{voucherInfo.finalTotal.toFixed(2)}
                                 </div>
-                                <div className="text-xs text-purple-600 font-medium">
+                                <div className="text-xs text-purple-600 font-medium truncate">
                                   {voucherInfo.code} - {voucherInfo.discountText}
                                 </div>
                                 <div className="text-xs text-green-600">
@@ -779,7 +803,7 @@ export default function AdminOrdersPage() {
                         })()}
                       </div>
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
+                    <td className="px-3 py-4">
                       {order.metadata?.refundAmount ? (
                         <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
                           REFUNDED
@@ -790,13 +814,13 @@ export default function AdminOrdersPage() {
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
+                    <td className="px-3 py-4">
                       <span className={getStatusBadgeClass(order.productionStatus, 'production')}>
                         {order.productionStatus.replace('_', ' ').toUpperCase()}
                       </span>
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <div className="space-y-2">
+                    <td className="px-3 py-4 text-sm text-gray-500">
+                      <div className="space-y-2 max-w-48">
                         {/* Production Status Actions */}
                         <div>
                           <label className="block text-xs font-medium text-gray-700 mb-1">Production:</label>
@@ -805,7 +829,7 @@ export default function AdminOrdersPage() {
                               <button
                                 key={nextStatus}
                                 onClick={() => handleProductionStatusChange(order._id, nextStatus)}
-                                className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200"
+                                className="px-1 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200"
                               >
                                 {nextStatus.replace('_', ' ')}
                               </button>
@@ -818,7 +842,7 @@ export default function AdminOrdersPage() {
                           <label className="block text-xs font-medium text-gray-700 mb-1">Order:</label>
                           {order.metadata?.refundAmount ? (
                             <div className="text-xs text-gray-500 italic">
-                              Order has been refunded - status cannot be changed
+                              Refunded - no changes
                             </div>
                           ) : (
                             <div className="flex flex-wrap gap-1">
@@ -826,7 +850,7 @@ export default function AdminOrdersPage() {
                                 <button
                                   key={nextStatus}
                                   onClick={() => handleStatusChange(order._id, nextStatus)}
-                                  className={`px-2 py-1 rounded text-xs font-medium ${
+                                  className={`px-1 py-0.5 rounded text-xs font-medium ${
                                     nextStatus === 'cancelled'
                                       ? 'bg-red-100 text-red-700 hover:bg-red-200'
                                       : 'bg-green-100 text-green-700 hover:bg-green-200'
@@ -839,13 +863,30 @@ export default function AdminOrdersPage() {
                           )}
                         </div>
 
+                        {/* Cancellation Window Info */}
+                        {!order.cancellationRequested && order.status !== 'cancelled' && (
+                          <div className="bg-blue-50 border border-blue-200 rounded p-1">
+                            <label className="block text-xs font-medium text-blue-700 mb-1">Cancellation Window:</label>
+                            <div className="text-xs text-blue-600">
+                              {(() => {
+                                const windowInfo = getCancellationWindowInfo(order);
+                                return (
+                                  <span className={windowInfo.expired ? 'text-red-600' : 'text-blue-600'}>
+                                    {windowInfo.message}
+                                  </span>
+                                );
+                              })()}
+                            </div>
+                          </div>
+                        )}
+
                         {/* Cancellation Information */}
                         {order.cancellationRequested && (
-                          <div className="bg-red-50 border border-red-200 rounded p-2">
+                          <div className="bg-red-50 border border-red-200 rounded p-1">
                             <label className="block text-xs font-medium text-red-700 mb-1">Cancellation:</label>
                             <div className="text-xs text-red-600 space-y-1">
                               <p><strong>Reason:</strong> {order.cancellationReason}</p>
-                              <p><strong>Requested by:</strong> {order.cancellationRequestedBy}</p>
+                              <p><strong>By:</strong> {order.cancellationRequestedBy}</p>
                               <p><strong>Date:</strong> {order.cancellationRequestedAt ? new Date(order.cancellationRequestedAt).toLocaleDateString() : 'N/A'}</p>
                               {order.cancellationNotes && (
                                 <p><strong>Notes:</strong> {order.cancellationNotes}</p>
@@ -856,7 +897,7 @@ export default function AdminOrdersPage() {
 
                         {/* Refund Information */}
                         {order.metadata?.refundAmount && (
-                          <div className="bg-green-50 border border-green-200 rounded p-2">
+                          <div className="bg-green-50 border border-green-200 rounded p-1">
                             <label className="block text-xs font-medium text-green-700 mb-1">Refund:</label>
                             <div className="text-xs text-green-600 space-y-1">
                               <p><strong>Amount:</strong> £{order.metadata.refundAmount.toFixed(2)}</p>
@@ -864,7 +905,7 @@ export default function AdminOrdersPage() {
                               {order.metadata.refundNotes && (
                                 <p><strong>Notes:</strong> {order.metadata.refundNotes}</p>
                               )}
-                              <p><strong>Processed by:</strong> {order.metadata.refundedBy || 'N/A'}</p>
+                              <p><strong>By:</strong> {order.metadata.refundedBy || 'N/A'}</p>
                               <p><strong>Date:</strong> {order.metadata.refundedAt ? new Date(order.metadata.refundedAt).toLocaleDateString() : 'N/A'}</p>
                               {order.metadata.stripeRefundId && (
                                 <p><strong>Stripe ID:</strong> {order.metadata.stripeRefundId}</p>
@@ -887,7 +928,7 @@ export default function AdminOrdersPage() {
                               <div className="flex gap-1">
                                 <button
                                   onClick={() => handleNotesUpdate(order._id)}
-                                  className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200"
+                                  className="px-1 py-0.5 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200"
                                 >
                                   Save
                                 </button>
@@ -896,7 +937,7 @@ export default function AdminOrdersPage() {
                                     setEditingNotes(null);
                                     setNotesText('');
                                   }}
-                                  className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                                  className="px-1 py-0.5 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
                                 >
                                   Cancel
                                 </button>
@@ -908,7 +949,7 @@ export default function AdminOrdersPage() {
                                 setEditingNotes(order._id);
                                 setNotesText(order.productionNotes || '');
                               }}
-                              className="px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                              className="px-1 py-0.5 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
                             >
                               {order.productionNotes ? 'Edit Notes' : 'Add Notes'}
                             </button>
@@ -916,12 +957,12 @@ export default function AdminOrdersPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-3 py-4 text-sm text-gray-500">
                       <Link
                         href={`/admin/orders/${order._id}`}
-                        className="text-purple-600 hover:text-purple-900"
+                        className="text-purple-600 hover:text-purple-900 text-xs"
                       >
-                        View Details
+                        View Det
                       </Link>
                     </td>
                   </tr>

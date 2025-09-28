@@ -17,7 +17,7 @@ const AboutPage = () => (
         Welcome to <strong>MR Shirt Personalisation</strong>! We are passionate about helping you create custom apparel that expresses your unique style, brand, or team spirit.
       </p>
       <p className="text-lg mb-4 text-gray-700">
-        <strong>What does the "MR" stand for?</strong> It stands for <span className="font-semibold">Miguel</span> and <span className="font-semibold">Roshan</span> — the founders of MR Shirt Personalisation. Our journey began with a shared vision to make high-quality, personalised clothing accessible and fun for everyone.
+        <strong>What does the &ldquo;MR&rdquo; stand for?</strong> It stands for <span className="font-semibold">Miguel</span> and <span className="font-semibold">Roshan</span> — the founders of MR Shirt Personalisation. Our journey began with a shared vision to make high-quality, personalised clothing accessible and fun for everyone.
       </p>
       <p className="text-lg mb-4 text-gray-700">
         With backgrounds in design, technology, and a love for creativity, Miguel and Roshan combined their skills to build a platform where anyone can design and order custom t-shirts, hoodies, jerseys, and more. We use the latest printing technologies to ensure your designs look vibrant and last wash after wash.

@@ -111,7 +111,7 @@ interface ShippingDetails {
   county?: string;
   postcode: string;
   country?: string;
-  shippingMethod: string;
+  shippingMethod: 'Standard Delivery';
   shippingCost: number;
 }
 

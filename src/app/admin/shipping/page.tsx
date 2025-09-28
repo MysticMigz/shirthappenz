@@ -24,7 +24,7 @@ interface Order {
     address: string;
     city: string;
     postcode: string;
-    shippingMethod: string;
+    shippingMethod: 'Standard Delivery';
     trackingNumber?: string;
     courier?: string;
     estimatedDelivery?: string;

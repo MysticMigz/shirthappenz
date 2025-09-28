@@ -46,7 +46,7 @@ interface Order {
     postcode: string;
     country: string;
     shippingCost: number;
-    shippingMethod: string;
+    shippingMethod: 'Standard Delivery';
   };
   total: number;
   vat: number;
@@ -229,8 +229,10 @@ export default function OrdersPage() {
     
     const orderDate = new Date(order.createdAt);
     const currentDate = new Date();
-    const daysSinceOrder = Math.floor((currentDate.getTime() - orderDate.getTime()) / (1000 * 60 * 60 * 24));
-    const withinCoolingOffPeriod = daysSinceOrder <= 14;
+    const hoursSinceOrder = (currentDate.getTime() - orderDate.getTime()) / (1000 * 60 * 60);
+    
+    // 24-hour cancellation window for customers
+    const withinCancellationWindow = hoursSinceOrder <= 24;
     
     // Check if production has started
     const productionStarted = order.productionStatus === 'in_production' || 
@@ -241,9 +243,14 @@ export default function OrdersPage() {
     // Check if order has custom items
     const hasCustomItems = order.items.some(item => item.customization?.isCustomized);
     
-    // UK Consumer Law: Can cancel within 14 days of receiving goods
+    // Check cancellation window first
+    if (!withinCancellationWindow) {
+      return false;
+    }
+    
+    // For delivered/shipped orders: Can cancel within 24 hours
     if (order.status === 'delivered' || order.status === 'shipped') {
-      return withinCoolingOffPeriod;
+      return true;
     }
     
     // For pending/paid orders: Can cancel before production starts
@@ -257,11 +264,26 @@ export default function OrdersPage() {
     return false;
   };
 
+  const getCancellationWindowInfo = (order: Order) => {
+    const orderDate = new Date(order.createdAt);
+    const currentDate = new Date();
+    const hoursSinceOrder = (currentDate.getTime() - orderDate.getTime()) / (1000 * 60 * 60);
+    const within24Hours = hoursSinceOrder <= 24;
+    const remainingHours = Math.max(0, 24 - hoursSinceOrder);
+    
+    return {
+      within24Hours,
+      remainingHours: Math.floor(remainingHours),
+      hoursSinceOrder
+    };
+  };
+
   const getCancellationStatus = (order: Order) => {
     const orderDate = new Date(order.createdAt);
     const currentDate = new Date();
+    const hoursSinceOrder = (currentDate.getTime() - orderDate.getTime()) / (1000 * 60 * 60);
     const daysSinceOrder = Math.floor((currentDate.getTime() - orderDate.getTime()) / (1000 * 60 * 60 * 24));
-    const withinCoolingOffPeriod = daysSinceOrder <= 14;
+    const withinCancellationWindow = hoursSinceOrder <= 24;
     
     const productionStarted = order.productionStatus === 'in_production' || 
                              order.productionStatus === 'quality_check' || 
@@ -278,11 +300,14 @@ export default function OrdersPage() {
       return { canCancel: false, message: 'Order already cancelled' };
     }
     
+    // Check 24-hour window first
+    if (!withinCancellationWindow) {
+      return { canCancel: false, message: 'Order cannot be cancelled after 24 hours of purchase' };
+    }
+    
     if (order.status === 'delivered' || order.status === 'shipped') {
-      if (!withinCoolingOffPeriod) {
-        return { canCancel: false, message: '14-day cancellation period expired' };
-      }
-      return { canCancel: true, message: `Can cancel until ${new Date(orderDate.getTime() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString()}` };
+      const remainingHours = Math.max(0, 24 - hoursSinceOrder);
+      return { canCancel: true, message: `Can cancel for ${Math.floor(remainingHours)} more hours` };
     }
     
     if (order.status === 'pending' || order.status === 'paid') {
@@ -292,7 +317,8 @@ export default function OrdersPage() {
       if (productionStarted) {
         return { canCancel: false, message: 'Cannot cancel - production has started' };
       }
-      return { canCancel: true, message: 'Can cancel before production starts' };
+      const remainingHours = Math.max(0, 24 - hoursSinceOrder);
+      return { canCancel: true, message: `Can cancel for ${Math.floor(remainingHours)} more hours` };
     }
     
     return { canCancel: false, message: 'Cannot cancel at this stage' };
@@ -565,9 +591,12 @@ export default function OrdersPage() {
                         
                         {(() => {
                           const cancellationStatus = getCancellationStatus(order);
-                          return (
-                            <>
-                              {cancellationStatus.canCancel ? (
+                          const windowInfo = getCancellationWindowInfo(order);
+                          
+                          // Only show cancellation button if within 24 hours AND can cancel
+                          if (windowInfo.within24Hours && cancellationStatus.canCancel) {
+                            return (
+                              <div className="space-y-2">
                                 <button
                                   onClick={() => setCancellationModal({
                                     isOpen: true,
@@ -578,13 +607,29 @@ export default function OrdersPage() {
                                 >
                                   Cancel Order
                                 </button>
-                              ) : (
+                                <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                                  ⏰ {windowInfo.remainingHours} hours left to cancel
+                                </div>
+                              </div>
+                            );
+                          } else if (!windowInfo.within24Hours) {
+                            return (
+                              <div className="space-y-1">
                                 <span className="text-xs text-gray-500 italic">
-                                  {cancellationStatus.message}
+                                  Cancellation window expired (24 hours)
                                 </span>
-                              )}
-                            </>
-                          );
+                                <div className="text-xs text-red-600 bg-red-50 px-2 py-1 rounded">
+                                  ⚠️ Cannot cancel - 24 hour window expired
+                                </div>
+                              </div>
+                            );
+                          } else {
+                            return (
+                              <span className="text-xs text-gray-500 italic">
+                                {cancellationStatus.message}
+                              </span>
+                            );
+                          }
                         })()}
                         {order.cancellationRequested && order.cancellationReason && (
                           <div className="text-sm text-gray-500">

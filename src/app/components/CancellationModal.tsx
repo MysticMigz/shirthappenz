@@ -67,6 +67,12 @@ export default function CancellationModal({
             </button>
           </div>
 
+          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4">
+            <p className="text-sm text-yellow-800">
+              <strong>Important:</strong> Orders can only be cancelled within 24 hours of purchase.
+            </p>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -126,11 +132,11 @@ export default function CancellationModal({
                 </div>
                 <div className="ml-3">
                   <h3 className="text-sm font-medium text-yellow-800">
-                    UK Consumer Rights - Cancellation Policy
+                    Cancellation Policy
                   </h3>
                   <div className="mt-2 text-sm text-yellow-700">
                     <ul className="list-disc list-inside space-y-1">
-                      <li><strong>14-day cooling-off period:</strong> You can cancel within 14 days of receiving your goods</li>
+                      <li><strong>24-hour window:</strong> Orders can only be cancelled within 24 hours of purchase</li>
                       <li><strong>Before production:</strong> Orders can be cancelled at any time before we begin production</li>
                       <li><strong>Custom items:</strong> Once production starts, custom-made items cannot be cancelled</li>
                       <li><strong>Full refund:</strong> Refunds processed within 5-10 working days</li>

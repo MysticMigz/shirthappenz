@@ -209,7 +209,7 @@ export const orderSchema = z.object({
     email: emailSchema,
     phone: phoneSchema,
     address: addressSchema,
-    shippingMethod: z.string().min(1, 'Shipping method is required'),
+    shippingMethod: z.literal('Standard Delivery'),
     shippingCost: z.number().min(0, 'Shipping cost must be non-negative')
   }),
   total: z.number().min(0.01, 'Total must be greater than 0'),

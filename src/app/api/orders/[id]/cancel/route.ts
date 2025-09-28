@@ -61,10 +61,12 @@ export async function POST(
     // Check if order can be cancelled based on UK consumer law
     const orderDate = new Date(order.createdAt);
     const currentDate = new Date();
+    const hoursSinceOrder = (currentDate.getTime() - orderDate.getTime()) / (1000 * 60 * 60);
     const daysSinceOrder = Math.floor((currentDate.getTime() - orderDate.getTime()) / (1000 * 60 * 60 * 24));
     
-    // UK Consumer Law: 14-day cooling-off period
-    const withinCoolingOffPeriod = daysSinceOrder <= 14;
+    // For customers: 24-hour cancellation window
+    // For admins: 14-day cooling-off period (UK Consumer Law)
+    const withinCancellationWindow = user.isAdmin ? daysSinceOrder <= 14 : hoursSinceOrder <= 24;
     
     // Check if production has started
     const productionStarted = order.productionStatus === 'in_production' || 
@@ -78,22 +80,21 @@ export async function POST(
     let canCancel = false;
     let cancellationError = '';
     
-    if (order.status === 'cancelled') {
+    // Check cancellation window first
+    if (!withinCancellationWindow) {
+      if (user.isAdmin) {
+        cancellationError = '14-day cancellation period has expired';
+      } else {
+        cancellationError = 'Order cannot be cancelled after 24 hours of purchase';
+      }
+    } else if (order.status === 'cancelled') {
       cancellationError = 'Order is already cancelled';
     } else if (order.status === 'delivered') {
-      // For delivered orders, check 14-day cooling-off period
-      if (!withinCoolingOffPeriod) {
-        cancellationError = '14-day cancellation period has expired';
-      } else {
-        canCancel = true;
-      }
+      // For delivered orders, can cancel within window
+      canCancel = true;
     } else if (order.status === 'shipped') {
-      // For shipped orders, check 14-day cooling-off period
-      if (!withinCoolingOffPeriod) {
-        cancellationError = '14-day cancellation period has expired';
-      } else {
-        canCancel = true;
-      }
+      // For shipped orders, can cancel within window
+      canCancel = true;
     } else if (order.status === 'paid' || order.status === 'pending') {
       // For paid/pending orders, check if production has started
       if (productionStarted && hasCustomItems) {
