@@ -569,8 +569,44 @@ export default function DesignPage() {
           <h1 className="text-3xl font-bold text-gray-900">Custom Design Studio</h1>
           <p className="mt-2 text-gray-600">
             Upload your designs and position them on the shirt template
-                  </p>
-                </div>
+          </p>
+        </div>
+
+        {/* Print Size Guidelines */}
+        <div className="mb-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
+          <h2 className="text-xl font-semibold text-blue-900 mb-4 flex items-center">
+            📏 Print Size Guidelines
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
+            <div className="bg-white p-3 rounded-lg border border-blue-100">
+              <div className="font-medium text-blue-900">Left Chest</div>
+              <div className="text-sm text-blue-700">3″- 4″ wide</div>
+            </div>
+            <div className="bg-white p-3 rounded-lg border border-blue-100">
+              <div className="font-medium text-blue-900">Center Chest</div>
+              <div className="text-sm text-blue-700">8″-10″ wide</div>
+            </div>
+            <div className="bg-white p-3 rounded-lg border border-blue-100">
+              <div className="font-medium text-blue-900">Full Front</div>
+              <div className="text-sm text-blue-700">10″-12″ wide</div>
+            </div>
+            <div className="bg-white p-3 rounded-lg border border-blue-100">
+              <div className="font-medium text-blue-900">Upper Back</div>
+              <div className="text-sm text-blue-700">4″- 6″ wide</div>
+            </div>
+            <div className="bg-white p-3 rounded-lg border border-blue-100">
+              <div className="font-medium text-blue-900">Sleeve</div>
+              <div className="text-sm text-blue-700">2″-3″ wide</div>
+            </div>
+          </div>
+          <div className="flex items-start">
+            <div className="text-amber-600 mr-2">⚠️</div>
+            <p className="text-sm text-blue-800">
+              These dimensions represent the final printed size on your garment. 
+              Use the design tools below to position and size your designs accordingly.
+            </p>
+          </div>
+        </div>
 
         {/* 3D Preview Section */}
         {show3DPreview && (

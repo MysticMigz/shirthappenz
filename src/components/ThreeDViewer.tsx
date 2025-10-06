@@ -6,16 +6,18 @@ import { OrbitControls, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 
 interface ThreeDViewerProps {
-  designTexture?: string;
   modelPath?: string;
   hoodieColor?: string;
+  animationEnabled?: boolean;
+  selectedHoodiePart?: string;
   onModelLoad?: (model: any) => void;
   className?: string;
 }
 
 // 3D Model Component
-function HoodieModel({ designTexture, hoodieColor, onModelLoad }: { designTexture?: string; hoodieColor?: string; onModelLoad?: (model: any) => void }) {
+function HoodieModel({ hoodieColor, animationEnabled, selectedHoodiePart, onModelLoad }: { hoodieColor?: string; animationEnabled?: boolean; selectedHoodiePart?: string; onModelLoad?: (model: any) => void }) {
   const meshRef = useRef<THREE.Mesh>(null);
+  const mixerRef = useRef<THREE.AnimationMixer | null>(null);
   const [modelLoaded, setModelLoaded] = useState(false);
   
   console.log('🎯 HoodieModel component rendering');
@@ -25,31 +27,29 @@ function HoodieModel({ designTexture, hoodieColor, onModelLoad }: { designTextur
   
   console.log('📦 GLB model from useGLTF:', glbModel);
   
-  // Apply custom design texture when provided
+  // Apply plain color material (ignore design texture)
   React.useEffect(() => {
-    if (glbModel && designTexture) {
-      console.log('🎨 Applying custom design texture:', designTexture);
+    if (glbModel) {
+      console.log('🎨 Applying plain color material:', hoodieColor);
       
       if (glbModel.scene) {
-        const textureLoader = new THREE.TextureLoader();
-        const customTexture = textureLoader.load(designTexture);
-        
         glbModel.scene.traverse((child) => {
           if (child.isMesh && child.material) {
-            // Create a new material that combines base texture with custom design
+            // Create a simple material with only the selected color
             const material = new THREE.MeshStandardMaterial({
-              map: customTexture,
+              color: hoodieColor || '#8B5CF6', // Use selected color or default purple
               roughness: 0.8,
               metalness: 0.2,
             });
+            
             child.material = material;
             child.material.needsUpdate = true;
-            console.log('✅ Applied custom texture to mesh:', child.name);
+            console.log('✅ Applied plain color material to mesh:', child.name, 'with color:', hoodieColor);
           }
         });
       }
     }
-  }, [glbModel, designTexture]);
+  }, [glbModel, hoodieColor]);
 
   // Notify parent that model is loaded
   React.useEffect(() => {
@@ -84,12 +84,37 @@ function HoodieModel({ designTexture, hoodieColor, onModelLoad }: { designTextur
     }
   }, [glbModel, onModelLoad]);
 
-  // Animation - disabled for now to focus on model loading
-  // useFrame((state) => {
-  //   if (meshRef.current && meshRef.current.rotation) {
-  //     meshRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.5) * 0.1;
-  //   }
-  // });
+  // Animation - play GLB animations if available
+  React.useEffect(() => {
+    if (glbModel && glbModel.animations && glbModel.animations.length > 0) {
+      console.log('🎬 Found animations:', glbModel.animations.length);
+      
+      // Create animation mixer
+      if (glbModel.scene) {
+        mixerRef.current = new THREE.AnimationMixer(glbModel.scene);
+        
+        // Play all animations
+        glbModel.animations.forEach((clip) => {
+          const action = mixerRef.current!.clipAction(clip);
+          action.play();
+          console.log('🎬 Playing animation:', clip.name);
+        });
+      }
+    }
+  }, [glbModel]);
+
+  // Animation frame update
+  useFrame((state, delta) => {
+    // Update animation mixer only if animation is enabled
+    if (mixerRef.current && animationEnabled) {
+      mixerRef.current.update(delta);
+    }
+    
+    // Fallback rotation animation if no GLB animations and animation is enabled
+    if (meshRef.current && meshRef.current.rotation && animationEnabled && (!glbModel?.animations || glbModel.animations.length === 0)) {
+      meshRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.3) * 0.1;
+    }
+  });
 
   // Only use the GLB model - no fallback
   if (glbModel) {
@@ -148,16 +173,17 @@ function LoadingSpinner() {
 
 // Main 3D Viewer Component
 export default function ThreeDViewer({ 
-  designTexture, 
   modelPath, 
   hoodieColor,
+  animationEnabled,
+  selectedHoodiePart,
   onModelLoad, 
   className = "" 
 }: ThreeDViewerProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  console.log('🚀 ThreeDViewer rendering with props:', { designTexture, modelPath, className });
+  console.log('🚀 ThreeDViewer rendering with props:', { modelPath, className });
 
   const handleModelLoad = (model: any) => {
     setIsLoading(false);
@@ -235,8 +261,9 @@ export default function ThreeDViewer({
           
           {/* 3D Model */}
           <HoodieModel 
-            designTexture={designTexture} 
             hoodieColor={hoodieColor}
+            animationEnabled={animationEnabled}
+            selectedHoodiePart={selectedHoodiePart}
             onModelLoad={handleModelLoad}
           />
           

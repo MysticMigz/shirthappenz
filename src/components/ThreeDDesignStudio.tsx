@@ -14,12 +14,116 @@ export default function ThreeDDesignStudio({ className = "" }: ThreeDDesignStudi
   const [isGeneratingTexture, setIsGeneratingTexture] = useState(false);
   const [modelLoaded, setModelLoaded] = useState(false);
   const [hoodieColor, setHoodieColor] = useState('#8B5CF6'); // Default purple
+  const [animationEnabled, setAnimationEnabled] = useState(true);
+  const [selectedHoodiePart, setSelectedHoodiePart] = useState('front');
+  const [designElements, setDesignElements] = useState<any[]>([]);
+  
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   
   console.log('🎨 ThreeDDesignStudio rendering with viewMode:', viewMode);
 
   const handleTextureUpdate = (textureData: string) => {
     setCurrentTexture(textureData);
   };
+
+  const handleDesignElementsUpdate = (elements: any[]) => {
+    setDesignElements(elements);
+  };
+
+  // Load UV template for 2D editor
+  const [uvTemplate, setUvTemplate] = useState<HTMLImageElement | null>(null);
+  
+  React.useEffect(() => {
+    const img = new Image();
+    img.onload = () => {
+      setUvTemplate(img);
+      console.log('✅ UV template loaded for 2D editor:', img.width, 'x', img.height);
+    };
+    img.onerror = () => {
+      console.log('❌ UV template not found for 2D editor');
+    };
+    img.src = '/blender/hoodie-uv-template.png';
+  }, []);
+
+  // Render 2D preview with UV template and images
+  const render2DPreview = React.useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) {
+      console.log('❌ Canvas ref is null');
+      return;
+    }
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      console.log('❌ Canvas context is null');
+      return;
+    }
+
+    console.log('🎨 Rendering 2D preview with UV template');
+
+    // Set canvas size for display
+    canvas.width = 400;
+    canvas.height = 400;
+    
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw UV template as background
+    if (uvTemplate) {
+      ctx.drawImage(uvTemplate, 0, 0, canvas.width, canvas.height);
+      console.log('🎨 Drawing UV template background');
+    } else {
+      // Fallback: Draw basic template
+      ctx.fillStyle = '#f0f0f0';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    
+    // Draw design elements using UV coordinates
+    designElements.forEach((element, index) => {
+      if (element.image) {
+        // Convert UV coordinates to canvas coordinates
+        const x = (element.uvX || 0) * canvas.width;
+        const y = (element.uvY || 0) * canvas.height;
+        const width = (element.uvWidth || 0.2) * canvas.width;
+        const height = (element.uvHeight || 0.2) * canvas.height;
+        
+        console.log(`🎨 Drawing element ${index} in 2D preview:`, {
+          x, y, width, height,
+          uvX: element.uvX, uvY: element.uvY
+        });
+        
+        ctx.save();
+        ctx.globalAlpha = element.opacity || 1;
+        ctx.translate(x + width / 2, y + height / 2);
+        ctx.rotate(((element.rotation || 0) * Math.PI) / 180);
+        ctx.drawImage(
+          element.image,
+          -width / 2,
+          -height / 2,
+          width,
+          height
+        );
+        ctx.restore();
+      }
+    });
+  }, [designElements, uvTemplate]);
+
+  // Render 2D preview when design elements change or view mode changes
+  React.useEffect(() => {
+    if (viewMode === '2d') {
+      // Small delay to ensure canvas is mounted
+      setTimeout(() => {
+        render2DPreview();
+      }, 100);
+    }
+  }, [viewMode, render2DPreview]);
+
+  // Also render when design elements change
+  React.useEffect(() => {
+    if (viewMode === '2d') {
+      render2DPreview();
+    }
+  }, [designElements, render2DPreview]);
 
   const handleModelLoad = (model: any) => {
     setModelLoaded(true);
@@ -84,23 +188,48 @@ export default function ThreeDDesignStudio({ className = "" }: ThreeDDesignStudi
         {/* 3D Viewer */}
         <div className="lg:col-span-2">
           <div className="bg-white rounded-lg shadow-sm p-4">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">3D Preview</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium text-gray-900">3D Preview</h3>
+              <div className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+                {selectedHoodiePart === 'front' && '👕 Front'}
+                {selectedHoodiePart === 'back' && '👕 Back'}
+                {selectedHoodiePart === 'left-arm' && '🦾 Left Arm'}
+                {selectedHoodiePart === 'right-arm' && '🦾 Right Arm'}
+              </div>
+            </div>
             <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
               {viewMode === '3d' ? (
                 <ThreeDViewer
-                  designTexture={currentTexture || undefined}
                   hoodieColor={hoodieColor}
+                  animationEnabled={animationEnabled}
+                  selectedHoodiePart={selectedHoodiePart}
                   onModelLoad={handleModelLoad}
                   className="w-full h-full"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-gray-50">
-                  <div className="text-center">
-                    <div className="text-6xl mb-4">🎨</div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">2D Texture Editor</h3>
-                    <p className="text-gray-600">
-                      Use the controls on the right to design your texture
-                    </p>
+                <div className="w-full h-full bg-gray-50 rounded-lg overflow-hidden">
+                  <div className="relative w-full h-full">
+                    {console.log('🎨 Rendering 2D editor with designElements:', designElements.length)}
+                    <canvas
+                      ref={canvasRef}
+                      className="w-full h-full cursor-crosshair"
+                      style={{ imageRendering: 'pixelated' }}
+                      onClick={() => {
+                        // Force re-render when canvas is clicked
+                        setTimeout(() => {
+                          render2DPreview();
+                        }, 50);
+                      }}
+                    />
+                    {designElements.length === 0 && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
+                        <div className="text-center">
+                          <div className="text-6xl mb-4">🎨</div>
+                          <h3 className="text-lg font-medium text-gray-900 mb-2">2D Texture Editor</h3>
+                          <p className="text-gray-600">Upload a design to see it positioned on the hoodie mesh</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -139,12 +268,45 @@ export default function ThreeDDesignStudio({ className = "" }: ThreeDDesignStudi
         <div className="space-y-6">
           <DesignTextureManager
             onTextureUpdate={handleTextureUpdate}
+            selectedHoodiePart={selectedHoodiePart}
+            onPartSelect={setSelectedHoodiePart}
+            onDesignElementsUpdate={handleDesignElementsUpdate}
           />
 
           {/* Quick Actions */}
           <div className="bg-white rounded-lg shadow-sm p-4">
             <h3 className="text-lg font-medium text-gray-900 mb-3">Quick Actions</h3>
             <div className="space-y-3">
+              {/* Hoodie Part Selection */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Design Placement
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: 'front', label: 'Front', icon: '👕' },
+                    { id: 'back', label: 'Back', icon: '👕' },
+                    { id: 'left-arm', label: 'Left Arm', icon: '🦾' },
+                    { id: 'right-arm', label: 'Right Arm', icon: '🦾' }
+                  ].map((part) => (
+                    <button
+                      key={part.id}
+                      onClick={() => setSelectedHoodiePart(part.id)}
+                      className={`px-3 py-2 text-xs rounded-md transition-colors ${
+                        selectedHoodiePart === part.id
+                          ? 'bg-purple-100 text-purple-700 border-2 border-purple-300'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      <div className="flex flex-col items-center space-y-1">
+                        <span className="text-sm">{part.icon}</span>
+                        <span className="text-xs">{part.label}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Color Picker */}
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-gray-700">
@@ -168,13 +330,14 @@ export default function ThreeDDesignStudio({ className = "" }: ThreeDDesignStudi
                 Reset to Base Texture
               </button>
               <button
-                onClick={() => {
-                  // Auto-rotate the 3D model
-                  console.log('Auto-rotate toggled');
-                }}
-                className="w-full px-4 py-2 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200"
+                onClick={() => setAnimationEnabled(!animationEnabled)}
+                className={`w-full px-4 py-2 rounded-md transition-colors ${
+                  animationEnabled 
+                    ? 'bg-green-100 text-green-700 hover:bg-green-200' 
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
               >
-                Toggle Auto-Rotate
+                {animationEnabled ? '🎬 Animation ON' : '⏸️ Animation OFF'}
               </button>
               <button
                 onClick={() => {
