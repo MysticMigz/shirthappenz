@@ -9,7 +9,7 @@ import dynamic from 'next/dynamic';
 import { generateBarcode } from '@/lib/utils';
 import { toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+// html2canvas will be imported dynamically to avoid SSR issues
 
 interface ProductFormData {
   name: string;
@@ -296,6 +296,7 @@ export default function EditProduct({ params }: { params: { id: string } }) {
         });
       });
       // Convert to image
+      const html2canvas = (await import('html2canvas')).default;
       const canvas = await html2canvas(tempDiv, { backgroundColor: '#fff', scale: 2 });
       const imgData = canvas.toDataURL('image/png');
       if (i > 0) pdf.addPage([50, 30], 'portrait');

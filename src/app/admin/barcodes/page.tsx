@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 import React from "react";
 import { saveAs } from "file-saver";
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+// html2canvas will be imported dynamically to avoid SSR issues
 
 const Barcode = dynamic(() => import("react-barcode"), { ssr: false });
 
@@ -250,6 +250,7 @@ export default function BarcodesPage() {
           });
         });
         // Convert to image
+        const html2canvas = (await import('html2canvas')).default;
         const canvas = await html2canvas(tempDiv, { backgroundColor: '#fff', scale: 2 });
         const imgData = canvas.toDataURL('image/png');
         const marginLeft = 4; // mm

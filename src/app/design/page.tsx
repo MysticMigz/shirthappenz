@@ -1,649 +1,1088 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import Link from 'next/link';
-import Image from 'next/image';
+import React, { useState, useRef, useEffect } from 'react';
+import { Stage, Layer, Image, Text, Rect, Line, Circle } from 'react-konva';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import Header from '@/app/components/Header';
 import Footer from '@/app/components/Footer';
-import { 
-  FaEnvelope, 
-  FaPhone, 
-  FaPalette, 
-  FaTshirt, 
-  FaStar,
-  FaCheckCircle,
-  FaArrowRight,
-  FaDownload,
-  FaUpload,
-  FaEye,
-  FaClock,
-  FaShieldAlt,
-  FaImage,
-  FaTimes,
-  FaCloudUploadAlt,
-  FaPaperclip
-} from 'react-icons/fa';
+import ThreeDDesignStudio from '@/components/ThreeDDesignStudio';
 
-interface UploadedImage {
+interface DesignPosition {
   id: string;
-  file: File;
-  preview: string;
   name: string;
-  size: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  description: string;
 }
 
-export default function CustomDesignPage() {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    designType: '',
-    quantity: '',
-    description: '',
-    timeline: '',
-    budget: ''
-  });
+interface UploadedDesign {
+  id: string;
+  file: File;
+  image: HTMLImageElement;
+  position: string;
+  size: 'A3' | 'A4';
+  x?: number;
+  y?: number;
+}
 
-  const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
-  const [isDragOver, setIsDragOver] = useState(false);
-  const [uploadError, setUploadError] = useState('');
+const DESIGN_POSITIONS: DesignPosition[] = [
+  {
+    id: 'center-chest',
+    name: 'Center of Shirt',
+    x: 375,
+    y: 250,
+    width: 200,
+    height: 200,
+    description: 'Front center of the shirt'
+  },
+  {
+    id: 'left-chest',
+    name: 'Left Side of Chest',
+    x: 250,
+    y: 200,
+    width: 160,
+    height: 160,
+    description: 'Left side of the chest area'
+  },
+  {
+    id: 'right-chest',
+    name: 'Right Side of Chest',
+    x: 590,
+    y: 200,
+    width: 160,
+    height: 160,
+    description: 'Right side of the chest area'
+  },
+  {
+    id: 'back-center',
+    name: 'Back Center',
+    x: 375,
+    y: 500,
+    width: 200,
+    height: 200,
+    description: 'Center of the back'
+  },
+  {
+    id: 'back-top',
+    name: 'Top Center of Back',
+    x: 375,
+    y: 400,
+    width: 200,
+    height: 200,
+    description: 'Top center of the back'
+  }
+];
+
+export default function DesignPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const [isClient, setIsClient] = useState(false);
+
+  // Ensure this component only renders on the client side
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+  const [selectedPosition, setSelectedPosition] = useState<string>('center-chest');
+  const [selectedSize, setSelectedSize] = useState<'A3' | 'A4'>('A4');
+  const [uploadedDesigns, setUploadedDesigns] = useState<UploadedDesign[]>([]);
+  const [shirtImage, setShirtImage] = useState<HTMLImageElement | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showGuides, setShowGuides] = useState(true);
+  const [selectedDesign, setSelectedDesign] = useState<string | null>(null);
+  const [customPositions, setCustomPositions] = useState<DesignPosition[]>(DESIGN_POSITIONS);
+  const [isEditingPositions, setIsEditingPositions] = useState(false);
+  const [showRulers, setShowRulers] = useState(true);
+  const [draggedDesign, setDraggedDesign] = useState<string | null>(null);
+  const [shirtView, setShirtView] = useState<'front' | 'back'>('front');
+  const [backShirtImage, setBackShirtImage] = useState<HTMLImageElement | null>(null);
+  const [snapToGrid, setSnapToGrid] = useState(true);
+  const [snapDistance] = useState(20); // pixels
+  const [snappingTo, setSnappingTo] = useState<string | null>(null);
+  const [show3DPreview, setShow3DPreview] = useState(false);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const stageRef = useRef<any>(null);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
+  // Load shirt mockup images
+  useEffect(() => {
+    // Load front shirt image
+    const frontImg = new window.Image();
+    frontImg.crossOrigin = 'anonymous';
+    frontImg.onload = () => setShirtImage(frontImg);
+    frontImg.src = '/images/front-tshirt.png';
 
-  const validateFile = (file: File): boolean => {
-    const maxSize = 10 * 1024 * 1024; // 10MB
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-    
-    if (file.size > maxSize) {
-      setUploadError('File size must be less than 10MB');
-      return false;
+    // Load back shirt image
+    const backImg = new window.Image();
+    backImg.crossOrigin = 'anonymous';
+    backImg.onload = () => setBackShirtImage(backImg);
+    backImg.src = '/images/back-tshirt.png';
+  }, []);
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/auth/login');
     }
-    
-    if (!allowedTypes.includes(file.type)) {
-      setUploadError('Please upload only JPG, PNG, GIF, or WebP images');
-      return false;
-    }
-    
-    setUploadError('');
-    return true;
-  };
+  }, [status, router]);
 
-  const handleFileUpload = (files: FileList | null) => {
-    if (!files) return;
-    
-    const newImages: UploadedImage[] = [];
-    
-    Array.from(files).forEach(file => {
-      if (validateFile(file)) {
-        const id = Math.random().toString(36).substr(2, 9);
-        const preview = URL.createObjectURL(file);
-        const size = (file.size / 1024 / 1024).toFixed(2);
-        
-        newImages.push({
-          id,
-          file,
-          preview,
-          name: file.name,
-          size: `${size} MB`
-        });
-      }
+  // Load saved positions on component mount
+  useEffect(() => {
+    loadSavedPositions();
+  }, []);
+
+  // Auto-select first available position when view changes
+  useEffect(() => {
+    const availablePositions = DESIGN_POSITIONS.filter(position => {
+      const shouldShowPosition = 
+        (shirtView === 'front' && (position.id.includes('chest') || position.id === 'center-chest')) ||
+        (shirtView === 'back' && (position.id.includes('back') || position.id === 'center-chest'));
+      return shouldShowPosition;
     });
     
-    setUploadedImages(prev => [...prev, ...newImages]);
-  };
+    if (availablePositions.length > 0 && !availablePositions.some(pos => pos.id === selectedPosition)) {
+      setSelectedPosition(availablePositions[0].id);
+    }
+  }, [shirtView, selectedPosition]);
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(true);
-  };
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    handleFileUpload(e.dataTransfer.files);
-  };
-
-  const removeImage = (id: string) => {
-    setUploadedImages(prev => {
-      const imageToRemove = prev.find(img => img.id === id);
-      if (imageToRemove) {
-        URL.revokeObjectURL(imageToRemove.preview);
-      }
-      return prev.filter(img => img.id !== id);
-    });
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    let body = `
-Name: ${formData.name}
-Email: ${formData.email}
-Phone: ${formData.phone}
-
-Design Type: ${formData.designType}
-Quantity: ${formData.quantity}
-Timeline: ${formData.timeline}
-Budget: ${formData.budget}
-
-Description:
-${formData.description}
-
----
-This request was submitted through the custom design page.
-    `;
-
-    if (uploadedImages.length > 0) {
-      body += `\n\nUploaded Images: ${uploadedImages.length} file(s)`;
-      uploadedImages.forEach((img, index) => {
-        body += `\n- ${img.name} (${img.size})`;
-      });
-      body += '\n\nNote: Images have been uploaded and will be sent separately if needed.';
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please upload an image file');
+      return;
     }
 
-    const subject = encodeURIComponent('Custom Design Quote Request');
-    const encodedBody = encodeURIComponent(body);
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setError('File size must be less than 10MB');
+      return;
+    }
 
-    window.location.href = `mailto:customer.service@mrshirtpersonalisation.com?subject=${subject}&body=${encodedBody}`;
+    setLoading(true);
+    setError(null);
+
+    try {
+      const image = new window.Image();
+      image.crossOrigin = 'anonymous';
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        image.onload = () => {
+          const newDesign: UploadedDesign = {
+            id: Date.now().toString(),
+            file,
+            image,
+            position: selectedPosition,
+            size: selectedSize
+          };
+          
+          setUploadedDesigns(prev => [...prev, newDesign]);
+          setLoading(false);
+        };
+        image.src = e.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      setError('Failed to process image');
+      setLoading(false);
+    }
   };
+
+  const removeDesign = (designId: string) => {
+    setUploadedDesigns(prev => prev.filter(design => design.id !== designId));
+    if (selectedDesign === designId) {
+      setSelectedDesign(null);
+    }
+  };
+
+  const updateDesignPosition = (designId: string, newPosition: string) => {
+    setUploadedDesigns(prev => 
+      prev.map(design => 
+        design.id === designId 
+          ? { ...design, position: newPosition }
+          : design
+      )
+    );
+  };
+
+  const updateDesignSize = (designId: string, newSize: 'A3' | 'A4') => {
+    setUploadedDesigns(prev => 
+      prev.map(design => 
+        design.id === designId 
+          ? { ...design, size: newSize }
+          : design
+      )
+    );
+  };
+
+  const handlePositionDrag = (positionId: string, newX: number, newY: number) => {
+    // Apply snapping
+    const snapped = snapToShirtAreas(newX, newY);
+    const gridSnapped = snapToNearestGrid(snapped.x, snapped.y);
+    
+    setCustomPositions(prev => 
+      prev.map(pos => 
+        pos.id === positionId 
+          ? { ...pos, x: gridSnapped.x, y: gridSnapped.y }
+          : pos
+      )
+    );
+  };
+
+  const constrainToPosition = (design: UploadedDesign, newX: number, newY: number) => {
+    const position = getPositionForDesign(design.position);
+    if (!position) return { x: newX, y: newY };
+
+    // Calculate design dimensions based on A3/A4 and position area
+    const designWidth = design.size === 'A4' ? position.width * 0.8 : position.width;
+    const designHeight = design.size === 'A4' ? position.height * 0.8 : position.height;
+
+    // Constrain to position boundaries
+    const minX = position.x;
+    const maxX = position.x + position.width - designWidth;
+    const minY = position.y;
+    const maxY = position.y + position.height - designHeight;
+
+    return {
+      x: Math.max(minX, Math.min(maxX, newX)),
+      y: Math.max(minY, Math.min(maxY, newY))
+    };
+  };
+
+  const handleDesignDrag = (designId: string, newX: number, newY: number) => {
+    const design = uploadedDesigns.find(d => d.id === designId);
+    if (!design) return;
+
+    // Apply snapping first
+    const snapped = snapToShirtAreas(newX, newY);
+    const gridSnapped = snapToNearestGrid(snapped.x, snapped.y);
+    
+    // Then apply constraints
+    const constrained = constrainToPosition(design, gridSnapped.x, gridSnapped.y);
+    
+    setUploadedDesigns(prev => 
+      prev.map(d => 
+        d.id === designId 
+          ? { ...d, x: constrained.x, y: constrained.y }
+          : d
+      )
+    );
+    
+    setDraggedDesign(null);
+  };
+
+  const handleDesignDragStart = (designId: string) => {
+    setDraggedDesign(designId);
+  };
+
+  const snapToNearestGrid = (x: number, y: number) => {
+    if (!snapToGrid) return { x, y };
+    
+    const gridSize = 20;
+    const snappedX = Math.round(x / gridSize) * gridSize;
+    const snappedY = Math.round(y / gridSize) * gridSize;
+    
+    // Only snap if within snap distance
+    const distanceX = Math.abs(x - snappedX);
+    const distanceY = Math.abs(y - snappedY);
+    
+    return {
+      x: distanceX <= snapDistance ? snappedX : x,
+      y: distanceY <= snapDistance ? snappedY : y
+    };
+  };
+
+  const snapToShirtCenter = (x: number, y: number) => {
+    if (!snapToGrid) return { x, y };
+    
+    // Shirt center coordinates (based on 750x750 shirt at x=25, y=-25)
+    const shirtCenterX = 25 + 375; // 400
+    const shirtCenterY = -25 + 375; // 350
+    
+    // Check if near shirt center
+    const distanceToCenter = Math.sqrt((x - shirtCenterX) ** 2 + (y - shirtCenterY) ** 2);
+    
+    if (distanceToCenter <= snapDistance) {
+      return { x: shirtCenterX, y: shirtCenterY };
+    }
+    
+    return { x, y };
+  };
+
+  const snapToShirtAreas = (x: number, y: number) => {
+    if (!snapToGrid) return { x, y };
+    
+    // Define key shirt areas for snapping
+    const shirtAreas = [
+      { x: 25 + 375, y: -25 + 200, name: 'chest-center' }, // Center chest
+      { x: 25 + 200, y: -25 + 180, name: 'chest-left' },   // Left chest
+      { x: 25 + 550, y: -25 + 180, name: 'chest-right' }, // Right chest
+      { x: 25 + 375, y: -25 + 500, name: 'back-center' }, // Back center
+      { x: 25 + 375, y: -25 + 400, name: 'back-top' },    // Back top
+    ];
+    
+    for (const area of shirtAreas) {
+      const distance = Math.sqrt((x - area.x) ** 2 + (y - area.y) ** 2);
+      if (distance <= snapDistance) {
+        setSnappingTo(area.name);
+        return { x: area.x, y: area.y };
+      }
+    }
+    
+    setSnappingTo(null);
+    return { x, y };
+  };
+
+  const savePositions = () => {
+    // Save positions to localStorage or send to server
+    localStorage.setItem('customDesignPositions', JSON.stringify(customPositions));
+    setIsEditingPositions(false);
+    alert('Position settings saved!');
+  };
+
+  const resetPositions = () => {
+    setCustomPositions(DESIGN_POSITIONS);
+    setIsEditingPositions(false);
+  };
+
+  const loadSavedPositions = () => {
+    const saved = localStorage.getItem('customDesignPositions');
+    if (saved) {
+      setCustomPositions(JSON.parse(saved));
+    }
+  };
+
+  const renderRulers = () => {
+    const rulerSize = 30;
+    const canvasWidth = 800;
+    const canvasHeight = 700;
+    const gridSize = 20;
 
   return (
     <>
+        {/* Horizontal Ruler */}
+        <Rect
+          x={0}
+          y={0}
+          width={canvasWidth}
+          height={rulerSize}
+          fill="#f0f0f0"
+          stroke="#ccc"
+          strokeWidth={1}
+        />
+        
+        {/* Vertical Ruler */}
+        <Rect
+          x={0}
+          y={0}
+          width={rulerSize}
+          height={canvasHeight}
+          fill="#f0f0f0"
+          stroke="#ccc"
+          strokeWidth={1}
+        />
+
+        {/* Horizontal ruler marks */}
+        {Array.from({ length: Math.floor(canvasWidth / gridSize) + 1 }, (_, i) => {
+          const x = i * gridSize;
+          const isMajor = x % 100 === 0;
+          return (
+            <React.Fragment key={`h-${i}`}>
+              <Line
+                points={[x, 0, x, rulerSize]}
+                stroke={isMajor ? "#333" : "#999"}
+                strokeWidth={isMajor ? 2 : 1}
+              />
+              {isMajor && (
+                <Text
+                  x={x + 2}
+                  y={5}
+                  text={x.toString()}
+                  fontSize={10}
+                  fill="#333"
+                />
+              )}
+            </React.Fragment>
+          );
+        })}
+
+        {/* Vertical ruler marks */}
+        {Array.from({ length: Math.floor(canvasHeight / gridSize) + 1 }, (_, i) => {
+          const y = i * gridSize;
+          const isMajor = y % 100 === 0;
+          return (
+            <React.Fragment key={`v-${i}`}>
+              <Line
+                points={[0, y, rulerSize, y]}
+                stroke={isMajor ? "#333" : "#999"}
+                strokeWidth={isMajor ? 2 : 1}
+              />
+              {isMajor && (
+                <Text
+                  x={5}
+                  y={y + 10}
+                  text={y.toString()}
+                  fontSize={10}
+                  fill="#333"
+                />
+              )}
+            </React.Fragment>
+          );
+        })}
+
+        {/* Grid Lines */}
+        {showRulers && (
+          <>
+            {/* Vertical grid lines */}
+            {Array.from({ length: Math.floor(canvasWidth / gridSize) + 1 }, (_, i) => {
+              const x = i * gridSize;
+              return (
+                <Line
+                  key={`grid-v-${i}`}
+                  points={[x, rulerSize, x, canvasHeight]}
+                  stroke="#e0e0e0"
+                  strokeWidth={0.5}
+                  dash={[2, 2]}
+                />
+              );
+            })}
+
+            {/* Horizontal grid lines */}
+            {Array.from({ length: Math.floor(canvasHeight / gridSize) + 1 }, (_, i) => {
+              const y = i * gridSize;
+              return (
+                <Line
+                  key={`grid-h-${i}`}
+                  points={[rulerSize, y, canvasWidth, y]}
+                  stroke="#e0e0e0"
+                  strokeWidth={0.5}
+                  dash={[2, 2]}
+                />
+              );
+            })}
+          </>
+        )}
+
+        {/* Snap Points */}
+        {snapToGrid && (
+          <>
+            {/* Shirt center snap point */}
+            <Circle
+              x={400}
+              y={350}
+              radius={snappingTo === 'shirt-center' ? 5 : 3}
+              fill={snappingTo === 'shirt-center' ? "#ff4757" : "#ff6b6b"}
+              stroke="#fff"
+              strokeWidth={snappingTo === 'shirt-center' ? 2 : 1}
+            />
+            
+            {/* Key shirt area snap points */}
+            <Circle
+              x={400}
+              y={200}
+              radius={snappingTo === 'chest-center' ? 4 : 2}
+              fill={snappingTo === 'chest-center' ? "#2ed573" : "#4ecdc4"}
+              stroke="#fff"
+              strokeWidth={snappingTo === 'chest-center' ? 2 : 1}
+            />
+            <Circle
+              x={225}
+              y={180}
+              radius={snappingTo === 'chest-left' ? 4 : 2}
+              fill={snappingTo === 'chest-left' ? "#2ed573" : "#4ecdc4"}
+              stroke="#fff"
+              strokeWidth={snappingTo === 'chest-left' ? 2 : 1}
+            />
+            <Circle
+              x={575}
+              y={180}
+              radius={snappingTo === 'chest-right' ? 4 : 2}
+              fill={snappingTo === 'chest-right' ? "#2ed573" : "#4ecdc4"}
+              stroke="#fff"
+              strokeWidth={snappingTo === 'chest-right' ? 2 : 1}
+            />
+            <Circle
+              x={400}
+              y={500}
+              radius={snappingTo === 'back-center' ? 4 : 2}
+              fill={snappingTo === 'back-center' ? "#2ed573" : "#4ecdc4"}
+              stroke="#fff"
+              strokeWidth={snappingTo === 'back-center' ? 2 : 1}
+            />
+            <Circle
+              x={400}
+              y={400}
+              radius={snappingTo === 'back-top' ? 4 : 2}
+              fill={snappingTo === 'back-top' ? "#2ed573" : "#4ecdc4"}
+              stroke="#fff"
+              strokeWidth={snappingTo === 'back-top' ? 2 : 1}
+            />
+          </>
+        )}
+      </>
+    );
+  };
+
+  const getPositionForDesign = (positionId: string) => {
+    return customPositions.find(pos => pos.id === positionId);
+  };
+
+  const exportDesign = () => {
+    if (stageRef.current) {
+      const dataURL = stageRef.current.toDataURL({
+        mimeType: 'image/png',
+        quality: 1,
+        pixelRatio: 2
+      });
+      
+      const link = document.createElement('a');
+      link.download = `custom-design-${Date.now()}.png`;
+      link.href = dataURL;
+      link.click();
+    }
+  };
+
+  if (status === 'loading' || !isClient) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+                </div>
+    );
+  }
+
+  if (status === 'unauthenticated') {
+    return null;
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
       <Header />
       
-      <main className="min-h-screen bg-gray-50">
-        {/* Hero Section */}
-        <section className="bg-gradient-to-r from-blue-600 to-purple-700 text-white py-16">
-          <div className="container mx-auto px-4 text-center">
-            <div className="max-w-4xl mx-auto">
-              <h1 className="text-4xl md:text-6xl font-bold mb-6">
-                Custom Design Services
-              </h1>
-              <p className="text-xl md:text-2xl mb-8 opacity-90">
-                Let us bring your vision to life with professional custom apparel design
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <a 
-                  href="mailto:customer.service@mrshirtpersonalisation.com"
-                  className="inline-flex items-center justify-center px-8 py-4 bg-white text-blue-600 rounded-lg font-bold text-lg hover:bg-gray-100 transition-colors"
-                >
-                  <FaEnvelope className="mr-2" />
-                  Get Quote Now
-                </a>
-                <Link 
-                  href="/products"
-                  className="inline-flex items-center justify-center px-8 py-4 border-2 border-white text-white rounded-lg font-bold text-lg hover:bg-white hover:text-blue-600 transition-colors"
-                >
-                  Browse Products
-                </Link>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Services Overview */}
-        <section className="py-16">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-                Professional Design Services
-              </h2>
-              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                From concept to completion, our design team works closely with you to create 
-                custom apparel that perfectly represents your brand or vision.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
-              <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <FaPalette className="w-8 h-8 text-blue-600" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Custom Design</h3>
-                <p className="text-gray-600">
-                  Professional graphic design services for logos, artwork, and custom graphics 
-                  tailored to your specific needs and brand guidelines.
-                </p>
-              </div>
-
-              <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <FaTshirt className="w-8 h-8 text-purple-600" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Apparel Consultation</h3>
-                <p className="text-gray-600">
-                  Expert advice on fabric selection, sizing, printing techniques, and 
-                  design placement for optimal results.
-                </p>
-              </div>
-
-              <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <FaStar className="w-8 h-8 text-green-600" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Quality Assurance</h3>
-                <p className="text-gray-600">
-                  Comprehensive quality checks and revisions to ensure your design 
-                  meets the highest standards before production.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Design Process */}
-        <section className="py-16 bg-white">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-                Our Design Process
-              </h2>
-              <p className="text-xl text-gray-600">
-                Simple, transparent, and collaborative approach to bringing your ideas to life
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-blue-600 text-white rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
-                  1
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">Consultation</h3>
-                <p className="text-gray-600 text-sm">
-                  Initial discussion about your vision, requirements, and project scope
-                </p>
-              </div>
-
-              <div className="text-center">
-                <div className="w-16 h-16 bg-purple-600 text-white rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
-                  2
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">Design</h3>
-                <p className="text-gray-600 text-sm">
-                  Our designers create concepts and mockups based on your specifications
-                </p>
-              </div>
-
-              <div className="text-center">
-                <div className="w-16 h-16 bg-green-600 text-white rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
-                  3
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">Review</h3>
-                <p className="text-gray-600 text-sm">
-                  You review designs and provide feedback for revisions if needed
-                </p>
-              </div>
-
-              <div className="text-center">
-                <div className="w-16 h-16 bg-orange-600 text-white rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
-                  4
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">Production</h3>
-                <p className="text-gray-600 text-sm">
-                  Final design approval and production of your custom apparel
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Quote Request Form */}
-        <section className="py-16">
-          <div className="container mx-auto px-4">
-            <div className="max-w-4xl mx-auto">
-              <div className="bg-white rounded-lg shadow-xl overflow-hidden">
-                <div className="bg-gradient-to-r from-blue-600 to-purple-700 text-white p-8">
-                  <h2 className="text-3xl font-bold mb-4">Request a Custom Design Quote</h2>
-                  <p className="text-xl opacity-90">
-                    Tell us about your project and we'll provide a detailed quote within 24 hours
+      <main className="max-w-7xl mx-auto py-8 px-4">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Custom Design Studio</h1>
+          <p className="mt-2 text-gray-600">
+            Upload your designs and position them on the shirt template
                   </p>
                 </div>
 
-                <div className="p-8">
-                  <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Full Name *
-                        </label>
+        {/* 3D Preview Section */}
+        {show3DPreview && (
+          <div className="mb-8">
+            <ThreeDDesignStudio />
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Controls Panel */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* Size Selection */}
+            <div className="bg-white rounded-lg shadow-sm p-4">
+              <h3 className="text-lg font-medium text-gray-900 mb-3">Design Size</h3>
+              <div className="space-y-2">
+                <label className="flex items-center">
                         <input
-                          type="text"
-                          name="name"
-                          value={formData.name}
-                          onChange={handleInputChange}
-                          required
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="Your full name"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Email Address *
+                    type="radio"
+                    name="size"
+                    value="A4"
+                    checked={selectedSize === 'A4'}
+                    onChange={(e) => setSelectedSize(e.target.value as 'A4')}
+                    className="mr-2"
+                  />
+                  <span className="text-sm">A4 (210 × 297mm)</span>
                         </label>
+                <label className="flex items-center">
                         <input
-                          type="email"
-                          name="email"
-                          value={formData.email}
-                          onChange={handleInputChange}
-                          required
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="your.email@example.com"
-                        />
+                    type="radio"
+                    name="size"
+                    value="A3"
+                    checked={selectedSize === 'A3'}
+                    onChange={(e) => setSelectedSize(e.target.value as 'A3')}
+                    className="mr-2"
+                  />
+                  <span className="text-sm">A3 (297 × 420mm)</span>
+                        </label>
+                      </div>
                       </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Phone Number
-                        </label>
+            {/* Position Selection */}
+            <div className="bg-white rounded-lg shadow-sm p-4">
+              <h3 className="text-lg font-medium text-gray-900 mb-3">Design Position</h3>
+              <div className="space-y-2">
+                {DESIGN_POSITIONS.map((position) => {
+                  // Filter positions based on current view
+                  const shouldShowPosition = 
+                    (shirtView === 'front' && (position.id.includes('chest') || position.id === 'center-chest')) ||
+                    (shirtView === 'back' && (position.id.includes('back') || position.id === 'center-chest'));
+                  
+                  if (!shouldShowPosition) return null;
+                  
+                  return (
+                    <label key={position.id} className="flex items-start">
                         <input
-                          type="tel"
-                          name="phone"
-                          value={formData.phone}
-                          onChange={handleInputChange}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="Your phone number"
-                        />
-                      </div>
-
+                        type="radio"
+                        name="position"
+                        value={position.id}
+                        checked={selectedPosition === position.id}
+                        onChange={(e) => setSelectedPosition(e.target.value)}
+                        className="mr-2 mt-1"
+                      />
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Design Type *
-                        </label>
-                        <select
-                          name="designType"
-                          value={formData.designType}
-                          onChange={handleInputChange}
-                          required
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          <option value="">Select design type</option>
-                          <option value="Logo Design">Logo Design</option>
-                          <option value="Custom Artwork">Custom Artwork</option>
-                          <option value="Text/Lettering">Text/Lettering</option>
-                          <option value="Photo Manipulation">Photo Manipulation</option>
-                          <option value="Vector Graphics">Vector Graphics</option>
-                          <option value="Other">Other</option>
-                        </select>
+                        <div className="text-sm font-medium text-gray-900">{position.name}</div>
+                        <div className="text-xs text-gray-500">{position.description}</div>
                       </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Quantity *
                         </label>
-                        <input
-                          type="text"
-                          name="quantity"
-                          value={formData.quantity}
-                          onChange={handleInputChange}
-                          required
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="e.g., 50 t-shirts"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Timeline
-                        </label>
-                        <select
-                          name="timeline"
-                          value={formData.timeline}
-                          onChange={handleInputChange}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          <option value="">Select timeline</option>
-                          <option value="Rush (1-2 weeks)">Rush (1-2 weeks)</option>
-                          <option value="Standard (2-4 weeks)">Standard (2-4 weeks)</option>
-                          <option value="Flexible (4+ weeks)">Flexible (4+ weeks)</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Budget Range
-                        </label>
-                        <select
-                          name="budget"
-                          value={formData.budget}
-                          onChange={handleInputChange}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          <option value="">Select budget range</option>
-                          <option value="Under £500">Under £500</option>
-                          <option value="£500 - £1,000">£500 - £1,000</option>
-                          <option value="£1,000 - £2,500">£1,000 - £2,500</option>
-                          <option value="£2,500 - £5,000">£2,500 - £5,000</option>
-                          <option value="Over £5,000">Over £5,000</option>
-                        </select>
+                  );
+                })}
                       </div>
                     </div>
 
-                    {/* Image Upload Section */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Attach Reference Images (Optional)
-                      </label>
-                      <div className="flex items-center space-x-4">
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                        >
-                          <FaPaperclip className="mr-2" />
-                          Attach Files
-                        </button>
-                        <span className="text-sm text-gray-500">
-                          JPG, PNG, GIF, WebP up to 10MB each
-                        </span>
-                      </div>
+            {/* Upload Section */}
+            <div className="bg-white rounded-lg shadow-sm p-4">
+              <h3 className="text-lg font-medium text-gray-900 mb-3">Upload Design</h3>
+              <div className="space-y-3">
                       <input
                         ref={fileInputRef}
                         type="file"
-                        multiple
                         accept="image/*"
-                        onChange={(e) => handleFileUpload(e.target.files)}
+                  onChange={handleFileUpload}
                         className="hidden"
                       />
-                      
-                      {uploadError && (
-                        <p className="text-red-600 text-sm mt-2">{uploadError}</p>
-                      )}
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={loading}
+                  className="w-full px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? 'Uploading...' : 'Choose Image'}
+                </button>
+                
+                {error && (
+                  <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+                    {error}
+                  </div>
+                )}
+              </div>
                     </div>
 
-                    {/* Uploaded Images Preview */}
-                    {uploadedImages.length > 0 && (
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-700 mb-3">
-                          Uploaded Images ({uploadedImages.length})
-                        </h4>
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                          {uploadedImages.map((image) => (
-                            <div key={image.id} className="relative group">
-                              <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
-                                <Image
-                                  src={image.preview}
-                                  alt={image.name}
-                                  width={200}
-                                  height={200}
-                                  className="w-full h-full object-cover"
-                                />
+            {/* Uploaded Designs */}
+            {uploadedDesigns.length > 0 && (
+              <div className="bg-white rounded-lg shadow-sm p-4">
+                <h3 className="text-lg font-medium text-gray-900 mb-3">Uploaded Designs</h3>
+                <div className="space-y-3">
+                  {uploadedDesigns.map((design) => (
+                    <div key={design.id} className={`p-3 rounded-lg border-2 ${
+                      selectedDesign === design.id 
+                        ? 'border-purple-500 bg-purple-50' 
+                        : 'border-gray-200 bg-gray-50'
+                    }`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-gray-900 truncate">
+                            {design.file.name}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {design.size} • {getPositionForDesign(design.position)?.name}
+                          </div>
                               </div>
+                        <div className="flex items-center space-x-1">
+                          <button
+                            onClick={() => setSelectedDesign(selectedDesign === design.id ? null : design.id)}
+                            className="p-1 text-gray-600 hover:text-gray-800"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                          </button>
                               <button
-                                type="button"
-                                onClick={() => removeImage(image.id)}
-                                className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => removeDesign(design.id)}
+                            className="p-1 text-red-600 hover:text-red-800"
                               >
-                                <FaTimes className="w-3 h-3" />
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
                               </button>
-                              <div className="mt-2">
-                                <p className="text-xs text-gray-600 truncate">{image.name}</p>
-                                <p className="text-xs text-gray-500">{image.size}</p>
+                        </div>
+                      </div>
+                      
+                      {selectedDesign === design.id && (
+                        <div className="space-y-2 pt-2 border-t border-gray-200">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Position</label>
+                            <select
+                              value={design.position}
+                              onChange={(e) => updateDesignPosition(design.id, e.target.value)}
+                              className="w-full text-xs border border-gray-300 rounded px-2 py-1"
+                            >
+                              {DESIGN_POSITIONS.map((pos) => (
+                                <option key={pos.id} value={pos.id}>{pos.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Size</label>
+                            <select
+                              value={design.size}
+                              onChange={(e) => updateDesignSize(design.id, e.target.value as 'A3' | 'A4')}
+                              className="w-full text-xs border border-gray-300 rounded px-2 py-1"
+                            >
+                              <option value="A4">A4 (210 × 297mm)</option>
+                              <option value="A3">A3 (297 × 420mm)</option>
+                            </select>
                               </div>
+                        </div>
+                      )}
                             </div>
                           ))}
                         </div>
                       </div>
                     )}
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Project Description *
+            {/* Canvas Controls */}
+            <div className="bg-white rounded-lg shadow-sm p-4">
+              <h3 className="text-lg font-medium text-gray-900 mb-3">Canvas Controls</h3>
+              <div className="space-y-3">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={showGuides}
+                    onChange={(e) => setShowGuides(e.target.checked)}
+                    className="mr-2"
+                  />
+                  <span className="text-sm">Show position guides</span>
                       </label>
-                      <textarea
-                        name="description"
-                        value={formData.description}
-                        onChange={handleInputChange}
-                        required
-                        rows={6}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Please describe your project in detail, including any specific requirements, colors, styles, or references..."
-                      />
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row gap-4">
+                
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={showRulers}
+                    onChange={(e) => setShowRulers(e.target.checked)}
+                    className="mr-2"
+                  />
+                  <span className="text-sm">Show rulers and grid</span>
+                      </label>
+                
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={snapToGrid}
+                    onChange={(e) => setSnapToGrid(e.target.checked)}
+                    className="mr-2"
+                  />
+                  <span className="text-sm">Enable auto-snapping</span>
+                </label>
+                
+                <div className="border-t pt-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Shirt View
+                  </label>
+                  <div className="flex space-x-2">
                       <button
-                        type="submit"
-                        className="flex-1 bg-gradient-to-r from-blue-600 to-purple-700 text-white py-4 px-8 rounded-lg font-bold text-lg hover:from-blue-700 hover:to-purple-800 transition-all duration-300 flex items-center justify-center"
-                      >
-                        <FaEnvelope className="mr-2" />
-                        Send Quote Request
+                      onClick={() => setShirtView('front')}
+                      className={`flex-1 px-3 py-2 rounded-md text-sm font-medium ${
+                        shirtView === 'front'
+                          ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                          : 'bg-gray-100 text-gray-700 border border-gray-300'
+                      }`}
+                    >
+                      Front
                       </button>
+                    <button
+                      onClick={() => setShirtView('back')}
+                      className={`flex-1 px-3 py-2 rounded-md text-sm font-medium ${
+                        shirtView === 'back'
+                          ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                          : 'bg-gray-100 text-gray-700 border border-gray-300'
+                      }`}
+                    >
+                      Back
+                    </button>
+            </div>
+          </div>
+          
+          <div className="border-t pt-3">
+            <label className="flex items-center mb-2">
+              <input
+                type="checkbox"
+                checked={show3DPreview}
+                onChange={(e) => setShow3DPreview(e.target.checked)}
+                className="mr-2"
+              />
+              <span className="text-sm font-medium">Show 3D Preview</span>
+            </label>
+            <p className="text-xs text-gray-500">
+              Enable interactive 3D preview of your design
+            </p>
+          </div>
+                
+                <div className="border-t pt-3">
+                  <label className="flex items-center mb-2">
+                    <input
+                      type="checkbox"
+                      checked={isEditingPositions}
+                      onChange={(e) => setIsEditingPositions(e.target.checked)}
+                      className="mr-2"
+                    />
+                    <span className="text-sm font-medium">Edit position guides</span>
+                  </label>
+                  
+                  {isEditingPositions && (
+                    <div className="space-y-2 pl-6">
+                      <p className="text-xs text-gray-500">
+                        Drag the position guides to adjust their placement
+                      </p>
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={savePositions}
+                          className="flex-1 px-3 py-1 bg-green-100 text-green-700 border border-green-300 rounded text-xs font-medium hover:bg-green-200"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={resetPositions}
+                          className="flex-1 px-3 py-1 bg-red-100 text-red-700 border border-red-300 rounded text-xs font-medium hover:bg-red-200"
+                        >
+                          Reset
+                        </button>
+              </div>
+                </div>
+                  )}
+              </div>
+
+                <button
+                  onClick={exportDesign}
+                  disabled={uploadedDesigns.length === 0}
+                  className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Export Design
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Canvas Area */}
+          <div className="lg:col-span-3">
+            <div className="bg-white rounded-lg shadow-sm p-4">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Design Preview</h3>
+              <div className="flex justify-center">
+                <div className="border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                  <Stage
+                    ref={stageRef}
+                    width={800}
+                    height={700}
+                    className="bg-white"
+                  >
+                  <Layer>
+                    {/* Background Pattern */}
+                    <Rect
+                      x={0}
+                      y={0}
+                      width={800}
+                      height={700}
+                      fill="#f8fafc"
+                    />
+                    
+                    {/* Rulers and Grid */}
+                    {renderRulers()}
+                    
+                    {/* Shirt Background - 750x750 template centered */}
+                    {shirtView === 'front' && shirtImage && (
+                      <Image
+                        image={shirtImage}
+                        width={750}
+                        height={750}
+                        x={25}
+                        y={-25}
+                      />
+                    )}
+                    {shirtView === 'back' && backShirtImage && (
+                      <Image
+                        image={backShirtImage}
+                        width={750}
+                        height={750}
+                        x={25}
+                        y={-25}
+                      />
+                    )}
+
+                    {/* Position Guides */}
+                    {showGuides && customPositions.map((position) => {
+                      const isActivePosition = draggedDesign && uploadedDesigns.find(d => d.id === draggedDesign)?.position === position.id;
                       
-                      <a
-                        href="mailto:customer.service@mrshirtpersonalisation.com"
-                        className="flex-1 bg-gray-100 text-gray-700 py-4 px-8 rounded-lg font-bold text-lg hover:bg-gray-200 transition-colors flex items-center justify-center"
-                      >
-                        <FaArrowRight className="mr-2" />
-                        Direct Email
-                      </a>
-                    </div>
-                  </form>
+                      // Show different positions based on view
+                      const shouldShowPosition = 
+                        (shirtView === 'front' && (position.id.includes('chest') || position.id === 'center-chest')) ||
+                        (shirtView === 'back' && (position.id.includes('back') || position.id === 'center-chest'));
+                      
+                      if (!shouldShowPosition) return null;
+                      
+                      return (
+                        <React.Fragment key={position.id}>
+                          <Rect
+                            x={position.x}
+                            y={position.y}
+                            width={position.width}
+                            height={position.height}
+                            stroke={
+                              isActivePosition 
+                                ? '#10B981' 
+                                : selectedPosition === position.id 
+                                  ? '#7C3AED' 
+                                  : '#D1D5DB'
+                            }
+                            strokeWidth={
+                              isActivePosition 
+                                ? 4 
+                                : selectedPosition === position.id 
+                                  ? 3 
+                                  : 2
+                            }
+                            dash={
+                              isActivePosition 
+                                ? [10, 5] 
+                                : selectedPosition === position.id 
+                                  ? [8, 4] 
+                                  : [5, 5]
+                            }
+                            fill={
+                              isActivePosition 
+                                ? 'rgba(16, 185, 129, 0.2)' 
+                                : selectedPosition === position.id 
+                                  ? 'rgba(124, 58, 237, 0.1)' 
+                                  : 'transparent'
+                            }
+                            cornerRadius={4}
+                            draggable={isEditingPositions}
+                            onDragMove={(e) => {
+                              if (isEditingPositions) {
+                                // Apply snapping during drag for real-time feedback
+                                const snapped = snapToShirtAreas(e.target.x(), e.target.y());
+                                const gridSnapped = snapToNearestGrid(snapped.x, snapped.y);
+                                e.target.x(gridSnapped.x);
+                                e.target.y(gridSnapped.y);
+                              }
+                            }}
+                            onDragEnd={(e) => {
+                              if (isEditingPositions) {
+                                handlePositionDrag(position.id, e.target.x(), e.target.y());
+                              }
+                            }}
+                          />
+                          {(selectedPosition === position.id || isActivePosition) && (
+                            <Text
+                              x={position.x + position.width / 2}
+                              y={position.y - 10}
+                              text={position.name}
+                              fontSize={14}
+                              fontFamily="Arial"
+                              fill={isActivePosition ? '#10B981' : '#7C3AED'}
+                              align="center"
+                              verticalAlign="middle"
+                              offsetX={position.name.length * 3.5}
+                              offsetY={7}
+                              fontStyle="bold"
+                            />
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+
+                    {/* Uploaded Designs */}
+                    {uploadedDesigns.map((design) => {
+                      const position = getPositionForDesign(design.position);
+                      if (!position) return null;
+
+                      // Show designs based on current view
+                      const shouldShowDesign = 
+                        (shirtView === 'front' && (design.position.includes('chest') || design.position === 'center-chest')) ||
+                        (shirtView === 'back' && (design.position.includes('back') || design.position === 'center-chest'));
+                      
+                      if (!shouldShowDesign) return null;
+
+                      // Calculate design dimensions based on A3/A4 and position area
+                      const designWidth = design.size === 'A4' ? position.width * 0.8 : position.width;
+                      const designHeight = design.size === 'A4' ? position.height * 0.8 : position.height;
+
+                      // Use custom position if available, otherwise center in position
+                      const designX = design.x !== undefined ? design.x : position.x + (position.width - designWidth) / 2;
+                      const designY = design.y !== undefined ? design.y : position.y + (position.height - designHeight) / 2;
+
+                      return (
+                        <Image
+                          key={design.id}
+                          image={design.image}
+                          x={designX}
+                          y={designY}
+                          width={designWidth}
+                          height={designHeight}
+                          draggable
+                          onDragStart={() => handleDesignDragStart(design.id)}
+                          onDragMove={(e) => {
+                            // Apply snapping during drag for real-time feedback
+                            const snapped = snapToShirtAreas(e.target.x(), e.target.y());
+                            const gridSnapped = snapToNearestGrid(snapped.x, snapped.y);
+                            e.target.x(gridSnapped.x);
+                            e.target.y(gridSnapped.y);
+                          }}
+                          onDragEnd={(e) => {
+                            handleDesignDrag(design.id, e.target.x(), e.target.y());
+                          }}
+                        />
+                      );
+                    })}
+                  </Layer>
+                </Stage>
+                  </div>
+                </div>
+
+              <div className="mt-4 text-sm text-gray-500 text-center">
+                <div className="flex justify-center items-center space-x-4 mb-2 flex-wrap">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 bg-purple-500 rounded"></div>
+                    <span>Selected Position</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 bg-gray-300 rounded"></div>
+                    <span>Available Positions</span>
+                  </div>
+                  {isEditingPositions && (
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 bg-orange-500 rounded"></div>
+                      <span>Draggable Guides</span>
+                  </div>
+                  )}
+                  {showRulers && (
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 bg-blue-500 rounded"></div>
+                      <span>Rulers & Grid</span>
+                </div>
+                  )}
+                  </div>
+                <p>• Toggle between Front and Back views to see different shirt sides</p>
+                <p>• Drag designs to reposition them within their position areas</p>
+                <p>• Designs are constrained to stay within their assigned position boundaries</p>
+                {snapToGrid && (
+                  <p className="text-green-600 font-medium">• Auto-snapping helps align elements to key shirt areas</p>
+                )}
+                {showRulers && (
+                  <p className="text-blue-600 font-medium">• Use rulers and grid to precisely center elements</p>
+                )}
+                {isEditingPositions && (
+                  <p className="text-orange-600 font-medium">• Drag position guides to customize placement</p>
+                )}
+                <p>• Export your final design when ready</p>
                 </div>
               </div>
             </div>
           </div>
-        </section>
-
-        {/* Why Choose Us */}
-        <section className="py-16 bg-white">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-                Why Choose Our Design Services?
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <FaClock className="w-8 h-8 text-blue-600" />
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">Fast Turnaround</h3>
-                <p className="text-gray-600 text-sm">
-                  Quick response times and efficient design process
-                </p>
-              </div>
-
-              <div className="text-center">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <FaCheckCircle className="w-8 h-8 text-green-600" />
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">Quality Guarantee</h3>
-                <p className="text-gray-600 text-sm">
-                  Professional designs that meet your exact specifications
-                </p>
-              </div>
-
-              <div className="text-center">
-                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <FaShieldAlt className="w-8 h-8 text-purple-600" />
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">Secure & Confidential</h3>
-                <p className="text-gray-600 text-sm">
-                  Your designs and information are kept completely secure
-                </p>
-              </div>
-
-              <div className="text-center">
-                <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <FaStar className="w-8 h-8 text-orange-600" />
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">Expert Team</h3>
-                <p className="text-gray-600 text-sm">
-                  Experienced designers with years of industry expertise
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Contact Information */}
-        <section className="py-16 bg-gray-900 text-white">
-          <div className="container mx-auto px-4">
-            <div className="max-w-4xl mx-auto text-center">
-              <h2 className="text-3xl md:text-4xl font-bold mb-8">
-                Ready to Start Your Project?
-              </h2>
-              <p className="text-xl mb-8 opacity-90">
-                Contact us today to discuss your custom design needs
-              </p>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div className="flex flex-col items-center">
-                  <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mb-4">
-                    <FaEnvelope className="w-8 h-8" />
-                  </div>
-                  <h3 className="text-lg font-bold mb-2">Email Us</h3>
-                  <a 
-                    href="mailto:customer.service@mrshirtpersonalisation.com"
-                    className="text-blue-400 hover:text-blue-300 transition-colors"
-                  >
-                    customer.service@mrshirtpersonalisation.com
-                  </a>
-                </div>
-
-                <div className="flex flex-col items-center">
-                  <div className="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mb-4">
-                    <FaPhone className="w-8 h-8" />
-                  </div>
-                  <h3 className="text-lg font-bold mb-2">Call Us</h3>
-                  <a 
-                    href="tel:07954746514"
-                    className="text-green-400 hover:text-green-300 transition-colors"
-                  >
-                    07954746514
-                  </a>
-                </div>
-
-                <div className="flex flex-col items-center">
-                  <div className="w-16 h-16 bg-purple-600 rounded-full flex items-center justify-center mb-4">
-                    <FaClock className="w-8 h-8" />
-                  </div>
-                  <h3 className="text-lg font-bold mb-2">Response Time</h3>
-                  <p className="text-purple-400">
-                    Within 24 hours
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
       </main>
 
       <Footer />
-    </>
+    </div>
   );
 }
