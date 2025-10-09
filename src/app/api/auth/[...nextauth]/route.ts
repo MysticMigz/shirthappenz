@@ -1,10 +1,9 @@
 import type { NextAuthOptions } from 'next-auth';
 import NextAuth from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import { connectToDatabase } from '@/backend/utils/database';
+import { connectToDatabase } from '@/lib/mongodb';
 import User from '@/backend/models/User';
 import AccountLockout from '@/backend/models/AccountLockout';
-import { securityLogger } from '@/lib/security-audit';
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -32,7 +31,6 @@ export const authOptions: NextAuthOptions = {
         }
         
         if (lockout.isLocked()) {
-          securityLogger.logFailedLogin(ip as string, email, userAgent as string);
           throw new Error('Account is temporarily locked due to too many failed attempts. Please try again later.');
         }
         
@@ -40,7 +38,6 @@ export const authOptions: NextAuthOptions = {
         
         if (!user) {
           // Log failed login attempt and increment lockout
-          securityLogger.logFailedLogin(ip as string, email, userAgent as string);
           lockout.incrementFailedAttempts();
           await lockout.save();
           throw new Error('Invalid email or password');
@@ -50,7 +47,6 @@ export const authOptions: NextAuthOptions = {
         
         if (!isValid) {
           // Log failed login attempt and increment lockout
-          securityLogger.logFailedLogin(ip as string, email, userAgent as string);
           lockout.incrementFailedAttempts();
           await lockout.save();
           throw new Error('Invalid email or password');

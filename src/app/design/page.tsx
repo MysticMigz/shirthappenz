@@ -6,7 +6,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Header from '@/app/components/Header';
 import Footer from '@/app/components/Footer';
-import ThreeDDesignStudio from '@/components/ThreeDDesignStudio';
+// import ThreeDDesignStudio from '@/components/ThreeDDesignStudio'; // Disabled for deployment - 3D preview functionality
 
 interface DesignPosition {
   id: string;
@@ -102,7 +102,7 @@ export default function DesignPage() {
   const [snapToGrid, setSnapToGrid] = useState(true);
   const [snapDistance] = useState(20); // pixels
   const [snappingTo, setSnappingTo] = useState<string | null>(null);
-  const [show3DPreview, setShow3DPreview] = useState(false);
+  // const [show3DPreview, setShow3DPreview] = useState(false); // Disabled for deployment - 3D preview functionality
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const stageRef = useRef<any>(null);
@@ -608,12 +608,14 @@ export default function DesignPage() {
           </div>
         </div>
 
-        {/* 3D Preview Section */}
+        {/* 3D Preview Section - DISABLED FOR DEPLOYMENT */}
+        {/* 
         {show3DPreview && (
           <div className="mb-8">
             <ThreeDDesignStudio />
           </div>
         )}
+        */}
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Controls Panel */}
@@ -841,6 +843,8 @@ export default function DesignPage() {
             </div>
           </div>
           
+          {/* 3D Preview Toggle - DISABLED FOR DEPLOYMENT */}
+          {/*
           <div className="border-t pt-3">
             <label className="flex items-center mb-2">
               <input
@@ -855,6 +859,7 @@ export default function DesignPage() {
               Enable interactive 3D preview of your design
             </p>
           </div>
+          */}
                 
                 <div className="border-t pt-3">
                   <label className="flex items-center mb-2">
