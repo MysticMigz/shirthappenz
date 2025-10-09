@@ -11,6 +11,7 @@ export interface ICarouselBackground {
   imageUrl?: string; // Optional - if not provided, uses gradient
   bgGradient: string; // Fallback gradient
   textColor: string;
+  buttonColor: string;
   isActive: boolean;
   order: number;
   createdAt: Date;
@@ -67,6 +68,12 @@ const CarouselBackgroundSchema = new mongoose.Schema<ICarouselBackground>({
   textColor: {
     type: String,
     required: true,
+    trim: true
+  },
+  buttonColor: {
+    type: String,
+    required: false,
+    default: 'bg-white text-gray-900',
     trim: true
   },
   isActive: {

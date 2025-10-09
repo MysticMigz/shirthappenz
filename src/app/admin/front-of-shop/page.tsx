@@ -14,6 +14,7 @@ interface CarouselBackground {
   imageUrl?: string;
   bgGradient: string;
   textColor: string;
+  buttonColor: string;
   isActive: boolean;
   order: number;
   createdAt: string;
@@ -30,7 +31,8 @@ export default function FrontOfShopPage() {
     buttonText: '', 
     buttonLink: '',
     bgGradient: '',
-    textColor: ''
+    textColor: '',
+    buttonColor: ''
   });
   const [selectedSlide, setSelectedSlide] = useState<number | null>(null);
   const [showSlideSelector, setShowSlideSelector] = useState(false);
@@ -60,6 +62,7 @@ export default function FrontOfShopPage() {
             isActive: bg.isActive,
             hasId: !!bg.id,
             hasSlideId: !!bg.slideId,
+            buttonColor: bg.buttonColor,
             allFields: Object.keys(bg)
           });
         });
@@ -93,6 +96,7 @@ export default function FrontOfShopPage() {
     formData.append('buttonLink', '/products');
     formData.append('bgGradient', 'from-gray-800 to-gray-900');
     formData.append('textColor', 'text-white');
+    formData.append('buttonColor', 'bg-white text-gray-900');
 
     try {
       const response = await fetch('/api/admin/carousel-backgrounds', {
@@ -168,6 +172,10 @@ export default function FrontOfShopPage() {
   };
 
   const handleEdit = (background: CarouselBackground) => {
+    console.log('✏️ Editing background:', background);
+    console.log('✏️ Button color from background:', background.buttonColor);
+    console.log('✏️ Button color type:', typeof background.buttonColor);
+    console.log('✏️ Button color length:', background.buttonColor?.length);
     setEditingId(background.id);
     setEditForm({
       title: background.title,
@@ -177,11 +185,16 @@ export default function FrontOfShopPage() {
       buttonLink: background.buttonLink,
       bgGradient: background.bgGradient,
       textColor: background.textColor,
+      buttonColor: background.buttonColor || 'bg-white text-gray-900',
     });
+    console.log('✏️ Edit form set with buttonColor:', background.buttonColor || 'bg-white text-gray-900');
   };
 
   const handleSaveEdit = async () => {
     if (!editingId) return;
+
+    console.log('💾 Saving edit with data:', editForm);
+    console.log('💾 Button color being sent:', editForm.buttonColor);
 
     try {
       const response = await fetch(`/api/admin/carousel-backgrounds/${editingId}`, {
@@ -195,7 +208,16 @@ export default function FrontOfShopPage() {
       if (response.ok) {
         await loadBackgrounds();
         setEditingId(null);
-        setEditForm({ title: '', description: '' });
+        setEditForm({ 
+          title: '', 
+          subtitle: '', 
+          description: '', 
+          buttonText: '', 
+          buttonLink: '',
+          bgGradient: '',
+          textColor: '',
+          buttonColor: ''
+        });
         alert('Background updated successfully!');
       } else {
         alert('Error updating background');
@@ -208,14 +230,15 @@ export default function FrontOfShopPage() {
 
   const handleCancelEdit = () => {
     setEditingId(null);
-    setEditForm({ 
+    setEditForm({
       title: '', 
       subtitle: '', 
       description: '', 
       buttonText: '', 
       buttonLink: '',
       bgGradient: '',
-      textColor: ''
+      textColor: '',
+      buttonColor: ''
     });
   };
 
@@ -435,21 +458,97 @@ export default function FrontOfShopPage() {
                           />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                          <input
-                            type="text"
-                            value={editForm.bgGradient}
-                            onChange={(e) => setEditForm({ ...editForm, bgGradient: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                            placeholder="Background gradient (e.g., from-blue-500 to-indigo-600)"
-                          />
-                          <input
-                            type="text"
-                            value={editForm.textColor}
-                            onChange={(e) => setEditForm({ ...editForm, textColor: e.target.value })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                            placeholder="Text color (e.g., text-white)"
-                          />
+                          {/* Background Gradient Selector */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Background Gradient</label>
+                            <select
+                              value={editForm.bgGradient}
+                              onChange={(e) => setEditForm({ ...editForm, bgGradient: e.target.value })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                            >
+                              <option value="from-gray-800 to-gray-900">Dark Gray</option>
+                              <option value="from-blue-600 to-blue-800">Blue</option>
+                              <option value="from-purple-600 to-purple-800">Purple</option>
+                              <option value="from-red-600 to-red-800">Red</option>
+                              <option value="from-green-600 to-green-800">Green</option>
+                              <option value="from-orange-600 to-orange-800">Orange</option>
+                              <option value="from-pink-600 to-pink-800">Pink</option>
+                              <option value="from-indigo-600 to-indigo-800">Indigo</option>
+                              <option value="from-teal-600 to-teal-800">Teal</option>
+                              <option value="from-yellow-600 to-yellow-800">Yellow</option>
+                              <option value="from-cyan-600 to-cyan-800">Cyan</option>
+                              <option value="from-emerald-600 to-emerald-800">Emerald</option>
+                              <option value="from-rose-600 to-rose-800">Rose</option>
+                              <option value="from-violet-600 to-violet-800">Violet</option>
+                              <option value="from-amber-600 to-amber-800">Amber</option>
+                            </select>
+                          </div>
+                          
+                          {/* Text Color Selector */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Text Color</label>
+                            <select
+                              value={editForm.textColor}
+                              onChange={(e) => setEditForm({ ...editForm, textColor: e.target.value })}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                            >
+                              <option value="text-white">White</option>
+                              <option value="text-black">Black</option>
+                              <option value="text-gray-100">Light Gray</option>
+                              <option value="text-gray-200">Very Light Gray</option>
+                              <option value="text-gray-300">Pale Gray</option>
+                              <option value="text-gray-800">Dark Gray</option>
+                              <option value="text-gray-900">Very Dark Gray</option>
+                              <option value="text-blue-100">Light Blue</option>
+                              <option value="text-blue-200">Pale Blue</option>
+                              <option value="text-yellow-100">Light Yellow</option>
+                              <option value="text-yellow-200">Pale Yellow</option>
+                              <option value="text-pink-100">Light Pink</option>
+                              <option value="text-pink-200">Pale Pink</option>
+                              <option value="text-green-100">Light Green</option>
+                              <option value="text-green-200">Pale Green</option>
+                            </select>
+                          </div>
                         </div>
+                        
+                        {/* Button Color Selector */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Button Color 
+                            <span className="text-xs text-gray-500 ml-2">
+                              (Current: {editForm.buttonColor || 'none'})
+                            </span>
+                          </label>
+                          <select
+                            value={editForm.buttonColor || 'bg-white text-gray-900'}
+                            onChange={(e) => setEditForm({ ...editForm, buttonColor: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                          >
+                            {/* Show current saved value if it doesn't match any predefined option */}
+                            {editForm.buttonColor && !['bg-white text-gray-900', 'bg-black text-white', 'bg-blue-600 text-white', 'bg-purple-600 text-white', 'bg-red-600 text-white', 'bg-green-600 text-white', 'bg-orange-600 text-white', 'bg-pink-600 text-white', 'bg-indigo-600 text-white', 'bg-teal-600 text-white', 'bg-yellow-500 text-gray-900', 'bg-cyan-600 text-white', 'bg-emerald-600 text-white', 'bg-rose-600 text-white', 'bg-violet-600 text-white', 'bg-amber-500 text-gray-900', 'bg-gray-600 text-white', 'bg-gray-100 text-gray-900'].includes(editForm.buttonColor) && (
+                              <option value={editForm.buttonColor}>Current: {editForm.buttonColor}</option>
+                            )}
+                            <option value="bg-white text-gray-900">White Button</option>
+                            <option value="bg-black text-white">Black Button</option>
+                            <option value="bg-blue-600 text-white">Blue Button</option>
+                            <option value="bg-purple-600 text-white">Purple Button</option>
+                            <option value="bg-red-600 text-white">Red Button</option>
+                            <option value="bg-green-600 text-white">Green Button</option>
+                            <option value="bg-orange-600 text-white">Orange Button</option>
+                            <option value="bg-pink-600 text-white">Pink Button</option>
+                            <option value="bg-indigo-600 text-white">Indigo Button</option>
+                            <option value="bg-teal-600 text-white">Teal Button</option>
+                            <option value="bg-yellow-500 text-gray-900">Yellow Button</option>
+                            <option value="bg-cyan-600 text-white">Cyan Button</option>
+                            <option value="bg-emerald-600 text-white">Emerald Button</option>
+                            <option value="bg-rose-600 text-white">Rose Button</option>
+                            <option value="bg-violet-600 text-white">Violet Button</option>
+                            <option value="bg-amber-500 text-gray-900">Amber Button</option>
+                            <option value="bg-gray-600 text-white">Gray Button</option>
+                            <option value="bg-gray-100 text-gray-900">Light Gray Button</option>
+                          </select>
+                        </div>
+                        
                         <div className="flex gap-2">
                           <button
                             onClick={handleSaveEdit}

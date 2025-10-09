@@ -15,6 +15,7 @@ interface CarouselBackground {
   imageUrl?: string;
   bgGradient: string;
   textColor: string;
+  buttonColor: string;
   isActive: boolean;
   order: number;
 }
@@ -28,6 +29,7 @@ interface Slide {
   buttonLink: string;
   bgGradient: string;
   textColor: string;
+  buttonColor: string;
   backgroundImage?: string;
 }
 
@@ -52,6 +54,9 @@ const HeroSection = () => {
         if (response.ok) {
           const backgrounds = await response.json();
           console.log('🎨 Received backgrounds:', backgrounds);
+          backgrounds.forEach((bg: any, index: number) => {
+            console.log(`🎨 Background ${index} buttonColor:`, bg.buttonColor);
+          });
           setCustomBackgrounds(backgrounds);
         } else {
           console.log('🎨 API call failed:', response.status);
@@ -79,10 +84,14 @@ const HeroSection = () => {
       buttonLink: bg.buttonLink,
       bgGradient: bg.bgGradient,
       textColor: bg.textColor,
+      buttonColor: bg.buttonColor,
       backgroundImage: bg.imageUrl
     }));
 
   console.log('🎨 Created slides:', slides.length, slides);
+  slides.forEach((slide, index) => {
+    console.log(`🎨 Slide ${index} buttonColor:`, slide.buttonColor);
+  });
 
   useEffect(() => {
     if (!isAutoPlaying) return;
@@ -191,15 +200,20 @@ const HeroSection = () => {
           }`}
         >
           <div className="w-full h-full relative">
-            {/* Background Image using Next.js Image component - same as products */}
+            {/* Background Image using Next.js Image component with improved scaling */}
             {slide.backgroundImage ? (
               <Image
                 src={slide.backgroundImage}
                 alt={slide.title || 'Carousel background'}
                 fill
-                className="object-cover"
+                className="object-contain sm:object-contain md:object-cover lg:object-cover xl:object-cover"
                 priority
-                style={{ zIndex: 1 }}
+                style={{ 
+                  zIndex: 1,
+                  objectPosition: 'center center'
+                }}
+                sizes="100vw"
+                quality={85}
                 onLoad={() => console.log('🎨 Background image loaded successfully:', slide.backgroundImage)}
                 onError={(e) => {
                   console.log('❌ Background image failed to load:', slide.backgroundImage);
@@ -230,7 +244,7 @@ const HeroSection = () => {
                   <div className="space-y-2 sm:space-y-4">
                     <Link
                       href={slide.buttonLink || '/products'}
-                      className="inline-block bg-white text-gray-900 px-6 sm:px-8 py-3 sm:py-4 rounded-lg font-bold text-sm sm:text-base md:text-lg hover:bg-gray-100 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 touch-manipulation carousel-cta-button"
+                      className={`inline-block px-6 sm:px-8 py-3 sm:py-4 rounded-lg font-bold text-sm sm:text-base md:text-lg transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 touch-manipulation carousel-cta-button ${slide.buttonColor || 'bg-white text-gray-900 hover:bg-gray-100'}`}
                     >
                       {slide.buttonText || 'EXPLORE'}
                     </Link>

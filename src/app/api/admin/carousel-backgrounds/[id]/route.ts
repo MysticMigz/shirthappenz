@@ -24,16 +24,32 @@ export async function PATCH(
     const { id } = params;
     const body = await request.json();
 
+    console.log('🔧 PATCH request received:', { id, body });
+    console.log('🔧 Button color in request:', body.buttonColor);
+
     await connectToDatabase();
+    
+    // Ensure buttonColor has a default value if not provided
+    const updateData = {
+      ...body,
+      buttonColor: body.buttonColor || 'bg-white text-gray-900',
+      updatedAt: new Date()
+    };
+    
+    console.log('🔧 About to update with data:', updateData);
+    
     const background = await CarouselBackground.findByIdAndUpdate(
       id,
-      { ...body, updatedAt: new Date() },
-      { new: true }
+      updateData,
+      { new: true, upsert: false }
     );
 
     if (!background) {
       return NextResponse.json({ error: 'Background not found' }, { status: 404 });
     }
+
+    console.log('🔧 Updated background:', background.toObject());
+    console.log('🔧 Button color after update:', background.buttonColor);
 
     return NextResponse.json({
       message: 'Background updated successfully',

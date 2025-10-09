@@ -62,6 +62,7 @@ export async function POST(request: NextRequest) {
     const buttonLink = formData.get('buttonLink') as string;
     const bgGradient = formData.get('bgGradient') as string;
     const textColor = formData.get('textColor') as string;
+    const buttonColor = formData.get('buttonColor') as string;
 
     console.log('🎨 Upload form data:', {
       slideId: slideId,
@@ -140,6 +141,7 @@ export async function POST(request: NextRequest) {
       imageUrl: (uploadResult as any).secure_url,
       bgGradient: bgGradient || 'from-gray-800 to-gray-900',
       textColor: textColor || 'text-white',
+      buttonColor: buttonColor || 'bg-white text-gray-900',
       isActive: true,
       order: slideId
     });
@@ -168,6 +170,7 @@ export async function POST(request: NextRequest) {
         imageUrl: background.imageUrl,
         bgGradient: background.bgGradient,
         textColor: background.textColor,
+        buttonColor: background.buttonColor,
         isActive: background.isActive,
         order: background.order,
         createdAt: background.createdAt
