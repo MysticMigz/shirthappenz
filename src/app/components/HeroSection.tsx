@@ -15,6 +15,7 @@ interface CarouselBackground {
   imageUrl?: string;
   bgGradient: string;
   textColor: string;
+  isActive: boolean;
   order: number;
 }
 
