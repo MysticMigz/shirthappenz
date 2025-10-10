@@ -71,3 +71,4 @@ console.log('2. Update the model path in ThreeDViewer.tsx');
 console.log('3. Test the 3D preview in your application');
 console.log('4. Optimize textures and materials as needed');
 
+

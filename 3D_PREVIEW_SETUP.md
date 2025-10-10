@@ -167,3 +167,4 @@ src/
 
 **Note**: The current implementation includes a fallback geometry that will display if the Blender model can't be loaded, ensuring the 3D preview always works.
 
+
