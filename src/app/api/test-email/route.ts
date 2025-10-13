@@ -27,7 +27,7 @@ export async function POST(request: Request) {
         postcode: 'TE1 1ST',
         country: 'United Kingdom',
         shippingMethod: 'Standard Delivery',
-        shippingCost: 5.99
+        shippingCost: 5
       },
       total: 15.99,
       vat: 2.67,

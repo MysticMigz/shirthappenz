@@ -126,7 +126,12 @@ const OrderSchema = new mongoose.Schema({
     trackingNumber: String,
     courier: String,
     estimatedDelivery: String,
-    shippedAt: Date
+    shippedAt: Date,
+    labelDownloadUrl: String,
+    labelId: String,
+    shipmentId: String,
+    actualShippingCost: Number,
+    actualShippingCurrency: String
   },
   total: {
     type: Number,
@@ -304,7 +309,10 @@ OrderSchema.pre('save', async function(next) {
   }
 });
 
-// Create or get the model
-const Order = mongoose.models.Order || mongoose.model('Order', OrderSchema);
+// Create or get the model - clear cache to ensure schema updates are applied
+if (mongoose.models.Order) {
+  delete mongoose.models.Order;
+}
+const Order = mongoose.model('Order', OrderSchema);
 
 export default Order; 

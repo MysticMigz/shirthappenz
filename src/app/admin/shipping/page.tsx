@@ -30,6 +30,9 @@ interface Order {
     estimatedDelivery?: string;
     shippedAt?: string;
     notes?: string; // Added for shipped orders
+    labelDownloadUrl?: string;
+    labelId?: string;
+    shipmentId?: string;
   };
   items: Array<{
     name: string;
@@ -44,12 +47,7 @@ interface Order {
 }
 
 const COURIERS = [
-  { name: 'Royal Mail', value: 'Royal Mail', color: 'bg-red-100 text-red-800' },
-  { name: 'Evri', value: 'Evri', color: 'bg-purple-100 text-purple-800' },
-  { name: 'DPD', value: 'DPD', color: 'bg-yellow-100 text-yellow-800' },
-  { name: 'DHL', value: 'DHL', color: 'bg-orange-100 text-orange-800' },
-  { name: 'FedEx', value: 'FedEx', color: 'bg-blue-100 text-blue-800' },
-  { name: 'UPS', value: 'UPS', color: 'bg-brown-100 text-brown-800' },
+  { name: 'EVRi', value: 'EVRi', color: 'bg-purple-100 text-purple-800 border-purple-300' }
 ];
 
 const BarcodeScanner = dynamic(() => import('@/components/BarcodeScanner'), { ssr: false });
@@ -64,8 +62,9 @@ export default function ShippingPage() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [shippingForm, setShippingForm] = useState({
     trackingNumber: '',
-    courier: 'Royal Mail',
-    notes: ''
+    courier: 'EVRi',
+    notes: '',
+    generateLabel: true
   });
   const [shippingLoading, setShippingLoading] = useState(false);
   const [scanMode, setScanMode] = useState(false);
@@ -112,7 +111,17 @@ export default function ShippingPage() {
 
   const handleShipOrder = async (orderId: string) => {
     setShippingLoading(true);
+    console.log('🚀 Shipping order:', {
+      orderId,
+      generateLabel: shippingForm.generateLabel,
+      courier: shippingForm.courier,
+      trackingNumber: shippingForm.trackingNumber
+    });
+    
     try {
+      console.log('📤 Sending request to:', `/api/admin/orders/${orderId}/ship`);
+      console.log('📤 Request body:', JSON.stringify(shippingForm, null, 2));
+      
       const response = await fetch(`/api/admin/orders/${orderId}/ship`, {
         method: 'POST',
         headers: {
@@ -121,11 +130,20 @@ export default function ShippingPage() {
         body: JSON.stringify(shippingForm),
       });
 
+      console.log('📥 Response status:', response.status);
+      console.log('📥 Response ok:', response.ok);
+
       if (!response.ok) {
         throw new Error('Failed to ship order');
       }
 
       const result = await response.json();
+      
+      console.log('✅ Order shipped successfully:', {
+        orderId,
+        labelGenerated: result.labelGenerated,
+        trackingNumber: result.order?.shippingDetails?.trackingNumber
+      });
       
       // Update local state: remove from ready, add to shipped
       setOrders(orders.filter(order => order._id !== orderId));
@@ -133,11 +151,24 @@ export default function ShippingPage() {
       setSelectedOrder(null);
       setShippingForm({
         trackingNumber: '',
-        courier: 'Royal Mail',
-        notes: ''
+        courier: 'EVRi',
+        notes: '',
+        generateLabel: true
       });
-      // Show success message
-      alert(result.message);
+      
+      // Show success message with label generation info
+      const message = result.labelGenerated 
+        ? `${result.message} EVRi label generated successfully!`
+        : result.message;
+      
+      if (result.labelGenerated && result.labelInfo?.labelDownloadUrl) {
+        const costInfo = result.labelInfo.shippingCost ? 
+          `\nShipping Cost: ${result.labelInfo.shippingCost.formatted}` : '';
+        const downloadMessage = `${message}${costInfo}\n\nLabel Download URL: ${result.labelInfo.labelDownloadUrl}`;
+        alert(downloadMessage);
+      } else {
+        alert(message);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to ship order');
     } finally {
@@ -316,6 +347,18 @@ export default function ShippingPage() {
                   ))}
                 </div>
               </div>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="generateLabel"
+                  checked={shippingForm.generateLabel}
+                  onChange={(e) => setShippingForm(prev => ({ ...prev, generateLabel: e.target.checked }))}
+                  className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                />
+                <label htmlFor="generateLabel" className="text-sm font-medium text-gray-700">
+                  Generate EVRi shipping label automatically
+                </label>
+              </div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Notes (optional)
               </label>
@@ -329,18 +372,19 @@ export default function ShippingPage() {
               <div className="flex gap-2">
                 <button
                   onClick={() => handleShipOrder(selectedOrder._id)}
-                  disabled={!shippingForm.trackingNumber || shippingLoading}
+                  disabled={(!shippingForm.trackingNumber && !shippingForm.generateLabel) || shippingLoading}
                   className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 font-medium"
                 >
-                  {shippingLoading ? 'Shipping...' : 'Mark as Shipped'}
+                  {shippingLoading ? 'Shipping...' : shippingForm.generateLabel ? 'Generate Label & Ship' : 'Mark as Shipped'}
                 </button>
                 <button
                   onClick={() => {
                     setSelectedOrder(null);
                     setShippingForm({
                       trackingNumber: '',
-                      courier: 'Royal Mail',
-                      notes: ''
+                      courier: 'EVRi',
+                      notes: '',
+                      generateLabel: true
                     });
                   }}
                   className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 font-medium"
@@ -397,6 +441,28 @@ export default function ShippingPage() {
                     <div><strong>Courier:</strong> {order.shippingDetails.courier || <span className="text-gray-400">N/A</span>}</div>
                     {order.shippingDetails.notes && (
                       <div><strong>Notes:</strong> {order.shippingDetails.notes}</div>
+                    )}
+                    {order.shippingDetails.labelDownloadUrl && (
+                      <div className="mt-2 pt-2 border-t border-blue-200">
+                        <div className="flex items-center gap-2">
+                          <a
+                            href={order.shippingDetails.labelDownloadUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center px-2 py-1 bg-green-600 text-white rounded text-xs font-medium hover:bg-green-700 transition-colors"
+                          >
+                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Label PDF
+                          </a>
+                          {order.shippingDetails.labelId && (
+                            <span className="text-xs text-blue-600 bg-blue-100 px-1 py-0.5 rounded">
+                              ID: {order.shippingDetails.labelId}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     )}
                   </div>
                 )}

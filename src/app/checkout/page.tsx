@@ -40,7 +40,7 @@ interface VoucherDiscount {
 
 const DEFAULT_SHIPPING_METHOD = 'Standard Delivery';
 const SHIPPING_COSTS = { 
-  'Standard Delivery': 5.99
+  'Standard Delivery': 5
 };
 
 export default function CheckoutPage() {

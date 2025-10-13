@@ -176,9 +176,27 @@ export async function POST(request: NextRequest) {
       uploadedImageUrls = productData.images || [];
     }
 
+    // Debug: Log the exact data being validated
+    console.log('🔍 Validating product data:', {
+      category: productData.category,
+      categoryType: typeof productData.category,
+      allData: productData
+    });
+
     // Validate and sanitize input using Zod
     const validation = validateAndSanitize(productSchema, productData);
     if (!validation.success) {
+      console.error('❌ Product validation failed:', {
+        errors: validation.errors,
+        productData: {
+          name: productData.name,
+          category: productData.category,
+          gender: productData.gender,
+          price: productData.price,
+          basePrice: productData.basePrice
+        },
+        validationSchema: 'Updated schema with crewneck and shortsleeve'
+      });
       return NextResponse.json(
         { error: validation.errors[0] },
         { status: 400 }

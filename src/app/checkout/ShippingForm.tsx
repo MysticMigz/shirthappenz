@@ -19,7 +19,7 @@ interface ShippingFormProps {
 }
 
 const SHIPPING_COSTS = {
-  'Standard Delivery': 5.99
+  'Standard Delivery': 5
 };
 
 export default function ShippingForm({ onSubmit }: ShippingFormProps) {
@@ -209,7 +209,7 @@ export default function ShippingForm({ onSubmit }: ShippingFormProps) {
                 </div>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-900">£5.99</p>
+                <p className="text-sm font-medium text-gray-900">£5.00</p>
               </div>
             </div>
           </div>

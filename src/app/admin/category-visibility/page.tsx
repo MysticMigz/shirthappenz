@@ -47,6 +47,7 @@ export default function CategoryVisibilityPage() {
     { key: 'sweatpants', label: 'Sweatpants', icon: '👖', defaultVisible: true },
     { key: 'accessories', label: 'Accessories', icon: '👜', defaultVisible: true },
     { key: 'shortsleeve', label: 'Short Sleeve', icon: '👚', defaultVisible: true },
+    { key: 'crewneck', label: 'Crewneck', icon: '👔', defaultVisible: true },
   ];
 
   useEffect(() => {

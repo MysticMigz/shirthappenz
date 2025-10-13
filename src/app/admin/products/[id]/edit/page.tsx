@@ -447,6 +447,7 @@ export default function EditProduct({ params }: { params: { id: string } }) {
                   <option value="sweatpants">Sweatpants</option>
                   <option value="accessories">Accessories</option>
                   <option value="shortsleeve">Short Sleeve</option>
+                  <option value="crewneck">Crewneck</option>
                 </select>
               </div>
             </div>

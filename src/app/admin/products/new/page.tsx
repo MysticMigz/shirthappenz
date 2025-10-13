@@ -625,6 +625,7 @@ export default function NewProduct() {
                   <option value="sweatpants">Sweatpants</option>
                   <option value="accessories">Accessories</option>
                   <option value="shortsleeve">Short Sleeve</option>
+                  <option value="crewneck">Crewneck</option>
                 </select>
                 {fieldErrors.category && (
                   <p className="mt-1 text-sm text-red-600">{fieldErrors.category}</p>

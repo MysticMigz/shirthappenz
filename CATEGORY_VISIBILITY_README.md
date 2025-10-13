@@ -67,6 +67,7 @@ interface CategoryVisibility {
 - `sweatpants` - Sweatpants
 - `accessories` - Accessories
 - `shortsleeve` - Short Sleeve Shirts
+- `crewneck` - Crewneck
 
 ## Initialization
 
