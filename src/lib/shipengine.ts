@@ -273,7 +273,7 @@ class ShipEngineAPI {
       postal_code: 'SE7 8SS', // Change this to your postcode
       country_code: 'GB',
       phone: '+447902870824', // Change this to your phone number
-      address_residential_indicator: 'yes'
+      address_residential_indicator: 'no'
     };
 
     const shipFrom = orderData.shipFrom ? {
