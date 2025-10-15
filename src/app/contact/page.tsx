@@ -33,23 +33,16 @@ export default function ContactPage() {
                 <div><span className="font-semibold">Legal Structure:</span> <span>Limited Company</span></div>
                 <div><span className="font-semibold">Trading Address:</span> <span>10 Barney Close, SE7 8SS, United Kingdom</span></div>
                 <div><span className="font-semibold">Email:</span> <a href="mailto:customer.service@mrshirtpersonalisation.com" className="text-blue-600 underline">customer.service@mrshirtpersonalisation.com</a></div>
-                <div><span className="font-semibold">Phone:</span> <span>07954746514</span></div>
+                <div><span className="font-semibold">Phone:</span> <span>07902870824</span></div>
                 <div><span className="font-semibold">Business Hours:</span> <span>Mon-Fri 9:00am - 6:00pm</span></div>
                 <div><span className="font-semibold">Instagram:</span> <a href="https://www.instagram.com/mr_shirt_personalisation" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">@mr_shirt_personalisation</a></div>
-              </div>
-            </div>
-            <div>
-              <h3 className="text-2xl font-semibold text-gray-900 mb-2 mt-8">Find Us</h3>
-              <div className="rounded-lg overflow-hidden border border-gray-200 bg-gray-100 h-48 flex items-center justify-center text-gray-400 text-base">
-                {/* Map placeholder - replace with real map if desired */}
-                <span>Map location coming soon</span>
               </div>
             </div>
             <div>
               <h3 className="text-2xl font-semibold text-gray-900 mb-2 mt-8">Frequently Asked Questions</h3>
               <ul className="space-y-3 text-gray-700 text-base">
                 <li><span className="font-semibold">How long does it take to get a response?</span> We aim to reply to all queries within 24 hours (Mon-Fri).</li>
-                <li><span className="font-semibold">Can I visit your shop?</span> Please contact us to arrange a visit or consultation.</li>
+                <li><span className="font-semibold">Do you have a physical location?</span> We are an online-only business, but we offer virtual consultations and design support.</li>
                 <li><span className="font-semibold">Do you offer bulk discounts?</span> Yes! Let us know your requirements for a custom quote.</li>
                 <li><span className="font-semibold">What is your return policy?</span> Please see our <a href="/help/faqs" className="text-blue-600 underline">FAQs</a> for details.</li>
               </ul>
