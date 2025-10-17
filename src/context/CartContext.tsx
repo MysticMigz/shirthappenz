@@ -33,9 +33,9 @@ interface CartItem {
 
 interface CartContextType {
   items: CartItem[];
-  addItem: (item: CartItem) => void;
+  addItem: (item: CartItem, availableStock?: number) => { success: boolean; message?: string; addedQuantity?: number; requestedQuantity?: number };
   removeItem: (productId: string, size: string, customization?: { name?: string; number?: string }) => void;
-  updateQuantity: (productId: string, size: string, quantity: number, customization?: { name?: string; number?: string }) => void;
+  updateQuantity: (productId: string, size: string, quantity: number, availableStock?: number, customization?: { name?: string; number?: string }) => { success: boolean; message?: string; finalQuantity?: number };
   clearCart: () => void;
   getTotal: () => number;
   getItemCount: () => number;
@@ -97,12 +97,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [items]);
 
-  const addItem = (newItem: CartItem) => {
+  const addItem = (newItem: CartItem, availableStock?: number) => {
+    let result = { success: false, message: '', addedQuantity: 0, requestedQuantity: newItem.quantity };
+    
     setItems(currentItems => {
       // If item has customization, treat it as unique
       const existingItemIndex = currentItems.findIndex(
         item => item.productId === newItem.productId && 
                item.size === newItem.size &&
+               item.color === newItem.color &&
                (!item.customization?.isCustomized || 
                 (item.customization?.name === newItem.customization?.name &&
                  item.customization?.number === newItem.customization?.number))
@@ -112,10 +115,49 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         // Only combine non-customized items
         const updatedItems = [...currentItems];
         const existingItem = updatedItems[existingItemIndex];
-        const newQuantity = Math.min(10, existingItem.quantity + newItem.quantity);
         
-        if (existingItem.quantity >= 10) {
+        // Calculate new quantity with stock validation
+        let newQuantity = existingItem.quantity + newItem.quantity;
+        const requestedTotal = newQuantity;
+        
+        // Apply stock limit if available
+        if (availableStock !== undefined) {
+          newQuantity = Math.min(newQuantity, availableStock);
+        }
+        
+        // Apply maximum cart limit
+        newQuantity = Math.min(newQuantity, 10);
+        
+        // Calculate how much was actually added
+        const addedQuantity = newQuantity - existingItem.quantity;
+        
+        // Set result message
+        if (addedQuantity === 0) {
+          result = { 
+            success: false, 
+            message: availableStock !== undefined && requestedTotal > availableStock 
+              ? `Cannot add more items. Only ${availableStock} available in stock.`
+              : 'Maximum quantity (10) already in cart.',
+            addedQuantity: 0,
+            requestedQuantity: newItem.quantity
+          };
           return currentItems;
+        } else if (addedQuantity < newItem.quantity) {
+          result = { 
+            success: true, 
+            message: availableStock !== undefined && requestedTotal > availableStock
+              ? `Added ${addedQuantity} items. Only ${availableStock} available in stock.`
+              : `Added ${addedQuantity} items. Maximum cart limit is 10.`,
+            addedQuantity,
+            requestedQuantity: newItem.quantity
+          };
+        } else {
+          result = { 
+            success: true, 
+            message: `Added ${addedQuantity} items to cart.`,
+            addedQuantity,
+            requestedQuantity: newItem.quantity
+          };
         }
         
         updatedItems[existingItemIndex] = {
@@ -125,9 +167,49 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         return updatedItems;
       }
 
+      // For customized items or new items, validate quantity against stock
+      let finalQuantity = newItem.quantity;
+      if (availableStock !== undefined) {
+        finalQuantity = Math.min(finalQuantity, availableStock);
+      }
+      finalQuantity = Math.min(finalQuantity, 10);
+
+      // Don't add if quantity is 0 or less
+      if (finalQuantity <= 0) {
+        result = { 
+          success: false, 
+          message: availableStock !== undefined && newItem.quantity > availableStock
+            ? `Cannot add items. Only ${availableStock} available in stock.`
+            : 'Cannot add 0 items.',
+          addedQuantity: 0,
+          requestedQuantity: newItem.quantity
+        };
+        return currentItems;
+      }
+
+      // Set result message for new items
+      if (finalQuantity < newItem.quantity) {
+        result = { 
+          success: true, 
+          message: availableStock !== undefined && newItem.quantity > availableStock
+            ? `Added ${finalQuantity} items. Only ${availableStock} available in stock.`
+            : `Added ${finalQuantity} items. Maximum cart limit is 10.`,
+          addedQuantity: finalQuantity,
+          requestedQuantity: newItem.quantity
+        };
+      } else {
+        result = { 
+          success: true, 
+          message: `Added ${finalQuantity} items to cart.`,
+          addedQuantity: finalQuantity,
+          requestedQuantity: newItem.quantity
+        };
+      }
+
       // For customized items or new items, add as new entry
       return [...currentItems, {
         ...newItem,
+        quantity: finalQuantity,
         customization: newItem.customization ? {
           ...newItem.customization,
           nameCharacters: newItem.customization.name?.length || 0,
@@ -137,6 +219,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         } : undefined
       }];
     });
+    
+    return result;
   };
 
   const removeItem = (productId: string, size: string, customization?: { name?: string; number?: string }) => {
@@ -176,7 +260,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
-  const updateQuantity = (productId: string, size: string, quantity: number, customization?: { name?: string; number?: string }) => {
+  const updateQuantity = (productId: string, size: string, quantity: number, availableStock?: number, customization?: { name?: string; number?: string }) => {
     if (quantity <= 0) {
       removeItem(productId, size, customization);
       return;
@@ -189,9 +273,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         
         if (!basicMatch) return item;
         
+        // Calculate final quantity with stock validation
+        let finalQuantity = quantity;
+        if (availableStock !== undefined) {
+          finalQuantity = Math.min(finalQuantity, availableStock);
+        }
+        finalQuantity = Math.min(finalQuantity, 10);
+        
         // If no customization specified, update all items with this product and size
         if (!customization) {
-          return { ...item, quantity: Math.min(10, quantity) };
+          return { ...item, quantity: finalQuantity };
         }
         
         // If customization specified, also check customization details

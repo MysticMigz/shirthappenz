@@ -16,9 +16,9 @@ interface Product {
   basePrice: number;
   category: string;
   gender: string;
-  images: Array<{ url: string; alt: string }>;
+  images: Array<{ url: string; alt: string; color?: string }>;
   sizes: string[];
-  colors: Array<{ name: string; hexCode: string }>;
+  colors: Array<{ name: string; hexCode: string; imageUrl?: string; stock?: { [size: string]: number } }>;
   featured: boolean;
   customizable: boolean;
 }
@@ -47,6 +47,7 @@ export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedColors, setSelectedColors] = useState<Record<string, string>>({});
   
   // Filters and sorting state
   const [searchQuery, setSearchQuery] = useState('');
@@ -96,6 +97,7 @@ export default function ProductsPage() {
     hoodies: 'https://img.icons8.com/?size=100&id=MKsXeFPktvxv&format=png&color=000000', // Hoodie (user-provided PNG)
     sweatshirts: 'https://img.icons8.com/ios-filled/50/000000/sweater.png', // Sweater (Sweatshirt)
     sweatpants: 'https://img.icons8.com/ios-filled/50/000000/trousers.png', // Trousers (Sweatpants)
+    crewneck: 'https://img.icons8.com/ios-filled/50/t-shirt--v1.png', // Crewneck
   };
 
   const allCategories: Record<string, Category[]> = {
@@ -106,6 +108,7 @@ export default function ProductsPage() {
       { key: 'longsleeve', label: 'Long Sleeve Shirts', icon: <img src={icons8.longsleeve} alt="Long Sleeve Shirts" width={40} height={40} /> },
       { key: 'hoodies', label: 'Hoodies', icon: <img src={icons8.hoodies} alt="Hoodies" width={40} height={40} /> },
       { key: 'sweatshirts', label: 'Sweatshirts', icon: <img src={icons8.sweatshirts} alt="Sweatshirts" width={40} height={40} /> },
+      { key: 'crewneck', label: 'Crewneck', icon: <img src={icons8.crewneck} alt="Crewneck" width={40} height={40} /> },
       { key: 'sweatpants', label: 'Sweatpants', icon: <img src={icons8.sweatpants} alt="Sweatpants" width={40} height={40} /> },
     ],
     women: [
@@ -115,6 +118,7 @@ export default function ProductsPage() {
       { key: 'longsleeve', label: 'Long Sleeve Shirts', icon: <img src={icons8.longsleeve} alt="Long Sleeve Shirts" width={40} height={40} /> },
       { key: 'hoodies', label: 'Hoodies', icon: <img src={icons8.hoodies} alt="Hoodies" width={40} height={40} /> },
       { key: 'sweatshirts', label: 'Sweatshirts', icon: <img src={icons8.sweatshirts} alt="Sweatshirts" width={40} height={40} /> },
+      { key: 'crewneck', label: 'Crewneck', icon: <img src={icons8.crewneck} alt="Crewneck" width={40} height={40} /> },
       { key: 'sweatpants', label: 'Sweatpants', icon: <img src={icons8.sweatpants} alt="Sweatpants" width={40} height={40} /> },
     ],
     unisex: [
@@ -122,12 +126,14 @@ export default function ProductsPage() {
       { key: 'jerseys', label: 'Jerseys', icon: <img src={icons8.jerseys} alt="Jerseys" width={40} height={40} /> },
       { key: 'hoodies', label: 'Hoodies', icon: <img src={icons8.hoodies} alt="Hoodies" width={40} height={40} /> },
       { key: 'sweatshirts', label: 'Sweatshirts', icon: <img src={icons8.sweatshirts} alt="Sweatshirts" width={40} height={40} /> },
+      { key: 'crewneck', label: 'Crewneck', icon: <img src={icons8.crewneck} alt="Crewneck" width={40} height={40} /> },
     ],
     kids: [
       { key: 'tshirts', label: 'T-Shirts', icon: <img src={icons8.tshirts} alt="T-Shirts" width={40} height={40} /> },
       { key: 'jerseys', label: 'Jerseys', icon: <img src={icons8.jerseys} alt="Jerseys" width={40} height={40} /> },
       { key: 'hoodies', label: 'Hoodies', icon: <img src={icons8.hoodies} alt="Hoodies" width={40} height={40} /> },
       { key: 'sweatshirts', label: 'Sweatshirts', icon: <img src={icons8.sweatshirts} alt="Sweatshirts" width={40} height={40} /> },
+      { key: 'crewneck', label: 'Crewneck', icon: <img src={icons8.crewneck} alt="Crewneck" width={40} height={40} /> },
       { key: 'sweatpants', label: 'Sweatpants', icon: <img src={icons8.sweatpants} alt="Sweatpants" width={40} height={40} /> },
     ],
   };
@@ -243,6 +249,10 @@ export default function ProductsPage() {
       if (!response.ok) throw new Error('Failed to fetch products');
       
       const data = await response.json();
+      console.log('Products data:', data.products);
+      if (data.products && data.products.length > 0) {
+        console.log('First product colors:', data.products[0].colors);
+      }
       setProducts(data.products || []);
       setError(null);
     } catch (err) {
@@ -274,6 +284,55 @@ export default function ProductsPage() {
     } else if (key === 'sortBy') {
       setSortBy(value as typeof sortBy);
     }
+  };
+
+  const handleColorSelect = (productId: string, colorName: string, event: React.MouseEvent) => {
+    event.preventDefault(); // Prevent navigation to product page
+    event.stopPropagation();
+    console.log('Color selected:', colorName, 'for product:', productId);
+    setSelectedColors(prev => ({
+      ...prev,
+      [productId]: colorName
+    }));
+  };
+
+  const getProductImage = (product: Product) => {
+    const selectedColor = selectedColors[product._id];
+    
+    if (selectedColor) {
+      // First try to find an image with the specific color
+      const colorImage = product.images.find(img => img.color === selectedColor);
+      if (colorImage) return colorImage;
+      
+      // Then try to find a color with imageUrl
+      const colorWithImage = product.colors.find(color => 
+        color.name === selectedColor && color.imageUrl
+      );
+      if (colorWithImage?.imageUrl) {
+        return { url: colorWithImage.imageUrl, alt: `${product.name} - ${selectedColor}` };
+      }
+    }
+    
+    // Fallback to first image
+    return product.images[0];
+  };
+
+  const getColorStock = (product: Product, colorName: string, size: string) => {
+    const color = product.colors.find(c => c.name === colorName);
+    if (color?.stock) {
+      return color.stock[size] || 0;
+    }
+    // Only return color-specific stock, no fallback to general stock
+    return 0;
+  };
+
+  const isSizeAvailable = (product: Product, size: string) => {
+    const selectedColor = selectedColors[product._id];
+    if (selectedColor) {
+      return getColorStock(product, selectedColor, size) > 0;
+    }
+    // If no color selected, show as unavailable (require color selection)
+    return false;
   };
 
   const handleGenderClick = (key: string) => {
@@ -509,32 +568,41 @@ export default function ProductsPage() {
         {/* Products Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
           {filteredProducts.map((product) => (
-            <Link
-              href={`/product/${product._id}`}
+            <div
               key={product._id}
-              className="group bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+              className={`group bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-all duration-300 ${
+                selectedColors[product._id] ? 'ring-2 ring-purple-200' : ''
+              }`}
             >
-              <div className="relative aspect-square bg-gray-100">
-                {product.images[0] ? (
-                  <Image
-                    src={product.images[0].url}
-                    alt={product.images[0].alt || product.name}
-                    fill
-                    className="object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                    <div className="bg-gradient-to-r from-purple-600 via-blue-500 to-orange-400 text-white brand-text text-sm sm:text-lg px-2 sm:px-4 py-1 sm:py-2 rounded-lg">
-                      ShirtHappenZ
-                    </div>
-                  </div>
-                )}
-              </div>
+              <Link href={`/product/${product._id}`}>
+                <div className="relative aspect-square bg-gray-100">
+                  {(() => {
+                    const productImage = getProductImage(product);
+                    return productImage ? (
+                      <Image
+                        key={`${product._id}-${selectedColors[product._id] || 'default'}`} // Force re-render when color changes
+                        src={productImage.url}
+                        alt={productImage.alt || product.name}
+                        fill
+                        className="object-cover transition-all duration-300 ease-in-out"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                        <div className="bg-gradient-to-r from-purple-600 via-blue-500 to-orange-400 text-white brand-text text-sm sm:text-lg px-2 sm:px-4 py-1 sm:py-2 rounded-lg">
+                          ShirtHappenZ
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </Link>
 
               <div className="p-3 sm:p-4">
-                <h3 className="font-semibold text-base sm:text-lg text-gray-900 mb-1 group-hover:text-purple-600 transition-colors">
-                  {product.name}
-                </h3>
+                <Link href={`/product/${product._id}`}>
+                  <h3 className="font-semibold text-base sm:text-lg text-gray-900 mb-1 group-hover:text-purple-600 transition-colors">
+                    {product.name}
+                  </h3>
+                </Link>
                 <p className="text-xs sm:text-sm text-gray-500 mb-2">
                   {product.category}
                 </p>
@@ -546,17 +614,103 @@ export default function ProductsPage() {
                 <div className="flex items-center mb-3">
                   <span className="text-xs text-gray-500 mr-2">Colors:</span>
                   <div className="flex space-x-1">
-                    {product.colors.slice(0, 5).map((color, index) => (
-                      <div
-                        key={index}
-                        className="w-3 h-3 sm:w-4 sm:h-4 rounded-full"
-                        style={{ backgroundColor: color.hexCode }}
-                        title={color.name}
-                      />
-                    ))}
+                    {product.colors.slice(0, 5).map((color, index) => {
+                      const isSelected = selectedColors[product._id] === color.name;
+                      const totalStock = product.sizes.reduce((total, size) => {
+                        return total + getColorStock(product, color.name, size);
+                      }, 0);
+                      const availableSizes = product.sizes.filter(size => getColorStock(product, color.name, size) > 0);
+                      const isOutOfStock = totalStock === 0;
+                      
+                      return (
+                        <div key={index} className="relative">
+                          <button
+                            onClick={(e) => handleColorSelect(product._id, color.name, e)}
+                            disabled={isOutOfStock}
+                            className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full border-2 transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1 ${
+                              isSelected 
+                                ? 'border-gray-800 shadow-lg ring-2 ring-purple-300' 
+                                : 'border-gray-300 hover:border-gray-500'
+                            } ${isOutOfStock ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                            style={{ backgroundColor: color.hexCode }}
+                            title={isOutOfStock 
+                              ? `${color.name} - Out of stock` 
+                              : `${color.name} - ${totalStock} in stock (${availableSizes.length} sizes available)`
+                            }
+                            aria-label={`Select ${color.name} color`}
+                          />
+                          {isOutOfStock && (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <div className="w-2 h-2 sm:w-3 sm:h-3 bg-red-500 rounded-full"></div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                     {product.colors.length > 5 && (
                       <span className="text-xs text-gray-500 ml-1">
                         +{product.colors.length - 5}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Stock summary for selected color */}
+                {selectedColors[product._id] && (
+                  <div className="mb-2">
+                    <div className="text-xs text-gray-600 bg-blue-50 px-2 py-1 rounded">
+                      <span className="font-medium">{selectedColors[product._id]}</span> selected - 
+                      {(() => {
+                        const selectedColor = selectedColors[product._id];
+                        const totalStock = product.sizes.reduce((total, size) => {
+                          return total + getColorStock(product, selectedColor, size);
+                        }, 0);
+                        const availableSizes = product.sizes.filter(size => getColorStock(product, selectedColor, size) > 0);
+                        return ` ${totalStock} in stock (${availableSizes.length}/${product.sizes.length} sizes)`;
+                      })()}
+                    </div>
+                  </div>
+                )}
+
+                {/* Sizes with stock availability */}
+                <div className="flex items-center mb-3">
+                  <span className="text-xs text-gray-500 mr-2">Sizes:</span>
+                  {!selectedColors[product._id] && product.colors && product.colors.length > 0 && (
+                    <span className="text-xs text-gray-400 mr-2">(Select a color to see availability)</span>
+                  )}
+                  <div className="flex flex-wrap gap-1">
+                    {product.sizes.slice(0, 6).map((size, index) => {
+                      const selectedColor = selectedColors[product._id];
+                      const isAvailable = isSizeAvailable(product, size);
+                      const stockLevel = selectedColor ? getColorStock(product, selectedColor, size) : 0;
+                      
+                      return (
+                        <span
+                          key={index}
+                          className={`px-2 py-1 text-xs rounded ${
+                            selectedColor 
+                              ? (isAvailable 
+                                  ? 'bg-green-100 text-green-700 border border-green-200' 
+                                  : 'bg-red-100 text-red-700 border border-red-200')
+                              : 'bg-gray-100 text-gray-500 border border-gray-200'
+                          }`}
+                          title={selectedColor 
+                            ? `${selectedColor} - ${size}: ${stockLevel} in stock` 
+                            : 'Select a color to see stock availability'
+                          }
+                        >
+                          {size}
+                          {selectedColor && isAvailable && (
+                            <span className="ml-1 text-xs opacity-75">
+                              ({stockLevel})
+                            </span>
+                          )}
+                        </span>
+                      );
+                    })}
+                    {product.sizes.length > 6 && (
+                      <span className="text-xs text-gray-500">
+                        +{product.sizes.length - 6}
                       </span>
                     )}
                   </div>
@@ -577,12 +731,12 @@ export default function ProductsPage() {
                       £{product.price.toFixed(2)}
                     </span>
                   )}
-                  <span className="text-xs sm:text-sm text-purple-600 group-hover:translate-x-1 transition-transform duration-200 group-hover:bg-gradient-to-r group-hover:from-[var(--brand-red)] group-hover:to-[var(--brand-blue)] group-hover:bg-clip-text group-hover:text-transparent">
+                  <Link href={`/product/${product._id}`} className="text-xs sm:text-sm text-purple-600 group-hover:translate-x-1 transition-transform duration-200 group-hover:bg-gradient-to-r group-hover:from-[var(--brand-red)] group-hover:to-[var(--brand-blue)] group-hover:bg-clip-text group-hover:text-transparent">
                     View Details →
-                  </span>
+                  </Link>
                 </div>
               </div>
-            </Link>
+            </div>
           ))}
         </div>
 

@@ -12,9 +12,9 @@ interface ProductFormData {
   price: string;
   category: string;
   gender: string;
-  images: Array<{ url: string; alt: string }>;
+  images: Array<{ url: string; alt: string; color?: string }>;
   sizes: string[];
-  colors: Array<{ name: string; hexCode: string }>;
+  colors: Array<{ name: string; hexCode: string; imageUrl?: string; stock?: { [size: string]: number } }>;
   featured: boolean;
   customizable: boolean;
   basePrice: string;
@@ -39,10 +39,11 @@ export default function NewProduct() {
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<FormErrors>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadedImages, setUploadedImages] = useState<Array<{ file: File; preview: string }>>([]);
-  const [urlImages, setUrlImages] = useState<Array<{ url: string; alt: string }>>([]);
+  const [uploadedImages, setUploadedImages] = useState<Array<{ file: File; preview: string; color?: string }>>([]);
+  const [urlImages, setUrlImages] = useState<Array<{ url: string; alt: string; color?: string }>>([]);
   const [imageUrl, setImageUrl] = useState('');
   const [imageAlt, setImageAlt] = useState('');
+  const [imageColor, setImageColor] = useState('');
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
@@ -104,7 +105,7 @@ export default function NewProduct() {
     }));
   };
 
-  const handleColorChange = (index: number, field: 'name' | 'hexCode', value: string) => {
+  const handleColorChange = (index: number, field: 'name' | 'hexCode' | 'imageUrl', value: string) => {
     setFormData(prev => ({
       ...prev,
       colors: prev.colors.map((color, i) => 
@@ -113,10 +114,29 @@ export default function NewProduct() {
     }));
   };
 
+  const handleColorStockChange = (colorIndex: number, size: string, value: string) => {
+    const quantity = Math.max(0, parseInt(value) || 0);
+    
+    setFormData(prev => ({
+      ...prev,
+      colors: prev.colors.map((color, i) => 
+        i === colorIndex 
+          ? { 
+              ...color, 
+              stock: { 
+                ...color.stock, 
+                [size]: quantity 
+              } 
+            } 
+          : color
+      )
+    }));
+  };
+
   const addColor = () => {
     setFormData(prev => ({
       ...prev,
-      colors: [...prev.colors, { name: '', hexCode: '#000000' }]
+      colors: [...prev.colors, { name: '', hexCode: '#000000', imageUrl: '', stock: {} }]
     }));
   };
 
@@ -166,7 +186,8 @@ export default function NewProduct() {
     if (e.target.files && e.target.files.length > 0) {
       const newImages = Array.from(e.target.files).map(file => ({
         file,
-        preview: URL.createObjectURL(file)
+        preview: URL.createObjectURL(file),
+        color: '' // Default to no specific color
       }));
       setUploadedImages(prev => [...prev, ...newImages]);
     }
@@ -179,11 +200,28 @@ export default function NewProduct() {
     });
   };
 
+  const handleImageColorChange = (index: number, color: string, type: 'uploaded' | 'url') => {
+    if (type === 'uploaded') {
+      setUploadedImages(prev => prev.map((img, i) => 
+        i === index ? { ...img, color } : img
+      ));
+    } else {
+      setUrlImages(prev => prev.map((img, i) => 
+        i === index ? { ...img, color } : img
+      ));
+    }
+  };
+
   const handleUrlImageAdd = () => {
     if (imageUrl.trim() && imageAlt.trim()) {
-      setUrlImages(prev => [...prev, { url: imageUrl.trim(), alt: imageAlt.trim() }]);
+      setUrlImages(prev => [...prev, { 
+        url: imageUrl.trim(), 
+        alt: imageAlt.trim(), 
+        color: imageColor.trim() 
+      }]);
       setImageUrl('');
       setImageAlt('');
+      setImageColor('');
       setShowUrlInput(false);
     }
   };
@@ -263,15 +301,19 @@ export default function NewProduct() {
       formDataToSend.append('featured', formData.featured.toString());
       formDataToSend.append('customizable', formData.customizable.toString());
       formDataToSend.append('sizes', JSON.stringify(formData.sizes));
+      console.log('Form data colors being sent:', formData.colors);
       formDataToSend.append('colors', JSON.stringify(formData.colors));
       formDataToSend.append('stock', JSON.stringify(formData.stock));
 
-      // Add uploaded images
+      // Add uploaded images with color data
       uploadedImages.forEach((image, index) => {
         formDataToSend.append('images', image.file);
+        if (image.color) {
+          formDataToSend.append(`imageColors_${index}`, image.color);
+        }
       });
 
-      // Add URL images
+      // Add URL images with color data
       if (urlImages.length > 0) {
         formDataToSend.append('urlImages', JSON.stringify(urlImages));
       }
@@ -361,6 +403,20 @@ export default function NewProduct() {
                     >
                       <FaTrash size={12} />
                     </button>
+                    <div className="absolute bottom-2 left-2 right-2">
+                      <select
+                        value={image.color || ''}
+                        onChange={(e) => handleImageColorChange(index, e.target.value, 'uploaded')}
+                        className="w-full text-xs bg-white/90 backdrop-blur-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                      >
+                        <option value="">No color</option>
+                        {formData.colors.map((color, colorIndex) => (
+                          <option key={colorIndex} value={color.name}>
+                            {color.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 ))}
                 
@@ -386,6 +442,20 @@ export default function NewProduct() {
                     >
                       <FaTrash size={12} />
                     </button>
+                    <div className="absolute bottom-2 left-2 right-2">
+                      <select
+                        value={image.color || ''}
+                        onChange={(e) => handleImageColorChange(index, e.target.value, 'url')}
+                        className="w-full text-xs bg-white/90 backdrop-blur-sm border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                      >
+                        <option value="">No color</option>
+                        {formData.colors.map((color, colorIndex) => (
+                          <option key={colorIndex} value={color.name}>
+                            {color.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 ))}
 
@@ -443,6 +513,26 @@ export default function NewProduct() {
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
                         />
                       </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Color (Optional)
+                        </label>
+                        <select
+                          value={imageColor}
+                          onChange={(e) => setImageColor(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        >
+                          <option value="">No specific color</option>
+                          {formData.colors.map((color, index) => (
+                            <option key={index} value={color.name}>
+                              {color.name}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Associate this image with a specific color
+                        </p>
+                      </div>
                     </div>
                     <div className="flex justify-end space-x-3 mt-6">
                       <button
@@ -480,7 +570,10 @@ export default function NewProduct() {
                 multiple
                 className="hidden"
               />
-              <p className="text-xs text-gray-500">Upload product images (PNG, JPG up to 5MB) or add image URLs</p>
+              <div className="text-xs text-gray-500 space-y-1">
+                <p>Upload product images (PNG, JPG up to 5MB) or add image URLs</p>
+                <p className="text-purple-600 font-medium">💡 Tip: Use the color dropdowns to associate images with specific colors for the color selection feature!</p>
+              </div>
             </div>
 
             {/* Basic Information */}
@@ -716,29 +809,84 @@ export default function NewProduct() {
                   + Add Color
                 </button>
               </div>
-              <div className="space-y-2">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                <h4 className="text-sm font-medium text-blue-900 mb-1">🎨 Color Selection & Stock Management</h4>
+                <p className="text-xs text-blue-700">
+                  When customers view this product, they'll be able to click on color dots to see different images. 
+                  You can also manage stock levels separately for each color variant:
+                </p>
+                <ul className="text-xs text-blue-700 mt-1 ml-4 list-disc">
+                  <li>Use the color dropdowns on uploaded/URL images</li>
+                  <li>Add direct image URLs for each color</li>
+                  <li>Set individual stock levels for each color and size combination</li>
+                </ul>
+              </div>
+              <div className="space-y-4">
                 {formData.colors.map((color, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={color.name}
-                      onChange={(e) => handleColorChange(index, 'name', e.target.value)}
-                      placeholder="Color name"
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                    <input
-                      type="color"
-                      value={color.hexCode}
-                      onChange={(e) => handleColorChange(index, 'hexCode', e.target.value)}
-                      className="h-10 w-20"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeColor(index)}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      Remove
-                    </button>
+                  <div key={index} className="border border-gray-200 rounded-lg p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={color.name}
+                        onChange={(e) => handleColorChange(index, 'name', e.target.value)}
+                        placeholder="Color name (e.g., Red, Blue, Navy)"
+                        className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                      <input
+                        type="color"
+                        value={color.hexCode}
+                        onChange={(e) => handleColorChange(index, 'hexCode', e.target.value)}
+                        className="h-10 w-20 rounded border border-gray-300"
+                        title="Select color"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeColor(index)}
+                        className="text-red-600 hover:text-red-700 px-2 py-1"
+                        title="Remove color"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Color-Specific Image URL (Optional)
+                        </label>
+                        <input
+                          type="url"
+                          value={color.imageUrl || ''}
+                          onChange={(e) => handleColorChange(index, 'imageUrl', e.target.value)}
+                          placeholder="https://example.com/red-shirt.jpg"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Direct image URL for this specific color variant
+                        </p>
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Stock Levels for {color.name || 'this color'}
+                        </label>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                          {formData.sizes.map((size) => (
+                            <div key={size} className="flex flex-col">
+                              <label className="text-xs text-gray-600 mb-1">{size}</label>
+                              <input
+                                type="number"
+                                value={color.stock?.[size] || 0}
+                                onChange={(e) => handleColorStockChange(index, size, e.target.value)}
+                                min="0"
+                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+                                placeholder="0"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Set stock levels for each size of this color variant
+                        </p>
+                      </div>
                   </div>
                 ))}
               </div>

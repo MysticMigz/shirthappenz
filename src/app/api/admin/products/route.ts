@@ -13,8 +13,8 @@ interface ProductData {
   basePrice: number;
   category: string;
   sizes: string[];
-  colors: Array<{ name: string; hexCode: string }>;
-  images: Array<{ url: string; alt: string }>;
+  colors: Array<{ name: string; hexCode: string; imageUrl?: string; stock?: { [size: string]: number } }>;
+  images: Array<{ url: string; alt: string; color?: string }>;
   stock: { [key: string]: number };
   featured?: boolean;
   customizable?: boolean;
@@ -120,6 +120,9 @@ export async function POST(request: NextRequest) {
       const formData = await request.formData();
       
       // Extract basic product data
+      const colorsData = formData.get('colors') as string;
+      console.log('Raw colors data from form:', colorsData);
+      
       productData = {
         name: formData.get('name') as string,
         description: formData.get('description') as string,
@@ -130,15 +133,17 @@ export async function POST(request: NextRequest) {
         featured: formData.get('featured') === 'true',
         customizable: formData.get('customizable') === 'true',
         sizes: JSON.parse(formData.get('sizes') as string || '[]'),
-        colors: JSON.parse(formData.get('colors') as string || '[]'),
+        colors: JSON.parse(colorsData || '[]'),
         stock: JSON.parse(formData.get('stock') as string || '{}')
       };
+      
+      console.log('Parsed colors data:', productData.colors);
 
       // Handle uploaded images
       const imageFiles = formData.getAll('images') as File[];
       if (imageFiles.length > 0) {
         uploadedImageUrls = await Promise.all(
-          imageFiles.map(async (file) => {
+          imageFiles.map(async (file, index) => {
             const uploadFormData = new FormData();
             uploadFormData.append('file', file);
 
@@ -153,9 +158,12 @@ export async function POST(request: NextRequest) {
               }
 
               const uploadData = await uploadResponse.json();
+              const color = formData.get(`imageColors_${index}`) as string;
+              
               return {
                 url: uploadData.url,
-                alt: uploadData.alt || file.name
+                alt: uploadData.alt || file.name,
+                color: color || undefined
               };
             } catch (error) {
               console.error(`Error uploading ${file.name}:`, error);
@@ -223,6 +231,9 @@ export async function POST(request: NextRequest) {
       featured: validatedData.featured,
       customizable: validatedData.customizable
     };
+
+    console.log('Final product data being saved:', JSON.stringify(finalProductData, null, 2));
+    console.log('Colors in final data:', finalProductData.colors);
 
     const product = await Product.create(finalProductData);
     

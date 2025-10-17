@@ -15,9 +15,9 @@ interface Product {
   price: number;
   basePrice: number;
   category: string;
-  images: Array<{ url: string; alt: string }>;
+  images: Array<{ url: string; alt: string; color?: string }>;
   sizes: string[];
-  colors: Array<{ name: string; hexCode: string }>;
+  colors: Array<{ name: string; hexCode: string; imageUrl?: string; stock?: { [size: string]: number } }>;
   stock: { [key: string]: number };
   featured: boolean;
   customizable: boolean;
@@ -53,11 +53,13 @@ export default function ProductPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [product, setProduct] = useState<Product | null>(null);
   const [selectedSize, setSelectedSize] = useState<string>('');
+  const [selectedColor, setSelectedColor] = useState<string>('');
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [addingToCart, setAddingToCart] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [cartMessage, setCartMessage] = useState<{ message: string; type: 'success' | 'warning' | 'error' } | null>(null);
   const { addItem } = useCart();
 
   useEffect(() => {
@@ -92,43 +94,123 @@ export default function ProductPage({ params }: { params: { id: string } }) {
     }
   }, [showSuccess]);
 
+  useEffect(() => {
+    if (cartMessage) {
+      const timer = setTimeout(() => {
+        setCartMessage(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [cartMessage]);
+
   const handleQuantityChange = (value: number) => {
-    const newQuantity = Math.max(1, Math.min(10, value));
+    let maxQuantity = 10; // Default maximum
+    
+    // If color and size are selected, limit by available stock
+    if (selectedColor && selectedSize) {
+      const availableStock = getColorStock(selectedColor, selectedSize);
+      maxQuantity = Math.min(10, availableStock);
+    }
+    
+    const newQuantity = Math.max(1, Math.min(maxQuantity, value));
     setQuantity(newQuantity);
   };
 
+  const getColorStock = (colorName: string, size: string) => {
+    if (!product) return 0;
+    const color = product.colors.find(c => c.name === colorName);
+    if (color?.stock) {
+      return color.stock[size] || 0;
+    }
+    return 0;
+  };
+
+  const getProductImage = () => {
+    if (!product) return null;
+    
+    if (selectedColor) {
+      // First try to find an image with the specific color
+      const colorImage = product.images.find(img => img.color === selectedColor);
+      if (colorImage) return colorImage;
+      
+      // Then try to find a color with imageUrl
+      const colorWithImage = product.colors.find(color => 
+        color.name === selectedColor && color.imageUrl
+      );
+      if (colorWithImage?.imageUrl) {
+        return { url: colorWithImage.imageUrl, alt: `${product.name} - ${selectedColor}` };
+      }
+    }
+    
+    // Fallback to first image
+    return product.images[0];
+  };
+
   const isOutOfStock = (size: string) => {
-    return product?.stock[size] === 0;
+    if (!selectedColor) return true; // Require color selection
+    return getColorStock(selectedColor, size) === 0;
   };
 
   const getStockLevel = (size: string) => {
-    const stock = product?.stock[size] || 0;
+    if (!selectedColor) return { message: 'Select a color', type: 'info' };
+    const stock = getColorStock(selectedColor, size);
     if (stock === 0) return { message: 'Out of stock', type: 'error' };
     if (stock <= 5) return { message: `Low stock: only ${stock} left`, type: 'warning' };
     return { message: 'In stock', type: 'success' };
   };
 
   const addToCart = async () => {
-    if (!product || !selectedSize) return;
+    if (!product || !selectedSize || !selectedColor) return;
 
     setAddingToCart(true);
+    setCartMessage(null);
     try {
+      const productImage = getProductImage();
+      const availableStock = getColorStock(selectedColor, selectedSize);
+      
       const cartItem = {
         productId: product._id,
         name: product.name,
         size: selectedSize,
         quantity: quantity,
         price: product.price,
-        image: product.images[0]?.url,
-        color: product.colors[0]?.name
+        image: productImage?.url || product.images[0]?.url,
+        color: selectedColor
       };
       
-      addItem(cartItem);
-      setShowSuccess(true);
-      // Reset quantity after adding to cart
-      setQuantity(1);
+      const result = addItem(cartItem, availableStock);
+      
+      // Display appropriate message based on result
+      if (result.success) {
+        if (result.addedQuantity && result.addedQuantity < result.requestedQuantity) {
+          // Partial success - limited by stock
+          setCartMessage({ 
+            message: result.message || `Added ${result.addedQuantity} items. Only ${availableStock} available in stock.`, 
+            type: 'warning' 
+          });
+        } else {
+          // Full success
+          setCartMessage({ 
+            message: result.message || `Added ${result.addedQuantity} items to cart.`, 
+            type: 'success' 
+          });
+        }
+        setShowSuccess(true);
+        // Reset quantity after adding to cart
+        setQuantity(1);
+      } else {
+        // Failed to add - show error message
+        setCartMessage({ 
+          message: result.message || 'Failed to add items to cart.', 
+          type: 'error' 
+        });
+      }
     } catch (error) {
       console.error('Failed to add item to cart:', error);
+      setCartMessage({ 
+        message: 'Failed to add items to cart. Please try again.', 
+        type: 'error' 
+      });
     } finally {
       setAddingToCart(false);
     }
@@ -182,21 +264,25 @@ export default function ProductPage({ params }: { params: { id: string } }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* Product Images */}
             <div className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden">
-              {product.images[0] ? (
-                <Image
-                  src={product.images[0].url}
-                  alt={product.images[0].alt || product.name}
-                  fill
-                  className="object-cover"
-                  priority
-                />
-              ) : (
-                <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                  <div className="bg-gradient-to-r from-purple-600 via-blue-500 to-orange-400 text-white brand-text text-lg px-4 py-2 rounded-lg">
-                    ShirtHappenZ
+              {(() => {
+                const productImage = getProductImage();
+                return productImage ? (
+                  <Image
+                    key={selectedColor || 'default'} // Force re-render when color changes
+                    src={productImage.url}
+                    alt={productImage.alt || product.name}
+                    fill
+                    className="object-cover transition-opacity duration-300"
+                    priority
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                    <div className="bg-gradient-to-r from-purple-600 via-blue-500 to-orange-400 text-white brand-text text-lg px-4 py-2 rounded-lg">
+                      ShirtHappenZ
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
 
             {/* Product Details */}
@@ -221,21 +307,64 @@ export default function ProductPage({ params }: { params: { id: string } }) {
               {/* Color Options */}
               <div className="mb-6">
                 <h3 className="text-sm font-medium text-gray-900 mb-2">Colors</h3>
-                <div className="flex space-x-2">
-                  {product.colors.map((color, index) => (
-                    <div
-                      key={index}
-                      className="w-8 h-8 rounded-full border-2 border-white ring-2 ring-gray-200 cursor-pointer"
-                      style={{ backgroundColor: color.hexCode }}
-                      title={color.name}
-                    />
-                  ))}
+                <div className="flex flex-wrap gap-2">
+                  {product.colors.map((color, index) => {
+                    const isSelected = selectedColor === color.name;
+                    const totalStock = product.sizes.reduce((total, size) => {
+                      return total + getColorStock(color.name, size);
+                    }, 0);
+                    const isOutOfStock = totalStock === 0;
+                    
+                    return (
+                      <div key={index} className="relative">
+                        <button
+                          onClick={() => setSelectedColor(color.name)}
+                          disabled={isOutOfStock}
+                          className={`w-8 h-8 rounded-full border-2 transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1 ${
+                            isSelected 
+                              ? 'border-gray-800 shadow-lg ring-2 ring-purple-300' 
+                              : 'border-gray-300 hover:border-gray-500'
+                          } ${isOutOfStock ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                          style={{ backgroundColor: color.hexCode }}
+                          title={isOutOfStock 
+                            ? `${color.name} - Out of stock` 
+                            : `${color.name} - ${totalStock} in stock`
+                          }
+                          aria-label={`Select ${color.name} color`}
+                        />
+                        {isOutOfStock && (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
+                {selectedColor && (
+                  <div className="mt-2">
+                    <div className="text-xs text-gray-600 bg-blue-50 px-2 py-1 rounded">
+                      <span className="font-medium">{selectedColor}</span> selected - 
+                      {(() => {
+                        const totalStock = product.sizes.reduce((total, size) => {
+                          return total + getColorStock(selectedColor, size);
+                        }, 0);
+                        const availableSizes = product.sizes.filter(size => getColorStock(selectedColor, size) > 0);
+                        return ` ${totalStock} in stock (${availableSizes.length}/${product.sizes.length} sizes)`;
+                      })()}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Size Selection */}
               <div className="mb-6">
-                <h3 className="text-sm font-medium text-gray-900 mb-2">Select Size</h3>
+                <h3 className="text-sm font-medium text-gray-900 mb-2">
+                  Select Size
+                  {!selectedColor && product.colors && product.colors.length > 0 && (
+                    <span className="text-xs text-gray-400 ml-2">(Select a color first)</span>
+                  )}
+                </h3>
                 <div className="grid grid-cols-3 gap-2">
                   {product && sortSizes(product.sizes).map((size) => {
                     const stockStatus = getStockLevel(size);
@@ -259,7 +388,8 @@ export default function ProductPage({ params }: { params: { id: string } }) {
                         {stockStatus.type !== 'success' && (
                           <span className={`
                             text-xs mt-1 text-center
-                            ${stockStatus.type === 'error' ? 'text-red-600' : 'text-orange-500'}
+                            ${stockStatus.type === 'error' ? 'text-red-600' : 
+                              stockStatus.type === 'warning' ? 'text-orange-500' : 'text-gray-500'}
                           `}>
                             {stockStatus.message}
                           </span>
@@ -279,7 +409,9 @@ export default function ProductPage({ params }: { params: { id: string } }) {
                             ? 'bg-red-100 text-red-800' 
                             : stockStatus.type === 'warning'
                               ? 'bg-orange-100 text-orange-800'
-                              : 'bg-green-100 text-green-800'
+                              : stockStatus.type === 'info'
+                                ? 'bg-gray-100 text-gray-800'
+                                : 'bg-green-100 text-green-800'
                           }
                         `}>
                           <span className="mr-2">
@@ -298,6 +430,11 @@ export default function ProductPage({ params }: { params: { id: string } }) {
                                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                               </svg>
                             )}
+                            {stockStatus.type === 'info' && (
+                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                              </svg>
+                            )}
                           </span>
                           {stockStatus.message}
                         </div>
@@ -313,7 +450,7 @@ export default function ProductPage({ params }: { params: { id: string } }) {
                 <div className="flex items-center space-x-2">
                   <button
                     onClick={() => handleQuantityChange(quantity - 1)}
-                    className="p-2 border rounded-md hover:bg-gray-50"
+                    className="p-2 border rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled={quantity <= 1}
                   >
                     -
@@ -321,28 +458,33 @@ export default function ProductPage({ params }: { params: { id: string } }) {
                   <input
                     type="number"
                     min="1"
-                    max="10"
+                    max={selectedColor && selectedSize ? Math.min(10, getColorStock(selectedColor, selectedSize)) : 10}
                     value={quantity}
                     onChange={(e) => handleQuantityChange(parseInt(e.target.value) || 1)}
                     className="w-16 text-center border rounded-md p-2"
                   />
                   <button
                     onClick={() => handleQuantityChange(quantity + 1)}
-                    className="p-2 border rounded-md hover:bg-gray-50"
-                    disabled={quantity >= 10}
+                    className="p-2 border rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={selectedColor && selectedSize ? quantity >= Math.min(10, getColorStock(selectedColor, selectedSize)) : quantity >= 10}
                   >
                     +
                   </button>
                 </div>
+                {selectedColor && selectedSize && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Maximum: {Math.min(10, getColorStock(selectedColor, selectedSize))} (limited by stock)
+                  </p>
+                )}
               </div>
 
               {/* Add to Cart Button */}
               <button
                 onClick={addToCart}
-                disabled={!selectedSize || isOutOfStock(selectedSize) || addingToCart}
+                disabled={!selectedSize || !selectedColor || isOutOfStock(selectedSize) || addingToCart}
                 className={`
                   w-full py-3 px-4 rounded-md text-white font-medium transition-colors duration-200
-                  ${!selectedSize || isOutOfStock(selectedSize) || addingToCart
+                  ${!selectedSize || !selectedColor || isOutOfStock(selectedSize) || addingToCart
                     ? 'bg-gray-400 cursor-not-allowed'
                     : 'bg-gradient-to-r from-[var(--brand-red)] to-[var(--brand-blue)] hover:brightness-110'
                   }
@@ -357,6 +499,36 @@ export default function ProductPage({ params }: { params: { id: string } }) {
                   'Add to Cart'
                 )}
               </button>
+
+              {/* Cart Message */}
+              {cartMessage && (
+                <div className={`mt-3 p-3 rounded-md text-sm ${
+                  cartMessage.type === 'success' 
+                    ? 'bg-green-50 text-green-700 border border-green-200' 
+                    : cartMessage.type === 'warning'
+                    ? 'bg-yellow-50 text-yellow-700 border border-yellow-200'
+                    : 'bg-red-50 text-red-700 border border-red-200'
+                }`}>
+                  <div className="flex items-center">
+                    {cartMessage.type === 'success' && (
+                      <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                    {cartMessage.type === 'warning' && (
+                      <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                    {cartMessage.type === 'error' && (
+                      <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                    {cartMessage.message}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

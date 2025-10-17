@@ -17,7 +17,8 @@ const productSchema = new mongoose.Schema({
   },
   images: [{
     url: String,
-    alt: String
+    alt: String,
+    color: String  // Associate image with specific color
   }],
   category: {
     type: String,
@@ -64,7 +65,9 @@ const productSchema = new mongoose.Schema({
   }],
   colors: [{
     name: String,
-    hexCode: String
+    hexCode: String,
+    imageUrl: String,  // Direct image URL for this color
+    stock: { type: Object, default: {} }  // Stock levels for this color
   }],
   stock: {
     type: Object,

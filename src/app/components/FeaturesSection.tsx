@@ -21,23 +21,6 @@ const FeaturesSection = () => {
           </div>
         </div>
 
-        {/* Video tutorial section */}
-        <div className="text-center mb-16">
-          <h3 className="text-2xl font-bold text-gray-900 mb-6">
-            Watch How Easy it is to Design Your Own T-shirt!
-          </h3>
-          <div className="max-w-2xl mx-auto">
-            <div className="aspect-video bg-gradient-to-br from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
-              <div className="text-center text-white">
-                <svg className="w-20 h-20 mx-auto mb-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M8 5v14l11-7z"/>
-                </svg>
-                <p className="text-lg font-semibold">Tutorial Video Coming Soon</p>
-                <p className="text-sm opacity-80">Learn how to design your custom t-shirt</p>
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* Key features grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">

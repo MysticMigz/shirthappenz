@@ -10,8 +10,9 @@ interface Product {
   _id: string;
   name: string;
   category: string;
-  images: Array<{ url: string; alt: string }>;
+  images: Array<{ url: string; alt: string; color?: string }>;
   sizes: string[];
+  colors: Array<{ name: string; hexCode: string; imageUrl?: string; stock?: { [size: string]: number } }>;
   stock: { [size: string]: number };
 }
 
@@ -54,7 +55,7 @@ export default function StockManagement() {
   const [search, setSearch] = useState('');
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
-  const [editingStock, setEditingStock] = useState<{ [key: string]: { [size: string]: number } }>({});
+  const [editingColorStock, setEditingColorStock] = useState<{ [key: string]: { [colorName: string]: { [size: string]: number } } }>({});
   const [savingStock, setSavingStock] = useState<{ [key: string]: boolean }>({});
   const [hasChanges, setHasChanges] = useState<{ [key: string]: boolean }>({});
   const [saveSuccess, setSaveSuccess] = useState<{ [key: string]: boolean }>({});
@@ -75,12 +76,17 @@ export default function StockManagement() {
         const data = await response.json();
         setProducts(data.products);
         
-        // Initialize editing state
-        const initialEditingState = data.products.reduce((acc: any, product: Product) => {
-          acc[product._id] = { ...product.stock };
+        // Initialize color stock editing state
+        const initialColorStockState = data.products.reduce((acc: any, product: Product) => {
+          acc[product._id] = {};
+          product.colors?.forEach(color => {
+            if (color.stock) {
+              acc[product._id][color.name] = { ...color.stock };
+            }
+          });
           return acc;
         }, {});
-        setEditingStock(initialEditingState);
+        setEditingColorStock(initialColorStockState);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch products');
       } finally {
@@ -93,36 +99,47 @@ export default function StockManagement() {
     }
   }, [session]);
 
-  const handleStockChange = (productId: string, size: string, value: string) => {
+  const handleColorStockChange = (productId: string, colorName: string, size: string, value: string) => {
     const quantity = Math.max(0, parseInt(value) || 0);
-    setEditingStock(prev => ({
+    setEditingColorStock(prev => ({
       ...prev,
       [productId]: {
         ...prev[productId],
-        [size]: quantity
+        [colorName]: {
+          ...prev[productId]?.[colorName],
+          [size]: quantity
+        }
       }
     }));
     setHasChanges(prev => ({ ...prev, [productId]: true }));
     setSaveSuccess(prev => ({ ...prev, [productId]: false }));
   };
 
-  const handleStockIncrement = (productId: string, size: string, increment: number) => {
-    const currentValue = editingStock[productId]?.[size] || 0;
+  const handleColorStockIncrement = (productId: string, colorName: string, size: string, increment: number) => {
+    const currentValue = editingColorStock[productId]?.[colorName]?.[size] || 0;
     const newValue = Math.max(0, currentValue + increment);
-    handleStockChange(productId, size, newValue.toString());
+    handleColorStockChange(productId, colorName, size, newValue.toString());
   };
 
   const handleSaveStock = async (productId: string) => {
     setSavingStock(prev => ({ ...prev, [productId]: true }));
     setSaveSuccess(prev => ({ ...prev, [productId]: false }));
     try {
+      const colorsData = products.find(p => p._id === productId)?.colors?.map(color => ({
+        ...color,
+        stock: editingColorStock[productId]?.[color.name] || color.stock
+      }));
+      
+      console.log('Sending colors data to API:', colorsData);
+      console.log('Editing color stock state:', editingColorStock[productId]);
+      
       const response = await fetch(`/api/admin/products/${productId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          stock: editingStock[productId]
+          colors: colorsData
         })
       });
 
@@ -133,7 +150,13 @@ export default function StockManagement() {
       // Update local state
       setProducts(prev => prev.map(product => 
         product._id === productId 
-          ? { ...product, stock: editingStock[productId] }
+          ? { 
+              ...product, 
+              colors: product.colors?.map(color => ({
+                ...color,
+                stock: editingColorStock[productId]?.[color.name] || color.stock
+              }))
+            }
           : product
       ));
       setHasChanges(prev => ({ ...prev, [productId]: false }));
@@ -150,15 +173,23 @@ export default function StockManagement() {
     }
   };
 
-  const calculateTotalStock = (stock: { [size: string]: number }) => {
-    return Object.values(stock).reduce((sum, quantity) => sum + quantity, 0);
+  const calculateColorTotalStock = (productId: string, colorName: string) => {
+    const colorStock = editingColorStock[productId]?.[colorName] || {};
+    return Object.values(colorStock).reduce((sum, quantity) => sum + quantity, 0);
+  };
+
+  const calculateProductTotalStock = (product: Product) => {
+    const colorStock = product.colors?.reduce((total, color) => {
+      return total + calculateColorTotalStock(product._id, color.name);
+    }, 0) || 0;
+    return colorStock;
   };
 
   const sortProducts = (products: Product[]) => {
     return [...products].sort((a, b) => {
       if (sortField === 'totalStock') {
-        const totalA = calculateTotalStock(a.stock);
-        const totalB = calculateTotalStock(b.stock);
+        const totalA = calculateProductTotalStock(a);
+        const totalB = calculateProductTotalStock(b);
         return sortOrder === 'asc' ? totalA - totalB : totalB - totalA;
       }
       
@@ -204,7 +235,7 @@ export default function StockManagement() {
         <div className="bg-white rounded-lg shadow-sm">
           <div className="p-6">
             <div className="flex justify-between items-center mb-8">
-              <h1 className="text-2xl font-bold text-gray-900">Stock Management</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Color Stock Management</h1>
               <div className="relative">
                 <input
                   type="text"
@@ -223,160 +254,125 @@ export default function StockManagement() {
               </div>
             )}
 
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
-                      Image
-                    </th>
-                    <th 
-                      scope="col" 
-                      className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48 cursor-pointer"
-                      onClick={() => handleSort('name')}
-                    >
-                      <div className="flex items-center">
-                        Name
-                        {sortField === 'name' ? (
-                          sortOrder === 'asc' ? <FaSortUp className="ml-1" /> : <FaSortDown className="ml-1" />
-                        ) : <FaSort className="ml-1" />}
+            <div className="space-y-6">
+              {sortedProducts.map((product) => (
+                <div key={product._id} className="bg-white border border-gray-200 rounded-lg p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-4">
+                      <div className="h-16 w-16 relative">
+                        <Image
+                          src={product.images[0]?.url || '/placeholder.png'}
+                          alt={product.images[0]?.alt || product.name}
+                          fill
+                          className="object-cover rounded-lg"
+                        />
                       </div>
-                    </th>
-                    <th 
-                      scope="col" 
-                      className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32 cursor-pointer"
-                      onClick={() => handleSort('category')}
-                    >
-                      <div className="flex items-center">
-                        Category
-                        {sortField === 'category' ? (
-                          sortOrder === 'asc' ? <FaSortUp className="ml-1" /> : <FaSortDown className="ml-1" />
-                        ) : <FaSort className="ml-1" />}
+                      <div>
+                        <h3 className="text-lg font-medium text-gray-900">{product.name}</h3>
+                        <p className="text-sm text-gray-500">{product.category}</p>
+                        <p className="text-sm text-gray-600">
+                          Total Stock: {calculateProductTotalStock(product)} units
+                        </p>
                       </div>
-                    </th>
-                    <th 
-                      scope="col" 
-                      className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32 cursor-pointer"
-                      onClick={() => handleSort('totalStock')}
-                    >
-                      <div className="flex items-center">
-                        Total
-                        {sortField === 'totalStock' ? (
-                          sortOrder === 'asc' ? <FaSortUp className="ml-1" /> : <FaSortDown className="ml-1" />
-                        ) : <FaSort className="ml-1" />}
-                      </div>
-                    </th>
-                    <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Stock by Size
-                    </th>
-                    <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {sortedProducts.map((product) => (
-                    <tr key={product._id} className={hasChanges[product._id] ? 'bg-purple-50' : ''}>
-                      <td className="px-6 py-6 whitespace-nowrap">
-                        <div className="h-20 w-20 relative">
-                          <Image
-                            src={product.images[0]?.url || '/placeholder.png'}
-                            alt={product.images[0]?.alt || product.name}
-                            fill
-                            className="object-cover rounded-lg"
-                          />
-                        </div>
-                      </td>
-                      <td className="px-6 py-6">
-                        <div className="text-sm font-medium text-gray-900 line-clamp-2 max-w-[12rem]">
-                          {product.name}
-                        </div>
-                      </td>
-                      <td className="px-6 py-6 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">{product.category}</div>
-                      </td>
-                      <td className="px-6 py-6 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{calculateTotalStock(product.stock)}</div>
-                      </td>
-                      <td className="px-6 py-6">
-                        <div className="flex flex-wrap gap-x-8 gap-y-4">
-                          {sortSizes(product.sizes).map((size) => {
-                            const stockLevel = editingStock[product._id]?.[size] || 0;
-                            const isLowStock = stockLevel <= LOW_STOCK_THRESHOLD;
-                            return (
-                              <div key={size} className="flex flex-col items-center">
-                                <label className="text-xs font-medium text-gray-700 mb-1.5">{size}</label>
-                                <div className="flex items-center">
-                                  <button
-                                    onClick={() => handleStockIncrement(product._id, size, -1)}
-                                    className="p-1.5 rounded-l border border-r-0 border-gray-300 hover:bg-gray-100 text-gray-600 transition-colors"
-                                  >
-                                    <FaMinus className="w-2.5 h-2.5" />
-                                  </button>
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    value={stockLevel}
-                                    onChange={(e) => handleStockChange(product._id, size, e.target.value)}
-                                    className={`
-                                      w-14 h-[34px] text-center border-y shadow-sm text-sm
-                                      focus:ring-2 focus:ring-purple-500 focus:border-transparent
-                                      ${isLowStock 
-                                        ? 'border-red-300 bg-red-50 text-red-900' 
-                                        : 'border-gray-300 bg-white'
-                                      }
-                                    `}
-                                  />
-                                  <button
-                                    onClick={() => handleStockIncrement(product._id, size, 1)}
-                                    className="p-1.5 rounded-r border border-l-0 border-gray-300 hover:bg-gray-100 text-gray-600 transition-colors"
-                                  >
-                                    <FaPlus className="w-2.5 h-2.5" />
-                                  </button>
-                                </div>
-                                {isLowStock && (
-                                  <span className="text-[11px] text-red-600 font-medium mt-1">
-                                    Low
-                                  </span>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </td>
-                      <td className="px-6 py-6 whitespace-nowrap">
-                        <div className="flex flex-col space-y-2">
-                          <button
-                            onClick={() => handleSaveStock(product._id)}
-                            disabled={savingStock[product._id] || !hasChanges[product._id]}
-                            className={`
-                              inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md
-                              ${hasChanges[product._id]
-                                ? 'bg-white text-black hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent'
-                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                              }
-                              focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500
-                              disabled:opacity-50 transition-colors
-                            `}
-                          >
-                            <FaSave className="w-3 h-3 mr-1.5" />
-                            {savingStock[product._id] ? 'Saving...' : 'Save'}
-                          </button>
-                          {saveSuccess[product._id] && (
-                            <span className="text-xs text-green-600 font-medium text-center">
-                              Saved!
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => handleSaveStock(product._id)}
+                        disabled={savingStock[product._id] || !hasChanges[product._id]}
+                        className={`
+                          inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md
+                          ${hasChanges[product._id]
+                            ? 'bg-white text-black hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent'
+                            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          }
+                          focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500
+                          disabled:opacity-50 transition-colors
+                        `}
+                      >
+                        <FaSave className="w-4 h-4 mr-2" />
+                        {savingStock[product._id] ? 'Saving...' : 'Save Changes'}
+                      </button>
+                      {saveSuccess[product._id] && (
+                        <span className="text-sm text-green-600 font-medium">
+                          Saved!
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {product.colors && product.colors.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {product.colors.map((color) => (
+                        <div key={color.name} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                          <div className="flex items-center mb-3">
+                            <div 
+                              className="w-4 h-4 rounded-full border border-gray-300 mr-2"
+                              style={{ backgroundColor: color.hexCode }}
+                            ></div>
+                            <h4 className="text-sm font-medium text-gray-900">{color.name}</h4>
+                            <span className="ml-auto text-xs text-gray-500">
+                              Total: {calculateColorTotalStock(product._id, color.name)}
                             </span>
-                          )}
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            {sortSizes(product.sizes).map((size) => {
+                              const stockLevel = editingColorStock[product._id]?.[color.name]?.[size] || 0;
+                              const isLowStock = stockLevel <= LOW_STOCK_THRESHOLD;
+                              return (
+                                <div key={size} className="flex flex-col items-center">
+                                  <label className="text-xs font-medium text-gray-700 mb-1">{size}</label>
+                                  <div className="flex items-center">
+                                    <button
+                                      onClick={() => handleColorStockIncrement(product._id, color.name, size, -1)}
+                                      className="p-1 rounded-l border border-r-0 border-gray-300 hover:bg-gray-100 text-gray-600 transition-colors"
+                                    >
+                                      <FaMinus className="w-2 h-2" />
+                                    </button>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={stockLevel}
+                                      onChange={(e) => handleColorStockChange(product._id, color.name, size, e.target.value)}
+                                      className={`
+                                        w-12 h-6 text-center border-y shadow-sm text-xs
+                                        focus:ring-1 focus:ring-purple-500 focus:border-transparent
+                                        ${isLowStock 
+                                          ? 'border-red-300 bg-red-50 text-red-900' 
+                                          : 'border-gray-300 bg-white'
+                                        }
+                                      `}
+                                    />
+                                    <button
+                                      onClick={() => handleColorStockIncrement(product._id, color.name, size, 1)}
+                                      className="p-1 rounded-r border border-l-0 border-gray-300 hover:bg-gray-100 text-gray-600 transition-colors"
+                                    >
+                                      <FaPlus className="w-2 h-2" />
+                                    </button>
+                                  </div>
+                                  {isLowStock && (
+                                    <span className="text-[10px] text-red-600 font-medium mt-1">
+                                      Low
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <p>No colors configured for this product.</p>
+                      <p className="text-sm">Add colors in the product edit page to manage color-specific stock.</p>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         </div>
       </div>
     </div>
   );
-} 
+}

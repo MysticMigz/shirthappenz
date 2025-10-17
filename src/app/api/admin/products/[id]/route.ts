@@ -92,6 +92,53 @@ export async function PUT(
       }
     }
     
+    // If only updating colors, handle color stock updates
+    if (Object.keys(data).length === 1 && data.colors) {
+      console.log('Updating colors data:', data.colors);
+      
+      // Validate colors data
+      if (!Array.isArray(data.colors)) {
+        return NextResponse.json(
+          { error: 'Invalid colors data format. Expected array.' },
+          { status: 400 }
+        );
+      }
+
+      // Validate each color's stock data
+      for (const color of data.colors) {
+        if (color.stock && typeof color.stock === 'object') {
+          for (const [size, quantity] of Object.entries(color.stock)) {
+            if (!Number.isInteger(quantity) || quantity < 0) {
+              return NextResponse.json(
+                { error: `Invalid stock quantity for color ${color.name}, size ${size}. Must be a non-negative integer.` },
+                { status: 400 }
+              );
+            }
+          }
+        }
+      }
+
+      // Get current product data
+      const currentProduct = await Product.findById(params.id);
+      if (!currentProduct) {
+        return NextResponse.json(
+          { error: 'Product not found' },
+          { status: 404 }
+        );
+      }
+
+      // Update the product with new colors data
+      const updatedProduct = await Product.findByIdAndUpdate(
+        params.id,
+        { colors: data.colors },
+        { new: true, runValidators: true }
+      );
+
+      console.log('Updated product colors:', updatedProduct?.colors);
+
+      return NextResponse.json(updatedProduct);
+    }
+    
     // If only updating stock, skip other validations
     if (Object.keys(data).length === 1 && data.stock) {
       // Validate stock data

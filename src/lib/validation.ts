@@ -229,7 +229,14 @@ export const productSchema = z.object({
     name: z.string().min(1),
     hexCode: z.string().regex(/^#[0-9A-F]{6}$/i, {
       message: 'Invalid hex color code'
-    })
+    }),
+    imageUrl: z.string().optional(),
+    stock: z.record(z.string(), z.number().int().min(0)).optional().default({})
+  })).optional().default([]),
+  images: z.array(z.object({
+    url: z.string().url(),
+    alt: z.string().optional(),
+    color: z.string().optional()
   })).optional().default([]),
   stock: z.record(z.string(), z.number().int().min(0)),
   featured: z.boolean().default(false),

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Stage, Layer, Image, Text, Rect, Line, Circle } from 'react-konva';
+import { Stage, Layer, Image, Text, Rect, Line, Circle, Transformer } from 'react-konva';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Header from '@/app/components/Header';
@@ -24,57 +24,318 @@ interface UploadedDesign {
   image: HTMLImageElement;
   position: string;
   size: 'A3' | 'A4';
+  view: 'front' | 'back';
   x?: number;
   y?: number;
+  scaleX?: number;
+  scaleY?: number;
+  notes?: string;
 }
 
-const DESIGN_POSITIONS: DesignPosition[] = [
-  {
-    id: 'center-chest',
-    name: 'Center of Shirt',
-    x: 375,
-    y: 250,
-    width: 200,
-    height: 200,
-    description: 'Front center of the shirt'
-  },
-  {
-    id: 'left-chest',
-    name: 'Left Side of Chest',
-    x: 250,
-    y: 200,
-    width: 160,
-    height: 160,
-    description: 'Left side of the chest area'
-  },
-  {
-    id: 'right-chest',
-    name: 'Right Side of Chest',
-    x: 590,
-    y: 200,
-    width: 160,
-    height: 160,
-    description: 'Right side of the chest area'
-  },
-  {
-    id: 'back-center',
-    name: 'Back Center',
-    x: 375,
-    y: 500,
-    width: 200,
-    height: 200,
-    description: 'Center of the back'
-  },
-  {
-    id: 'back-top',
-    name: 'Top Center of Back',
-    x: 375,
-    y: 400,
-    width: 200,
-    height: 200,
-    description: 'Top center of the back'
-  }
-];
+const DESIGN_POSITIONS: Record<string, DesignPosition[]> = {
+  tshirt: [
+    {
+      id: 'center-chest',
+      name: 'Center of T-Shirt',
+      x: 375,
+      y: 250,
+      width: 200,
+      height: 200,
+      description: 'Front center of the t-shirt'
+    },
+    {
+      id: 'left-chest',
+      name: 'Left Side of Chest',
+      x: 250,
+      y: 200,
+      width: 90,
+      height: 90,
+      description: 'Left side of the chest area'
+    },
+    {
+      id: 'right-chest',
+      name: 'Right Side of Chest',
+      x: 660,
+      y: 200,
+      width: 90,
+      height: 90,
+      description: 'Right side of the chest area'
+    },
+    {
+      id: 'back-center',
+      name: 'Back Center',
+      x: 375,
+      y: 500,
+      width: 200,
+      height: 200,
+      description: 'Center of the back'
+    },
+    {
+      id: 'back-top',
+      name: 'Top Center of Back',
+      x: 375,
+      y: 400,
+      width: 200,
+      height: 200,
+      description: 'Top center of the back'
+    }
+  ],
+  jersey: [
+    {
+      id: 'center-chest',
+      name: 'Center of Jersey',
+      x: 375,
+      y: 250,
+      width: 200,
+      height: 200,
+      description: 'Front center of the jersey'
+    },
+    {
+      id: 'left-chest',
+      name: 'Left Side of Chest',
+      x: 250,
+      y: 200,
+      width: 90,
+      height: 90,
+      description: 'Left side of the chest area'
+    },
+    {
+      id: 'right-chest',
+      name: 'Right Side of Chest',
+      x: 660,
+      y: 200,
+      width: 90,
+      height: 90,
+      description: 'Right side of the chest area'
+    },
+    {
+      id: 'back-center',
+      name: 'Back Center',
+      x: 375,
+      y: 500,
+      width: 200,
+      height: 200,
+      description: 'Center of the back'
+    },
+    {
+      id: 'back-top',
+      name: 'Top Center of Back',
+      x: 375,
+      y: 400,
+      width: 200,
+      height: 200,
+      description: 'Top center of the back'
+    }
+  ],
+  hoodie: [
+    {
+      id: 'center-chest',
+      name: 'Center of Hoodie',
+      x: 375,
+      y: 250,
+      width: 200,
+      height: 200,
+      description: 'Front center of the hoodie'
+    },
+    {
+      id: 'left-chest',
+      name: 'Left Side of Chest',
+      x: 250,
+      y: 200,
+      width: 90,
+      height: 90,
+      description: 'Left side of the chest area'
+    },
+    {
+      id: 'right-chest',
+      name: 'Right Side of Chest',
+      x: 660,
+      y: 200,
+      width: 90,
+      height: 90,
+      description: 'Right side of the chest area'
+    },
+    {
+      id: 'back-center',
+      name: 'Back Center',
+      x: 375,
+      y: 500,
+      width: 200,
+      height: 200,
+      description: 'Center of the back'
+    },
+    {
+      id: 'back-top',
+      name: 'Top Center of Back',
+      x: 375,
+      y: 400,
+      width: 200,
+      height: 200,
+      description: 'Top center of the back'
+    }
+  ],
+  crewneck: [
+    {
+      id: 'center-chest',
+      name: 'Center of Crewneck',
+      x: 375,
+      y: 250,
+      width: 200,
+      height: 200,
+      description: 'Front center of the crewneck'
+    },
+    {
+      id: 'left-chest',
+      name: 'Left Side of Chest',
+      x: 250,
+      y: 200,
+      width: 90,
+      height: 90,
+      description: 'Left side of the chest area'
+    },
+    {
+      id: 'right-chest',
+      name: 'Right Side of Chest',
+      x: 660,
+      y: 200,
+      width: 90,
+      height: 90,
+      description: 'Right side of the chest area'
+    },
+    {
+      id: 'back-center',
+      name: 'Back Center',
+      x: 375,
+      y: 500,
+      width: 200,
+      height: 200,
+      description: 'Center of the back'
+    },
+    {
+      id: 'back-top',
+      name: 'Top Center of Back',
+      x: 375,
+      y: 400,
+      width: 200,
+      height: 200,
+      description: 'Top center of the back'
+    }
+  ],
+  polo: [
+    {
+      id: 'center-chest',
+      name: 'Center of Polo',
+      x: 375,
+      y: 250,
+      width: 200,
+      height: 200,
+      description: 'Front center of the polo'
+    },
+    {
+      id: 'left-chest',
+      name: 'Left Side of Chest',
+      x: 250,
+      y: 200,
+      width: 90,
+      height: 90,
+      description: 'Left side of the chest area'
+    },
+    {
+      id: 'right-chest',
+      name: 'Right Side of Chest',
+      x: 660,
+      y: 200,
+      width: 90,
+      height: 90,
+      description: 'Right side of the chest area'
+    },
+    {
+      id: 'back-center',
+      name: 'Back Center',
+      x: 375,
+      y: 500,
+      width: 200,
+      height: 200,
+      description: 'Center of the back'
+    },
+    {
+      id: 'back-top',
+      name: 'Top Center of Back',
+      x: 375,
+      y: 400,
+      width: 200,
+      height: 200,
+      description: 'Top center of the back'
+    }
+  ],
+  mugs: [
+    {
+      id: 'center-mug',
+      name: 'Center of Mug',
+      x: 350,
+      y: 300,
+      width: 200,
+      height: 200,
+      description: 'Center of the mug front'
+    },
+    {
+      id: 'left-mug',
+      name: 'Left Side of Mug',
+      x: 250,
+      y: 300,
+      width: 150,
+      height: 150,
+      description: 'Left side of the mug'
+    },
+    {
+      id: 'right-mug',
+      name: 'Right Side of Mug',
+      x: 500,
+      y: 300,
+      width: 150,
+      height: 150,
+      description: 'Right side of the mug'
+    }
+  ],
+  hats: [
+    {
+      id: 'center-hat',
+      name: 'Center of Hat',
+      x: 350,
+      y: 200,
+      width: 200,
+      height: 200,
+      description: 'Center of the hat front'
+    },
+    {
+      id: 'left-hat',
+      name: 'Left Side of Hat',
+      x: 250,
+      y: 200,
+      width: 150,
+      height: 150,
+      description: 'Left side of the hat'
+    },
+    {
+      id: 'right-hat',
+      name: 'Right Side of Hat',
+      x: 500,
+      y: 200,
+      width: 150,
+      height: 150,
+      description: 'Right side of the hat'
+    },
+    {
+      id: 'back-hat',
+      name: 'Back of Hat',
+      x: 350,
+      y: 400,
+      width: 200,
+      height: 200,
+      description: 'Back of the hat'
+    }
+  ]
+};
 
 export default function DesignPage() {
   const { data: session, status } = useSession();
@@ -87,13 +348,14 @@ export default function DesignPage() {
   }, []);
   const [selectedPosition, setSelectedPosition] = useState<string>('center-chest');
   const [selectedSize, setSelectedSize] = useState<'A3' | 'A4'>('A4');
+  const [selectedClothingType, setSelectedClothingType] = useState<'tshirt' | 'jersey' | 'hoodie' | 'crewneck' | 'polo' | 'mugs' | 'hats'>('tshirt');
   const [uploadedDesigns, setUploadedDesigns] = useState<UploadedDesign[]>([]);
   const [shirtImage, setShirtImage] = useState<HTMLImageElement | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showGuides, setShowGuides] = useState(true);
   const [selectedDesign, setSelectedDesign] = useState<string | null>(null);
-  const [customPositions, setCustomPositions] = useState<DesignPosition[]>(DESIGN_POSITIONS);
+  const [customPositions, setCustomPositions] = useState<DesignPosition[]>(DESIGN_POSITIONS[selectedClothingType] || DESIGN_POSITIONS.tshirt);
   const [isEditingPositions, setIsEditingPositions] = useState(false);
   const [showRulers, setShowRulers] = useState(true);
   const [draggedDesign, setDraggedDesign] = useState<string | null>(null);
@@ -102,25 +364,76 @@ export default function DesignPage() {
   const [snapToGrid, setSnapToGrid] = useState(true);
   const [snapDistance] = useState(20); // pixels
   const [snappingTo, setSnappingTo] = useState<string | null>(null);
+  const [orderNotes, setOrderNotes] = useState<string>('');
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
+  const [selectedDesignForResize, setSelectedDesignForResize] = useState<string | null>(null);
   // const [show3DPreview, setShow3DPreview] = useState(false); // Disabled for deployment - 3D preview functionality
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const stageRef = useRef<any>(null);
+  const transformerRef = useRef<any>(null);
 
-  // Load shirt mockup images
+  // Load mockup images based on selected clothing type
   useEffect(() => {
-    // Load front shirt image
+    const getImagePaths = (clothingType: string) => {
+      switch (clothingType) {
+        case 'tshirt':
+          return {
+            front: '/images/front-tshirt.png',
+            back: '/images/back-tshirt.png'
+          };
+        case 'jersey':
+          return {
+            front: '/images/Jersey-Front.png',
+            back: '/images/Jersey-Back.png'
+          };
+        case 'hoodie':
+          return {
+            front: '/images/Hoody-Front.png',
+            back: '/images/Hoody-Back.png'
+          };
+        case 'crewneck':
+          return {
+            front: '/images/front-tshirt.png', // Using t-shirt as fallback
+            back: '/images/back-tshirt.png'
+          };
+        case 'polo':
+          return {
+            front: '/images/front-tshirt.png', // Using t-shirt as fallback
+            back: '/images/back-tshirt.png'
+          };
+        case 'mugs':
+          return {
+            front: '/images/front-tshirt.png', // Using t-shirt as fallback for now
+            back: '/images/back-tshirt.png'
+          };
+        case 'hats':
+          return {
+            front: '/images/front-tshirt.png', // Using t-shirt as fallback for now
+            back: '/images/back-tshirt.png'
+          };
+        default:
+          return {
+            front: '/images/front-tshirt.png',
+            back: '/images/back-tshirt.png'
+          };
+      }
+    };
+
+    const imagePaths = getImagePaths(selectedClothingType);
+
+    // Load front image
     const frontImg = new window.Image();
     frontImg.crossOrigin = 'anonymous';
     frontImg.onload = () => setShirtImage(frontImg);
-    frontImg.src = '/images/front-tshirt.png';
+    frontImg.src = imagePaths.front;
 
-    // Load back shirt image
+    // Load back image
     const backImg = new window.Image();
     backImg.crossOrigin = 'anonymous';
     backImg.onload = () => setBackShirtImage(backImg);
-    backImg.src = '/images/back-tshirt.png';
-  }, []);
+    backImg.src = imagePaths.back;
+  }, [selectedClothingType]);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -134,11 +447,35 @@ export default function DesignPage() {
     loadSavedPositions();
   }, []);
 
+  // Attach transformer to selected design
+  useEffect(() => {
+    if (selectedDesignForResize && transformerRef.current) {
+      const stage = transformerRef.current.getStage();
+      const selectedNode = stage.findOne(`#${selectedDesignForResize}`);
+      if (selectedNode) {
+        transformerRef.current.nodes([selectedNode]);
+        transformerRef.current.getLayer().batchDraw();
+      }
+    }
+  }, [selectedDesignForResize]);
+
+
+  // Update positions when clothing type changes
+  useEffect(() => {
+    setCustomPositions(DESIGN_POSITIONS[selectedClothingType] || DESIGN_POSITIONS.tshirt);
+    // Reset selected position to first available position
+    const newPositions = DESIGN_POSITIONS[selectedClothingType] || DESIGN_POSITIONS.tshirt;
+    if (newPositions.length > 0) {
+      setSelectedPosition(newPositions[0].id);
+    }
+  }, [selectedClothingType]);
+
   // Auto-select first available position when view changes
   useEffect(() => {
-    const availablePositions = DESIGN_POSITIONS.filter(position => {
+    const currentPositions = DESIGN_POSITIONS[selectedClothingType] || DESIGN_POSITIONS.tshirt;
+    const availablePositions = currentPositions.filter(position => {
       const shouldShowPosition = 
-        (shirtView === 'front' && (position.id.includes('chest') || position.id === 'center-chest')) ||
+        (shirtView === 'front' && (position.id.includes('chest') || position.id === 'center-chest' || position.id.includes('mug') || position.id.includes('hat'))) ||
         (shirtView === 'back' && (position.id.includes('back') || position.id === 'center-chest'));
       return shouldShowPosition;
     });
@@ -146,7 +483,7 @@ export default function DesignPage() {
     if (availablePositions.length > 0 && !availablePositions.some(pos => pos.id === selectedPosition)) {
       setSelectedPosition(availablePositions[0].id);
     }
-  }, [shirtView, selectedPosition]);
+  }, [shirtView, selectedPosition, selectedClothingType]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -179,7 +516,10 @@ export default function DesignPage() {
             file,
             image,
             position: selectedPosition,
-            size: selectedSize
+            size: selectedSize,
+            view: shirtView,
+            scaleX: 1,
+            scaleY: 1
           };
           
           setUploadedDesigns(prev => [...prev, newDesign]);
@@ -239,9 +579,11 @@ export default function DesignPage() {
     const position = getPositionForDesign(design.position);
     if (!position) return { x: newX, y: newY };
 
-    // Calculate design dimensions based on A3/A4 and position area
-    const designWidth = design.size === 'A4' ? position.width * 0.8 : position.width;
-    const designHeight = design.size === 'A4' ? position.height * 0.8 : position.height;
+    // Calculate design dimensions based on A3/A4, position area, and scale
+    const baseWidth = design.size === 'A4' ? position.width * 0.8 : position.width;
+    const baseHeight = design.size === 'A4' ? position.height * 0.8 : position.height;
+    const designWidth = baseWidth * (design.scaleX || 1);
+    const designHeight = baseHeight * (design.scaleY || 1);
 
     // Constrain to position boundaries
     const minX = position.x;
@@ -274,11 +616,71 @@ export default function DesignPage() {
       )
     );
     
+    setHasUnsavedChanges(true);
     setDraggedDesign(null);
   };
 
   const handleDesignDragStart = (designId: string) => {
     setDraggedDesign(designId);
+  };
+
+  const updateDesignScale = (designId: string, scaleX: number, scaleY: number) => {
+    setUploadedDesigns(prev => 
+      prev.map(d => 
+        d.id === designId 
+          ? { ...d, scaleX, scaleY }
+          : d
+      )
+    );
+    setHasUnsavedChanges(true);
+  };
+
+  const handleDesignSelect = (designId: string) => {
+    setSelectedDesignForResize(designId);
+    setSelectedDesign(designId);
+  };
+
+  const handleDesignDeselect = () => {
+    setSelectedDesignForResize(null);
+    setSelectedDesign(null);
+  };
+
+  const handleTransformEnd = (designId: string) => {
+    const design = uploadedDesigns.find(d => d.id === designId);
+    if (!design) return;
+
+    const node = transformerRef.current?.getNode();
+    if (!node) return;
+
+    const scaleX = node.scaleX();
+    const scaleY = node.scaleY();
+    
+    // Reset scale to 1 and update the design's scale
+    node.scaleX(1);
+    node.scaleY(1);
+    
+    // Update design with new scale
+    updateDesignScale(designId, scaleX, scaleY);
+    
+    // Update position if it changed
+    const newX = node.x();
+    const newY = node.y();
+    
+    setUploadedDesigns(prev => 
+      prev.map(d => 
+        d.id === designId 
+          ? { ...d, x: newX, y: newY }
+          : d
+      )
+    );
+    
+    setHasUnsavedChanges(true);
+  };
+
+  const saveDesignPositions = () => {
+    // Mark positions as saved (hardcoded - no localStorage needed)
+    setHasUnsavedChanges(false);
+    alert('Design positions locked! Positions are now fixed and will be preserved when deployed.');
   };
 
   const snapToNearestGrid = (x: number, y: number) => {
@@ -548,6 +950,70 @@ export default function DesignPage() {
     }
   };
 
+  const addToCart = async () => {
+    if (uploadedDesigns.length === 0) {
+      setError('Please upload at least one design before adding to cart');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Create custom design order data
+      const customDesignOrder = {
+        clothingType: selectedClothingType,
+        designs: uploadedDesigns.map(design => ({
+          id: design.id,
+          fileName: design.file.name,
+          position: design.position,
+          size: design.size,
+          view: design.view,
+          x: design.x,
+          y: design.y,
+          scaleX: design.scaleX || 1,
+          scaleY: design.scaleY || 1,
+          notes: design.notes || '',
+          // Convert image to base64 for storage
+          imageData: design.image.toDataURL('image/png')
+        })),
+        orderNotes: orderNotes,
+        totalDesigns: uploadedDesigns.length,
+        createdAt: new Date().toISOString()
+      };
+
+      // Store in localStorage for now (you can integrate with your cart system)
+      const existingOrders = JSON.parse(localStorage.getItem('customDesignOrders') || '[]');
+      existingOrders.push(customDesignOrder);
+      localStorage.setItem('customDesignOrders', JSON.stringify(existingOrders));
+
+      // Also add to regular cart as a custom design item
+      const cartItem = {
+        id: `custom-design-${Date.now()}`,
+        name: `Custom ${selectedClothingType.charAt(0).toUpperCase() + selectedClothingType.slice(1)} Design`,
+        price: 25.00, // Base price for custom design
+        quantity: 1,
+        type: 'custom-design',
+        customDesignData: customDesignOrder,
+        image: uploadedDesigns[0].image.toDataURL('image/png') // Use first design as preview
+      };
+
+      const existingCart = JSON.parse(localStorage.getItem('cart') || '[]');
+      existingCart.push(cartItem);
+      localStorage.setItem('cart', JSON.stringify(existingCart));
+
+      alert('Custom design order added to cart successfully!');
+      
+      // Optionally redirect to cart or clear the design
+      // router.push('/cart');
+      
+    } catch (err) {
+      setError('Failed to add design to cart. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (status === 'loading' || !isClient) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -620,6 +1086,90 @@ export default function DesignPage() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Controls Panel */}
           <div className="lg:col-span-1 space-y-6">
+            {/* Clothing Type Selection */}
+            <div className="bg-white rounded-lg shadow-sm p-4">
+              <h3 className="text-lg font-medium text-gray-900 mb-3">Clothing Type</h3>
+              <div className="space-y-2">
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="clothingType"
+                    value="tshirt"
+                    checked={selectedClothingType === 'tshirt'}
+                    onChange={(e) => setSelectedClothingType(e.target.value as any)}
+                    className="mr-2"
+                  />
+                  <span className="text-sm">T-Shirt</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="clothingType"
+                    value="jersey"
+                    checked={selectedClothingType === 'jersey'}
+                    onChange={(e) => setSelectedClothingType(e.target.value as any)}
+                    className="mr-2"
+                  />
+                  <span className="text-sm">Jersey</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="clothingType"
+                    value="hoodie"
+                    checked={selectedClothingType === 'hoodie'}
+                    onChange={(e) => setSelectedClothingType(e.target.value as any)}
+                    className="mr-2"
+                  />
+                  <span className="text-sm">Hoodie</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="clothingType"
+                    value="crewneck"
+                    checked={selectedClothingType === 'crewneck'}
+                    onChange={(e) => setSelectedClothingType(e.target.value as any)}
+                    className="mr-2"
+                  />
+                  <span className="text-sm">Crewneck</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="clothingType"
+                    value="polo"
+                    checked={selectedClothingType === 'polo'}
+                    onChange={(e) => setSelectedClothingType(e.target.value as any)}
+                    className="mr-2"
+                  />
+                  <span className="text-sm">Polo</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="clothingType"
+                    value="mugs"
+                    checked={selectedClothingType === 'mugs'}
+                    onChange={(e) => setSelectedClothingType(e.target.value as any)}
+                    className="mr-2"
+                  />
+                  <span className="text-sm">Mugs</span>
+                </label>
+                <label className="flex items-center">
+                  <input
+                    type="radio"
+                    name="clothingType"
+                    value="hats"
+                    checked={selectedClothingType === 'hats'}
+                    onChange={(e) => setSelectedClothingType(e.target.value as any)}
+                    className="mr-2"
+                  />
+                  <span className="text-sm">Hats</span>
+                </label>
+              </div>
+            </div>
+
             {/* Size Selection */}
             <div className="bg-white rounded-lg shadow-sm p-4">
               <h3 className="text-lg font-medium text-gray-900 mb-3">Design Size</h3>
@@ -653,10 +1203,10 @@ export default function DesignPage() {
             <div className="bg-white rounded-lg shadow-sm p-4">
               <h3 className="text-lg font-medium text-gray-900 mb-3">Design Position</h3>
               <div className="space-y-2">
-                {DESIGN_POSITIONS.map((position) => {
+                {customPositions.map((position) => {
                   // Filter positions based on current view
                   const shouldShowPosition = 
-                    (shirtView === 'front' && (position.id.includes('chest') || position.id === 'center-chest')) ||
+                    (shirtView === 'front' && (position.id.includes('chest') || position.id === 'center-chest' || position.id.includes('mug') || position.id.includes('hat'))) ||
                     (shirtView === 'back' && (position.id.includes('back') || position.id === 'center-chest'));
                   
                   if (!shouldShowPosition) return null;
@@ -725,7 +1275,7 @@ export default function DesignPage() {
                             {design.file.name}
                           </div>
                           <div className="text-xs text-gray-500">
-                            {design.size} • {getPositionForDesign(design.position)?.name}
+                            {design.size} • {getPositionForDesign(design.position)?.name} • {design.view.charAt(0).toUpperCase() + design.view.slice(1)}
                           </div>
                               </div>
                         <div className="flex items-center space-x-1">
@@ -757,7 +1307,7 @@ export default function DesignPage() {
                               onChange={(e) => updateDesignPosition(design.id, e.target.value)}
                               className="w-full text-xs border border-gray-300 rounded px-2 py-1"
                             >
-                              {DESIGN_POSITIONS.map((pos) => (
+                              {customPositions.map((pos) => (
                                 <option key={pos.id} value={pos.id}>{pos.name}</option>
                               ))}
                             </select>
@@ -772,7 +1322,60 @@ export default function DesignPage() {
                               <option value="A4">A4 (210 × 297mm)</option>
                               <option value="A3">A3 (297 × 420mm)</option>
                             </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Scale</label>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="block text-xs text-gray-600 mb-1">Width</label>
+                                <input
+                                  type="number"
+                                  min="0.1"
+                                  max="3"
+                                  step="0.1"
+                                  value={design.scaleX || 1}
+                                  onChange={(e) => {
+                                    const scaleX = parseFloat(e.target.value) || 1;
+                                    updateDesignScale(design.id, scaleX, design.scaleY || 1);
+                                  }}
+                                  className="w-full text-xs border border-gray-300 rounded px-2 py-1"
+                                />
                               </div>
+                              <div>
+                                <label className="block text-xs text-gray-600 mb-1">Height</label>
+                                <input
+                                  type="number"
+                                  min="0.1"
+                                  max="3"
+                                  step="0.1"
+                                  value={design.scaleY || 1}
+                                  onChange={(e) => {
+                                    const scaleY = parseFloat(e.target.value) || 1;
+                                    updateDesignScale(design.id, design.scaleX || 1, scaleY);
+                                  }}
+                                  className="w-full text-xs border border-gray-300 rounded px-2 py-1"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">Design Notes</label>
+                            <textarea
+                              value={design.notes || ''}
+                              onChange={(e) => {
+                                setUploadedDesigns(prev => 
+                                  prev.map(d => 
+                                    d.id === design.id 
+                                      ? { ...d, notes: e.target.value }
+                                      : d
+                                  )
+                                );
+                              }}
+                              className="w-full text-xs border border-gray-300 rounded px-2 py-1 resize-none"
+                              rows={2}
+                              placeholder="Any specific notes for this design..."
+                            />
+                          </div>
                         </div>
                       )}
                             </div>
@@ -780,6 +1383,38 @@ export default function DesignPage() {
                         </div>
                       </div>
                     )}
+
+            {/* Order Notes */}
+            <div className="bg-white rounded-lg shadow-sm p-4">
+              <h3 className="text-lg font-medium text-gray-900 mb-3">Order Notes</h3>
+              <textarea
+                value={orderNotes}
+                onChange={(e) => setOrderNotes(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none"
+                rows={3}
+                placeholder="Any special instructions or notes for your custom design order..."
+              />
+            </div>
+
+            {/* Resize Controls */}
+            {selectedDesignForResize && (
+              <div className="bg-white rounded-lg shadow-sm p-4">
+                <h3 className="text-lg font-medium text-gray-900 mb-3">Resize Controls</h3>
+                <div className="space-y-3">
+                  <div className="text-sm text-gray-600">
+                    <p>• Click and drag the corner handles to resize</p>
+                    <p>• Hold Shift to maintain aspect ratio</p>
+                    <p>• Click outside to deselect</p>
+                  </div>
+                  <button
+                    onClick={handleDesignDeselect}
+                    className="w-full px-3 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm"
+                  >
+                    Deselect Design
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Canvas Controls */}
             <div className="bg-white rounded-lg shadow-sm p-4">
@@ -817,7 +1452,7 @@ export default function DesignPage() {
                 
                 <div className="border-t pt-3">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Shirt View
+                    {selectedClothingType === 'mugs' || selectedClothingType === 'hats' ? 'View' : 'Shirt View'}
                   </label>
                   <div className="flex space-x-2">
                       <button
@@ -830,16 +1465,18 @@ export default function DesignPage() {
                     >
                       Front
                       </button>
-                    <button
-                      onClick={() => setShirtView('back')}
-                      className={`flex-1 px-3 py-2 rounded-md text-sm font-medium ${
-                        shirtView === 'back'
-                          ? 'bg-blue-100 text-blue-700 border border-blue-300'
-                          : 'bg-gray-100 text-gray-700 border border-gray-300'
-                      }`}
-                    >
-                      Back
-                    </button>
+                    {(selectedClothingType !== 'mugs' && selectedClothingType !== 'hats') && (
+                      <button
+                        onClick={() => setShirtView('back')}
+                        className={`flex-1 px-3 py-2 rounded-md text-sm font-medium ${
+                          shirtView === 'back'
+                            ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                            : 'bg-gray-100 text-gray-700 border border-gray-300'
+                        }`}
+                      >
+                        Back
+                      </button>
+                    )}
             </div>
           </div>
           
@@ -896,11 +1533,27 @@ export default function DesignPage() {
               </div>
 
                 <button
+                  onClick={saveDesignPositions}
+                  disabled={uploadedDesigns.length === 0 || !hasUnsavedChanges}
+                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed mb-3"
+                >
+                  {hasUnsavedChanges ? 'Lock Positions' : 'Positions Locked'}
+                </button>
+
+                <button
                   onClick={exportDesign}
                   disabled={uploadedDesigns.length === 0}
-                  className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed mb-3"
                 >
                   Export Design
+                </button>
+                
+                <button
+                  onClick={addToCart}
+                  disabled={uploadedDesigns.length === 0 || loading}
+                  className="w-full px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? 'Adding to Cart...' : 'Add Custom Design to Cart'}
                 </button>
               </div>
             </div>
@@ -917,6 +1570,18 @@ export default function DesignPage() {
                     width={800}
                     height={700}
                     className="bg-white"
+                    onClick={(e) => {
+                      // Deselect when clicking on empty space
+                      if (e.target === e.target.getStage()) {
+                        handleDesignDeselect();
+                      }
+                    }}
+                    onTap={(e) => {
+                      // Deselect when tapping on empty space
+                      if (e.target === e.target.getStage()) {
+                        handleDesignDeselect();
+                      }
+                    }}
                   >
                   <Layer>
                     {/* Background Pattern */}
@@ -931,7 +1596,7 @@ export default function DesignPage() {
                     {/* Rulers and Grid */}
                     {renderRulers()}
                     
-                    {/* Shirt Background - 750x750 template centered */}
+                    {/* Clothing Background - 750x750 template centered */}
                     {shirtView === 'front' && shirtImage && (
                       <Image
                         image={shirtImage}
@@ -941,7 +1606,7 @@ export default function DesignPage() {
                         y={-25}
                       />
                     )}
-                    {shirtView === 'back' && backShirtImage && (
+                    {shirtView === 'back' && backShirtImage && (selectedClothingType !== 'mugs' && selectedClothingType !== 'hats') && (
                       <Image
                         image={backShirtImage}
                         width={750}
@@ -955,9 +1620,9 @@ export default function DesignPage() {
                     {showGuides && customPositions.map((position) => {
                       const isActivePosition = draggedDesign && uploadedDesigns.find(d => d.id === draggedDesign)?.position === position.id;
                       
-                      // Show different positions based on view
+                      // Show different positions based on view and clothing type
                       const shouldShowPosition = 
-                        (shirtView === 'front' && (position.id.includes('chest') || position.id === 'center-chest')) ||
+                        (shirtView === 'front' && (position.id.includes('chest') || position.id === 'center-chest' || position.id.includes('mug') || position.id.includes('hat'))) ||
                         (shirtView === 'back' && (position.id.includes('back') || position.id === 'center-chest'));
                       
                       if (!shouldShowPosition) return null;
@@ -1038,16 +1703,16 @@ export default function DesignPage() {
                       const position = getPositionForDesign(design.position);
                       if (!position) return null;
 
-                      // Show designs based on current view
-                      const shouldShowDesign = 
-                        (shirtView === 'front' && (design.position.includes('chest') || design.position === 'center-chest')) ||
-                        (shirtView === 'back' && (design.position.includes('back') || design.position === 'center-chest'));
+                      // Show designs based on current view and clothing type
+                      const shouldShowDesign = design.view === shirtView;
                       
                       if (!shouldShowDesign) return null;
 
-                      // Calculate design dimensions based on A3/A4 and position area
-                      const designWidth = design.size === 'A4' ? position.width * 0.8 : position.width;
-                      const designHeight = design.size === 'A4' ? position.height * 0.8 : position.height;
+                      // Calculate design dimensions based on A3/A4, position area, and scale
+                      const baseWidth = design.size === 'A4' ? position.width * 0.8 : position.width;
+                      const baseHeight = design.size === 'A4' ? position.height * 0.8 : position.height;
+                      const designWidth = baseWidth * (design.scaleX || 1);
+                      const designHeight = baseHeight * (design.scaleY || 1);
 
                       // Use custom position if available, otherwise center in position
                       const designX = design.x !== undefined ? design.x : position.x + (position.width - designWidth) / 2;
@@ -1056,26 +1721,47 @@ export default function DesignPage() {
                       return (
                         <Image
                           key={design.id}
+                          id={design.id}
                           image={design.image}
                           x={designX}
                           y={designY}
-                          width={designWidth}
-                          height={designHeight}
+                          width={baseWidth}
+                          height={baseHeight}
+                          scaleX={design.scaleX || 1}
+                          scaleY={design.scaleY || 1}
                           draggable
+                          onClick={() => handleDesignSelect(design.id)}
+                          onTap={() => handleDesignSelect(design.id)}
                           onDragStart={() => handleDesignDragStart(design.id)}
                           onDragMove={(e) => {
                             // Apply snapping during drag for real-time feedback
                             const snapped = snapToShirtAreas(e.target.x(), e.target.y());
                             const gridSnapped = snapToNearestGrid(snapped.x, snapped.y);
-                            e.target.x(gridSnapped.x);
-                            e.target.y(gridSnapped.y);
+                            
+                            // Apply constraints during drag
+                            const constrained = constrainToPosition(design, gridSnapped.x, gridSnapped.y);
+                            e.target.x(constrained.x);
+                            e.target.y(constrained.y);
                           }}
                           onDragEnd={(e) => {
                             handleDesignDrag(design.id, e.target.x(), e.target.y());
                           }}
+                          onTransformEnd={() => handleTransformEnd(design.id)}
                         />
                       );
                     })}
+                    
+                    {/* Transformer for resizing */}
+                    <Transformer
+                      ref={transformerRef}
+                      boundBoxFunc={(oldBox, newBox) => {
+                        // Limit resize
+                        if (newBox.width < 5 || newBox.height < 5) {
+                          return oldBox;
+                        }
+                        return newBox;
+                      }}
+                    />
                   </Layer>
                 </Stage>
                   </div>
@@ -1104,8 +1790,9 @@ export default function DesignPage() {
                 </div>
                   )}
                   </div>
-                <p>• Toggle between Front and Back views to see different shirt sides</p>
+                <p>• Toggle between Front and Back views to see different sides (where applicable)</p>
                 <p>• Drag designs to reposition them within their position areas</p>
+                <p>• Click on designs to select them for resizing with corner handles</p>
                 <p>• Designs are constrained to stay within their assigned position boundaries</p>
                 {snapToGrid && (
                   <p className="text-green-600 font-medium">• Auto-snapping helps align elements to key shirt areas</p>
