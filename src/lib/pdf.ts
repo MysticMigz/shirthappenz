@@ -480,4 +480,174 @@ export const generateCustomerInvoicePDF = async (order: CustomerOrder) => {
     console.error('Error generating customer invoice PDF:', error);
     throw error;
   }
+};
+
+export const generateCustomOrderInvoicePDF = async (invoiceData: any) => {
+  try {
+    console.log('Generating custom order invoice PDF for:', invoiceData.invoiceNumber);
+
+    // Create new PDF document
+    const doc = new jsPDF();
+    
+    // Add company logo
+    const logoUrl = '/images/logo.png';
+    try {
+      // Fetch logo image from local file
+      const response = await fetch(logoUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch logo: ${response.status}`);
+      }
+      
+      const arrayBuffer = await response.arrayBuffer();
+      const base64 = Buffer.from(arrayBuffer).toString('base64');
+      const dataUrl = `data:image/png;base64,${base64}`;
+      
+      // Add logo to PDF (positioned at top left, maintaining aspect ratio)
+      // Calculate aspect ratio: assuming logo is roughly square, use 40x40 to maintain proportions
+      doc.addImage(dataUrl, 'PNG', 20, 15, 40, 40);
+      
+      // Add company name below the logo with spacing
+      doc.setFontSize(18);
+      doc.setTextColor(99, 102, 241); // Indigo color
+      doc.text('MR SHIRT PERSONALISATION LTD', 20, 65);
+    } catch (logoError) {
+      console.warn('Failed to load logo, using text only:', logoError);
+      // Fallback to text only if logo fails to load
+      doc.setFontSize(18);
+      doc.setTextColor(99, 102, 241); // Indigo color
+      doc.text('MR SHIRT PERSONALISATION LTD', 20, 65);
+    }
+    
+    // Add invoice title
+    doc.setFontSize(18);
+    doc.setTextColor(0, 0, 0);
+    doc.text('INVOICE', 20, 75);
+    
+    // Add invoice details on the right
+    doc.setFontSize(10);
+    doc.text(`Invoice Number: ${invoiceData.invoiceNumber}`, 120, 25);
+    doc.text(`Date: ${invoiceData.invoiceDate}`, 120, 30);
+    doc.text(`Due: ${invoiceData.dueDate}`, 120, 35);
+    
+    // Add customer details
+    doc.setFontSize(12);
+    doc.text('Bill To:', 20, 90);
+    doc.setFontSize(10);
+    doc.text(invoiceData.customer.name, 20, 100);
+    if (invoiceData.customer.company) {
+      doc.text(invoiceData.customer.company, 20, 105);
+    }
+    doc.text(invoiceData.customer.address.street, 20, 110);
+    doc.text(`${invoiceData.customer.address.city}, ${invoiceData.customer.address.province}`, 20, 115);
+    doc.text(invoiceData.customer.address.postalCode, 20, 120);
+    doc.text(invoiceData.customer.email, 20, 125);
+    doc.text(invoiceData.customer.phone, 20, 130);
+
+    let yPosition = 150;
+
+    // Create items table
+    const tableData = invoiceData.items.map((item: any) => [
+      item.description,
+      item.quantity.toString(),
+      `£${item.unitPrice.toFixed(2)}`,
+      `£${item.total.toFixed(2)}`
+    ]);
+
+    // Add table
+    autoTable(doc, {
+      startY: yPosition,
+      head: [['Description', 'Qty', 'Unit Price', 'Total']],
+      body: tableData,
+      styles: {
+        fontSize: 10,
+        cellPadding: 5,
+      },
+      headStyles: {
+        fillColor: [99, 102, 241], // Indigo color
+        textColor: 255,
+        fontStyle: 'bold',
+      },
+      columnStyles: {
+        0: { cellWidth: 80 },
+        1: { cellWidth: 20, halign: 'center' },
+        2: { cellWidth: 30, halign: 'right' },
+        3: { cellWidth: 30, halign: 'right' },
+      },
+    });
+
+    // Get the final Y position after the table
+    const finalY = (doc as any).lastAutoTable.finalY || yPosition + 50;
+
+    // Add pricing summary
+    const summaryY = finalY + 20;
+    doc.setFontSize(12);
+    doc.text('Subtotal:', 120, summaryY);
+    doc.text(`£${invoiceData.pricing.subtotal.toFixed(2)}`, 160, summaryY);
+    
+    doc.text(`VAT (${invoiceData.pricing.vatRate}%):`, 120, summaryY + 10);
+    doc.text(`£${invoiceData.pricing.vatAmount.toFixed(2)}`, 160, summaryY + 10);
+    
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text('Total:', 120, summaryY + 25);
+    doc.text(`£${invoiceData.pricing.total.toFixed(2)}`, 160, summaryY + 25);
+
+    // Add notes if present
+    let notesY = summaryY + 40;
+    if (invoiceData.notes) {
+      doc.setFontSize(10);
+      doc.setFont(undefined, 'normal');
+      doc.text('Notes:', 20, notesY);
+      doc.text(invoiceData.notes, 20, notesY + 10);
+      notesY += 20;
+    }
+
+    // Add payment information with proper spacing
+    if (invoiceData.paymentLink) {
+      // Add extra spacing before payment link
+      notesY += 10;
+      
+      doc.setFontSize(10);
+      doc.setFont(undefined, 'bold');
+      doc.setTextColor(0, 0, 0);
+      doc.text('Payment Link:', 20, notesY);
+      doc.setFont(undefined, 'normal');
+      doc.setTextColor(0, 0, 255); // Blue color for link
+      
+      // Split long payment links into multiple lines if needed
+      const maxLineLength = 80;
+      const paymentLink = invoiceData.paymentLink;
+      if (paymentLink.length > maxLineLength) {
+        const lines = [];
+        for (let i = 0; i < paymentLink.length; i += maxLineLength) {
+          lines.push(paymentLink.substring(i, i + maxLineLength));
+        }
+        lines.forEach((line, index) => {
+          doc.text(line, 20, notesY + 10 + (index * 5));
+        });
+        notesY += 10 + (lines.length * 5);
+      } else {
+        doc.text(paymentLink, 20, notesY + 10);
+        notesY += 20;
+      }
+      
+      doc.setTextColor(0, 0, 0); // Reset to black
+    }
+
+    // Add company details at bottom with proper spacing
+    const pageHeight = doc.internal.pageSize.height;
+    const footerY = Math.max(notesY + 30, pageHeight - 40); // Ensure minimum spacing
+    
+    doc.setFontSize(8);
+    doc.setTextColor(100, 100, 100);
+    doc.text('MR SHIRT PERSONALISATION LTD', 20, footerY);
+    doc.text('Email: admin@mrshirtpersonalisation.co.uk', 20, footerY + 5);
+    doc.text('Phone: +447902870824', 20, footerY + 10);
+    doc.text('Custom Clothing Solutions', 20, footerY + 15);
+
+    return doc;
+  } catch (error) {
+    console.error('Error generating custom order invoice PDF:', error);
+    throw error;
+  }
 }; 

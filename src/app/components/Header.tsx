@@ -229,6 +229,9 @@ const Header = () => {
               <Link href="/design" className="text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium transition">
                 Custom Design
               </Link>
+              <Link href="/custom-orders" className="text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium transition">
+                Custom Orders
+              </Link>
               <Link href="/help" className="text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium transition">
                 Help
               </Link>
@@ -360,6 +363,13 @@ const Header = () => {
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   Custom Design
+                </Link>
+                <Link 
+                  href="/custom-orders" 
+                  className="block py-3 px-4 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Custom Orders
                 </Link>
                 <Link 
                   href="/help" 
