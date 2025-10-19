@@ -446,7 +446,7 @@ export async function sendOrderShippedEmail(
                 </tbody>
               </table>
               <div style="margin-top: 32px; text-align: center;">
-                <a href="https://shirthappenz.com/orders" style="display: inline-block; background: #6366f1; color: #fff; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: 600;">View Your Order Status</a>
+                <a href="https://mrshirtpersonalisation.co.uk/orders" style="display: inline-block; background: #6366f1; color: #fff; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: 600;">View Your Order Status</a>
               </div>
             </div>
           </div>
@@ -695,7 +695,7 @@ export async function sendRegistrationConfirmationEmail(email: string, firstName
             <div style="padding: 0 32px 32px 32px;">
               <p style="font-size: 16px; color: #374151;">We're excited to have you on board. You can now log in and start customizing your apparel!</p>
               <div style="margin-top: 32px; text-align: center;">
-                <a href="https://shirthappenz.com/auth/login" style="display: inline-block; background: #6366f1; color: #fff; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: 600;">Log In to Your Account</a>
+                <a href="https://mrshirtpersonalisation.co.uk/auth/login" style="display: inline-block; background: #6366f1; color: #fff; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: 600;">Log In to Your Account</a>
               </div>
             </div>
           </div>

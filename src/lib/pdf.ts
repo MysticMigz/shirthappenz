@@ -99,7 +99,7 @@ export const generateSupplyOrderPDF = (order: SupplyOrder) => {
     
     // Add company logo/header
     doc.setFontSize(20);
-    doc.text('ShirtHappenz', 20, 20);
+    doc.text('MR SHIRT PERSONALISATION LTD', 20, 20);
     
     // Add order details
     doc.setFontSize(12);
@@ -588,7 +588,7 @@ export const generateCustomOrderInvoicePDF = async (invoiceData: any) => {
     doc.text(`£${invoiceData.pricing.vatAmount.toFixed(2)}`, 160, summaryY + 10);
     
     doc.setFontSize(14);
-    doc.setFont(undefined, 'bold');
+    doc.setFont('helvetica', 'bold');
     doc.text('Total:', 120, summaryY + 25);
     doc.text(`£${invoiceData.pricing.total.toFixed(2)}`, 160, summaryY + 25);
 
@@ -596,7 +596,7 @@ export const generateCustomOrderInvoicePDF = async (invoiceData: any) => {
     let notesY = summaryY + 40;
     if (invoiceData.notes) {
       doc.setFontSize(10);
-      doc.setFont(undefined, 'normal');
+      doc.setFont('helvetica', 'normal');
       doc.text('Notes:', 20, notesY);
       doc.text(invoiceData.notes, 20, notesY + 10);
       notesY += 20;
@@ -608,10 +608,10 @@ export const generateCustomOrderInvoicePDF = async (invoiceData: any) => {
       notesY += 10;
       
       doc.setFontSize(10);
-      doc.setFont(undefined, 'bold');
+      doc.setFont('helvetica', 'bold');
       doc.setTextColor(0, 0, 0);
       doc.text('Payment Link:', 20, notesY);
-      doc.setFont(undefined, 'normal');
+      doc.setFont('helvetica', 'normal');
       doc.setTextColor(0, 0, 255); // Blue color for link
       
       // Split long payment links into multiple lines if needed

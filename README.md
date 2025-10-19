@@ -1,4 +1,4 @@
-# Mr SHIRT PERSONALISATION - Custom Apparel E-commerce
+# MR SHIRT PERSONALISATION LTD - Custom Apparel E-commerce
 
 A modern Next.js e-commerce platform for custom apparel and personalized clothing with DTF printing capabilities.
 
@@ -67,7 +67,7 @@ CLOUDINARY_API_SECRET=your_api_secret
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
-   cd shirthappenz
+   cd mrshirtpersonalisationLTD
    ```
 
 2. **Install dependencies**

@@ -1044,11 +1044,11 @@ export default function CustomOrdersPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="text-center">
               <h4 className="font-medium text-gray-900">Customer Service</h4>
-              <p className="text-sm text-gray-600">customerservice@shirthappenz.com</p>
+              <p className="text-sm text-gray-600">customer.service@mrshirtpersonalisation.co.uk</p>
             </div>
             <div className="text-center">
               <h4 className="font-medium text-gray-900">Sales</h4>
-              <p className="text-sm text-gray-600">sales@shirthappenz.com</p>
+              <p className="text-sm text-gray-600">customer.service@mrshirtpersonalisation.co.uk</p>
             </div>
             <div className="text-center">
               <h4 className="font-medium text-gray-900">Hotline</h4>

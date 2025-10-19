@@ -1,6 +1,7 @@
 {
   "name": "MR SHIRT PERSONALISATION LTD",
   "short_name": "MR SHIRT LTD",
+  "description": "Custom T-Shirt Printing and Design Services - Professional DTF Printing Solutions",
   "icons": [
     {
       "src": "/favicon.ico",
@@ -12,12 +13,6 @@
       "src": "/favicon-96x96.png",
       "sizes": "96x96",
       "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
       "purpose": "any"
     },
     {
@@ -53,5 +48,8 @@
   ],
   "theme_color": "#FF1744",
   "background_color": "#ffffff",
-  "display": "standalone"
+  "display": "standalone",
+  "start_url": "/",
+  "scope": "/",
+  "orientation": "portrait-primary"
 }

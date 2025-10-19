@@ -223,7 +223,7 @@ const HeroSection = () => {
             ) : (
               <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
                 <div className="bg-gradient-to-r from-purple-600 via-blue-500 to-orange-400 text-white brand-text text-lg px-4 py-2 rounded-lg">
-                  ShirtHappenZ
+                  MR SHIRT PERSONALISATION LTD
                 </div>
               </div>
             )}

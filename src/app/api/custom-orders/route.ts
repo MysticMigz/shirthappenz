@@ -290,7 +290,7 @@ export async function POST(request: NextRequest) {
     try {
       await sendEmail({
         to: customOrderData.email,
-        subject: 'Custom Order Confirmation - ShirtHappenz',
+        subject: 'Custom Order Confirmation - MR SHIRT PERSONALISATION LTD',
         html: `
           <h2>Thank you for your custom order!</h2>
           <p>Dear ${customOrderData.firstName} ${customOrderData.lastName},</p>
@@ -325,7 +325,7 @@ export async function POST(request: NextRequest) {
             <li>Hours: Monday - Friday 9h-12h and 13h30-16h30</li>
           </ul>
           
-          <p>Best regards,<br>The ShirtHappenz Team</p>
+          <p>Best regards,<br>The MR SHIRT PERSONALISATION LTD Team</p>
         `
       });
     } catch (emailError) {
