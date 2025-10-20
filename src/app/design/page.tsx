@@ -223,6 +223,40 @@ export default function DesignPage() {
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  // Redirect non-authenticated users
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/auth/login');
+    }
+  }, [status, router]);
+
+  // Show loading while checking authentication
+  if (status === 'loading' || !isClient) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-600"></div>
+      </div>
+    );
+  }
+
+  // Show access denied for non-authenticated users
+  if (status === 'unauthenticated') {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
+          <p className="text-gray-600 mb-4">You need to be logged in to access the design studio.</p>
+          <button
+            onClick={() => router.push('/auth/login')}
+            className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+          >
+            Login
+          </button>
+        </div>
+      </div>
+    );
+  }
   const [selectedPosition, setSelectedPosition] = useState<string>('center-chest');
   const [selectedSize, setSelectedSize] = useState<'A3' | 'A4'>('A4');
   const [selectedClothingType, setSelectedClothingType] = useState<'tshirt' | 'jersey' | 'hoodie' | 'crewneck'>('tshirt');

@@ -11,6 +11,7 @@ export interface IVoucher extends Document {
   validFrom: Date;
   validUntil: Date;
   isActive: boolean;
+  showInDiscountWheel: boolean; // whether to show in discount wheel
   description?: string;
   appliesTo: 'all' | 'specific_products' | 'specific_categories';
   productIds?: string[]; // for specific products
@@ -66,6 +67,10 @@ const voucherSchema = new Schema<IVoucher>({
     required: true
   },
   isActive: {
+    type: Boolean,
+    default: true
+  },
+  showInDiscountWheel: {
     type: Boolean,
     default: true
   },

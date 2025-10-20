@@ -54,6 +54,55 @@ interface CreateLabelRequest {
   label_layout?: '4x6' | '4x8' | 'letter';
 }
 
+interface PackageDimensions {
+  length: number;
+  width: number;
+  height: number;
+  unit: 'centimeter' | 'inch';
+}
+
+interface LabelPreview {
+  totalWeight: number;
+  itemCount: number;
+  packageCount: number;
+  packages: Array<{
+    weight: number;
+    dimensions: PackageDimensions;
+    items: Array<{
+      name: string;
+      quantity: number;
+      weight: number;
+    }>;
+  }>;
+  estimatedCost?: {
+    amount: number;
+    currency: string;
+  };
+  shipEngineConfig?: {
+    carrierId: string;
+    serviceCode: string;
+    serviceName: string;
+    labelFormat: string;
+    labelLayout: string;
+    labelDownloadType: string;
+    testMode: boolean;
+    shipDate: string;
+    externalShipmentId: string;
+  };
+  addresses?: {
+    shipTo: {
+      name: string;
+      address: string;
+      country: string;
+    };
+    shipFrom: {
+      name: string;
+      address: string;
+      country: string;
+    };
+  };
+}
+
 interface CreateLabelResponse {
   label_id: string;
   status: string;
@@ -132,6 +181,161 @@ class ShipEngineAPI {
       console.error('❌ ShipEngine API credentials not configured');
       throw new Error('ShipEngine API credentials not configured');
     }
+  }
+
+  // Calculate dynamic package dimensions based on item count
+  private calculatePackageDimensions(itemCount: number, totalWeight: number): PackageDimensions {
+    // Define dimension tiers based on item count and weight
+    if (itemCount <= 2 && totalWeight <= 1) {
+      return { length: 30, width: 20, height: 5, unit: 'centimeter' };
+    } else if (itemCount <= 5 && totalWeight <= 2.5) {
+      return { length: 40, width: 30, height: 10, unit: 'centimeter' };
+    } else if (itemCount <= 10 && totalWeight <= 5) {
+      return { length: 50, width: 40, height: 15, unit: 'centimeter' };
+    } else if (itemCount <= 20 && totalWeight <= 10) {
+      return { length: 60, width: 50, height: 20, unit: 'centimeter' };
+    } else if (itemCount <= 30 && totalWeight <= 15) {
+      return { length: 70, width: 60, height: 25, unit: 'centimeter' };
+    } else {
+      // For very large orders, suggest splitting
+      return { length: 80, width: 70, height: 30, unit: 'centimeter' };
+    }
+  }
+
+  // Determine if order should be split into multiple packages
+  private shouldSplitOrder(itemCount: number, totalWeight: number): boolean {
+    // Split if more than 30 items or more than 15kg
+    return itemCount > 30 || totalWeight > 15;
+  }
+
+  // Calculate how many packages needed for large orders
+  private calculatePackageSplit(itemCount: number, totalWeight: number): number {
+    if (!this.shouldSplitOrder(itemCount, totalWeight)) {
+      return 1;
+    }
+    
+    // Calculate packages needed (max 15kg or 20 items per package)
+    const maxWeightPerPackage = 15;
+    const maxItemsPerPackage = 20;
+    
+    const packagesByWeight = Math.ceil(totalWeight / maxWeightPerPackage);
+    const packagesByItems = Math.ceil(itemCount / maxItemsPerPackage);
+    
+    return Math.max(packagesByWeight, packagesByItems);
+  }
+
+  // Generate label preview with dynamic dimensions
+  async generateLabelPreview(orderData: {
+    orderReference: string;
+    shipTo: {
+      name: string;
+      company?: string;
+      address1: string;
+      address2?: string;
+      city: string;
+      county: string;
+      postcode: string;
+      country: string;
+      phone?: string;
+    };
+    items: Array<{
+      name: string;
+      quantity: number;
+      weight?: number;
+    }>;
+    shipFrom?: {
+      name: string;
+      company?: string;
+      address1: string;
+      address2?: string;
+      city: string;
+      county: string;
+      postcode: string;
+      country: string;
+      phone?: string;
+    };
+  }): Promise<LabelPreview> {
+    // Calculate total weight
+    const totalWeight = orderData.items.reduce((sum, item) => {
+      return sum + (item.weight || 0.5) * item.quantity;
+    }, 0);
+
+    const itemCount = orderData.items.reduce((sum, item) => sum + item.quantity, 0);
+    const shouldSplit = this.shouldSplitOrder(itemCount, totalWeight);
+    const packageCount = shouldSplit ? this.calculatePackageSplit(itemCount, totalWeight) : 1;
+
+    const packages = [];
+    
+    if (shouldSplit) {
+      // Split items across multiple packages
+      const itemsPerPackage = Math.ceil(orderData.items.length / packageCount);
+      const weightPerPackage = totalWeight / packageCount;
+      
+      for (let i = 0; i < packageCount; i++) {
+        const startIndex = i * itemsPerPackage;
+        const endIndex = Math.min(startIndex + itemsPerPackage, orderData.items.length);
+        const packageItems = orderData.items.slice(startIndex, endIndex);
+        
+        const packageWeight = packageItems.reduce((sum, item) => {
+          return sum + (item.weight || 0.5) * item.quantity;
+        }, 0);
+        
+        const packageItemCount = packageItems.reduce((sum, item) => sum + item.quantity, 0);
+        const dimensions = this.calculatePackageDimensions(packageItemCount, packageWeight);
+        
+        packages.push({
+          weight: packageWeight,
+          dimensions,
+          items: packageItems.map(item => ({
+            name: item.name,
+            quantity: item.quantity,
+            weight: item.weight || 0.5
+          }))
+        });
+      }
+    } else {
+      // Single package
+      const dimensions = this.calculatePackageDimensions(itemCount, totalWeight);
+      packages.push({
+        weight: totalWeight,
+        dimensions,
+        items: orderData.items.map(item => ({
+          name: item.name,
+          quantity: item.quantity,
+          weight: item.weight || 0.5
+        }))
+      });
+    }
+
+    return {
+      totalWeight,
+      itemCount,
+      packageCount,
+      packages,
+      shipEngineConfig: {
+        carrierId: 'se-340606',
+        serviceCode: 'hermes_domestic_parcelshop_dropoff',
+        serviceName: 'EVRi Domestic - ParcelShop Dropoff',
+        labelFormat: 'pdf',
+        labelLayout: '4x6',
+        labelDownloadType: 'url',
+        testMode: process.env.NODE_ENV !== 'production',
+        shipDate: new Date().toISOString().split('T')[0],
+        externalShipmentId: `${orderData.orderReference}-${Date.now()}`
+      },
+      addresses: {
+        shipTo: {
+          name: orderData.shipTo.name,
+          address: `${orderData.shipTo.address1}, ${orderData.shipTo.city}, ${orderData.shipTo.postcode}`,
+          country: orderData.shipTo.country
+        },
+        shipFrom: {
+          name: 'MR SHIRT PERSONALISATION LTD',
+          address: 'Your Business Address, Your City, Your Postcode',
+          country: 'United Kingdom'
+        }
+      }
+    };
   }
 
   private async makeRequest(endpoint: string, method: 'GET' | 'POST' = 'GET', data?: any) {
@@ -308,6 +512,9 @@ class ShipEngineAPI {
       return sum + (item.weight || 0.5) * item.quantity;
     }, 0);
 
+    const itemCount = orderData.items.reduce((sum, item) => sum + item.quantity, 0);
+    const dimensions = this.calculatePackageDimensions(itemCount, totalWeight);
+
     const labelRequest: CreateLabelRequest = {
       carrier_id: 'se-340606', // EVRi carrier ID
       service_code: 'hermes_domestic_parcelshop_dropoff', // EVRi Domestic - ParcelShop Dropoff
@@ -321,10 +528,10 @@ class ShipEngineAPI {
           unit: 'kilogram'
         },
         dimensions: {
-          length: 30,
-          width: 20,
-          height: 5,
-          unit: 'centimeter'
+          length: dimensions.length,
+          width: dimensions.width,
+          height: dimensions.height,
+          unit: dimensions.unit
         }
       }],
       items: orderData.items.map(item => ({
@@ -360,6 +567,149 @@ class ShipEngineAPI {
     const result = await this.createLabel(labelRequest);
     
     console.log('🎉 EVRi Label Generated Successfully:', {
+      labelId: result.label_id,
+      trackingNumber: result.tracking_number,
+      shipmentId: result.shipment_id,
+      shippingCost: {
+        amount: result.shipping_cost?.amount || 'N/A',
+        currency: result.shipping_cost?.currency || 'N/A',
+        formatted: result.shipping_cost ? `${result.shipping_cost.currency} ${result.shipping_cost.amount.toFixed(2)}` : 'N/A'
+      },
+      insuranceCost: {
+        amount: result.insurance_cost?.amount || 0,
+        currency: result.insurance_cost?.currency || 'N/A'
+      },
+      labelDownloadUrl: result.label_download?.pdf || 'N/A'
+    });
+
+    return result;
+  }
+
+  // Create EVRi shipment with custom dimensions
+  async createEVRiShipmentWithCustomDimensions(orderData: {
+    orderReference: string;
+    shipTo: {
+      name: string;
+      company?: string;
+      address1: string;
+      address2?: string;
+      city: string;
+      county: string;
+      postcode: string;
+      country: string;
+      phone?: string;
+    };
+    items: Array<{
+      name: string;
+      quantity: number;
+      weight?: number;
+    }>;
+    shipFrom?: {
+      name: string;
+      company?: string;
+      address1: string;
+      address2?: string;
+      city: string;
+      county: string;
+      postcode: string;
+      country: string;
+      phone?: string;
+    };
+    customDimensions?: PackageDimensions;
+    splitPackages?: boolean;
+  }): Promise<CreateLabelResponse> {
+    
+    // Default ship from address (your business address)
+    const shipFrom: ShipEngineAddress = {
+      name: orderData.shipFrom?.name || 'MR SHIRT PERSONALISATION LTD',
+      company: orderData.shipFrom?.company || 'MR SHIRT PERSONALISATION LTD',
+      address_line1: orderData.shipFrom?.address1 || 'Your Business Address',
+      address_line2: orderData.shipFrom?.address2 || '',
+      city_locality: orderData.shipFrom?.city || 'Your City',
+      state_province: orderData.shipFrom?.county || 'Your County',
+      postal_code: orderData.shipFrom?.postcode || 'Your Postcode',
+      country_code: orderData.shipFrom?.country === 'United Kingdom' ? 'GB' : (orderData.shipFrom?.country || 'GB'),
+      phone: orderData.shipFrom?.phone || '+447902870824',
+      address_residential_indicator: 'no' as 'yes' | 'no'
+    };
+
+    // Format ship to address
+    const shipTo: ShipEngineAddress = {
+      name: orderData.shipTo.name,
+      company: orderData.shipTo.company || '',
+      address_line1: orderData.shipTo.address1,
+      address_line2: orderData.shipTo.address2 || '',
+      city_locality: orderData.shipTo.city,
+      state_province: orderData.shipTo.county,
+      postal_code: orderData.shipTo.postcode,
+      country_code: orderData.shipTo.country === 'United Kingdom' ? 'GB' : orderData.shipTo.country,
+      phone: orderData.shipTo.phone || '',
+      address_residential_indicator: 'yes' as 'yes' | 'no'
+    };
+
+    // Calculate total weight
+    const totalWeight = orderData.items.reduce((sum, item) => {
+      return sum + (item.weight || 0.5) * item.quantity;
+    }, 0);
+
+    const itemCount = orderData.items.reduce((sum, item) => sum + item.quantity, 0);
+
+    // Use custom dimensions if provided, otherwise calculate dynamically
+    const dimensions = orderData.customDimensions || this.calculatePackageDimensions(itemCount, totalWeight);
+
+    const labelRequest: CreateLabelRequest = {
+      carrier_id: 'se-340606', // EVRi carrier ID
+      service_code: 'hermes_domestic_parcelshop_dropoff', // EVRi Domestic - ParcelShop Dropoff
+      external_shipment_id: `${orderData.orderReference}-${Date.now()}`, // Make unique with timestamp
+      ship_date: new Date().toISOString().split('T')[0], // Today's date
+      ship_to: shipTo,
+      ship_from: shipFrom,
+      packages: [{
+        weight: {
+          value: Math.max(totalWeight, 0.1), // Minimum 0.1kg
+          unit: 'kilogram'
+        },
+        dimensions: {
+          length: dimensions.length,
+          width: dimensions.width,
+          height: dimensions.height,
+          unit: dimensions.unit
+        }
+      }],
+      items: orderData.items.map(item => ({
+        name: item.name,
+        quantity: item.quantity,
+        weight: {
+          value: item.weight || 0.5,
+          unit: 'kilogram'
+        }
+      })),
+      test_label: process.env.NODE_ENV !== 'production', // Use test labels in development
+      label_download_type: 'url', // Get URLs to download labels
+      label_format: 'pdf', // PDF format for labels
+      label_layout: '4x6' // Standard 4x6 label size
+    };
+
+    console.log('📋 Custom EVRi Label Request Details:', {
+      carrier_id: labelRequest.carrier_id,
+      service_code: labelRequest.service_code,
+      service_name: 'EVRi Domestic - ParcelShop Dropoff',
+      totalWeight: labelRequest.packages[0].weight.value,
+      customDimensions: dimensions,
+      itemCount: labelRequest.items?.length || 0,
+      shipTo: {
+        name: labelRequest.ship_to.name,
+        city: labelRequest.ship_to.city_locality,
+        postcode: labelRequest.ship_to.postal_code
+      },
+      testLabel: labelRequest.test_label,
+      labelFormat: labelRequest.label_format,
+      labelLayout: labelRequest.label_layout
+    });
+
+    const result = await this.createLabel(labelRequest);
+    
+    console.log('🎉 Custom EVRi Label Generated Successfully:', {
       labelId: result.label_id,
       trackingNumber: result.tracking_number,
       shipmentId: result.shipment_id,

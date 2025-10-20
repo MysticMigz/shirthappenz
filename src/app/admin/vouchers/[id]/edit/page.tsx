@@ -23,6 +23,7 @@ interface Voucher {
   validFrom: string;
   validUntil: string;
   isActive: boolean;
+  showInDiscountWheel: boolean;
   description?: string;
   appliesTo: 'all' | 'specific_products' | 'specific_categories';
   productIds?: string[];
@@ -49,6 +50,7 @@ export default function EditVoucherPage({ params }: { params: { id: string } }) 
     validFrom: '',
     validUntil: '',
     isActive: true,
+    showInDiscountWheel: true,
     description: '',
     appliesTo: 'all' as 'all' | 'specific_products' | 'specific_categories',
     productIds: [] as string[],
@@ -87,6 +89,7 @@ export default function EditVoucherPage({ params }: { params: { id: string } }) 
         validFrom: new Date(data.voucher.validFrom).toISOString().split('T')[0],
         validUntil: new Date(data.voucher.validUntil).toISOString().split('T')[0],
         isActive: data.voucher.isActive,
+        showInDiscountWheel: data.voucher.showInDiscountWheel,
         description: data.voucher.description || '',
         appliesTo: data.voucher.appliesTo,
         productIds: data.voucher.productIds || [],
@@ -387,6 +390,19 @@ export default function EditVoucherPage({ params }: { params: { id: string } }) 
                   />
                   <label className="ml-2 block text-sm text-gray-900">
                     Active
+                  </label>
+                </div>
+
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    name="showInDiscountWheel"
+                    checked={formData.showInDiscountWheel}
+                    onChange={handleInputChange}
+                    className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                  />
+                  <label className="ml-2 block text-sm text-gray-900">
+                    Show in Discount Wheel
                   </label>
                 </div>
               </div>

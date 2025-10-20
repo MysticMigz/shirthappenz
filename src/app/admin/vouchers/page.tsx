@@ -17,6 +17,7 @@ interface Voucher {
   validFrom: string;
   validUntil: string;
   isActive: boolean;
+  showInDiscountWheel: boolean;
   description?: string;
   appliesTo: 'all' | 'specific_products' | 'specific_categories';
   productIds?: string[];
@@ -31,6 +32,7 @@ export default function AdminVouchersPage() {
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [savingIds, setSavingIds] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -60,6 +62,7 @@ export default function AdminVouchersPage() {
 
   const toggleVoucherStatus = async (voucherId: string, isActive: boolean) => {
     try {
+      setSavingIds(prev => ({ ...prev, [voucherId]: true }));
       const response = await fetch(`/api/admin/vouchers/${voucherId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -69,15 +72,47 @@ export default function AdminVouchersPage() {
       if (!response.ok) {
         throw new Error('Failed to update voucher');
       }
+      const data = await response.json();
+      if (!data?.voucher) throw new Error('No voucher returned');
 
-      // Update local state
-      setVouchers(vouchers.map(voucher => 
-        voucher._id === voucherId 
-          ? { ...voucher, isActive: !isActive }
-          : voucher
-      ));
+      // Update from server response
+      setVouchers(prev => prev.map(v => v._id === voucherId ? { ...v, ...data.voucher } : v));
     } catch (err: any) {
       setError(err.message);
+    } finally {
+      setSavingIds(prev => {
+        const next = { ...prev };
+        delete next[voucherId];
+        return next;
+      });
+    }
+  };
+
+  const toggleDiscountWheelVisibility = async (voucherId: string, showInDiscountWheel: boolean) => {
+    try {
+      setSavingIds(prev => ({ ...prev, [voucherId]: true }));
+      const response = await fetch(`/api/admin/vouchers/${voucherId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ showInDiscountWheel: !showInDiscountWheel }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update voucher');
+      }
+      const data = await response.json();
+      if (!data?.voucher) throw new Error('No voucher returned');
+
+      // Update from server response
+      setVouchers(prev => prev.map(v => v._id === voucherId ? { ...v, ...data.voucher } : v));
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSavingIds(prev => {
+        const next = { ...prev };
+        delete next[voucherId];
+        return next;
+      });
     }
   };
 
@@ -220,6 +255,9 @@ export default function AdminVouchersPage() {
                     Status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Discount Wheel
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -249,6 +287,24 @@ export default function AdminVouchersPage() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       {getStatusBadge(voucher)}
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <button
+                        onClick={() => toggleDiscountWheelVisibility(voucher._id, voucher.showInDiscountWheel)}
+                        disabled={!!savingIds[voucher._id]}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
+                          voucher.showInDiscountWheel ? 'bg-purple-600' : 'bg-gray-200'
+                        } ${savingIds[voucher._id] ? 'opacity-60 cursor-not-allowed' : ''}`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            voucher.showInDiscountWheel ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                      <span className="ml-2 text-xs text-gray-500">
+                        {savingIds[voucher._id] ? 'Saving…' : (voucher.showInDiscountWheel ? 'Visible' : 'Hidden')}
+                      </span>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">
                         <Link
@@ -259,11 +315,12 @@ export default function AdminVouchersPage() {
                         </Link>
                         <button
                           onClick={() => toggleVoucherStatus(voucher._id, voucher.isActive)}
+                          disabled={!!savingIds[voucher._id]}
                           className={`${
                             voucher.isActive 
                               ? 'text-red-600 hover:text-red-900' 
                               : 'text-green-600 hover:text-green-900'
-                          }`}
+                          } ${savingIds[voucher._id] ? 'opacity-60 cursor-not-allowed' : ''}`}
                         >
                           {voucher.isActive ? 'Deactivate' : 'Activate'}
                         </button>

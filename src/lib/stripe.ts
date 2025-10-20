@@ -125,7 +125,7 @@ export async function createPaymentLink({
       after_completion: {
         type: 'redirect',
         redirect: {
-          url: successUrl || `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/thank-you`,
+          url: successUrl || `${process.env.NEXT_PUBLIC_BASE_URL || 'https://mrshirtpersonalisation.co.uk'}/thank-you`,
         },
       },
     });

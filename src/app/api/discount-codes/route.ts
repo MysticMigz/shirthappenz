@@ -12,6 +12,7 @@ export async function GET() {
     
     const activeVouchers = await Voucher.find({
       isActive: true,
+      showInDiscountWheel: true,
       validFrom: { $lte: now },
       validUntil: { $gte: now }
     }).select('code description validUntil type value minimumOrderAmount usageLimit usedCount');

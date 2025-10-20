@@ -52,7 +52,7 @@ export async function POST(
         customerEmail: order.email,
         customerName: `${order.firstName} ${order.lastName}`,
       },
-      successUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/thank-you?order=${order._id}`,
+      successUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'https://mrshirtpersonalisation.co.uk'}/thank-you?order=${order._id}`,
     });
 
     return NextResponse.json({

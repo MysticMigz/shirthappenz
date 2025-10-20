@@ -60,7 +60,7 @@ export default function HelpPage() {
             <p className="text-gray-700 mb-2">Can't find what you need? Our team is ready to help with any questions or issues.</p>
             <ul className="text-gray-700 mb-2">
               <li><FaEnvelope className="inline mr-2 text-purple-400" /> Email: <a href="mailto:customer.service@mrshirtpersonalisation.com" className="text-blue-600 underline">customer.service@mrshirtpersonalisation.com</a></li>
-              <li><FaPhone className="inline mr-2 text-purple-400" /> Phone: <a href="tel:07954746514" className="text-blue-600 underline">07954746514</a></li>
+              <li><FaPhone className="inline mr-2 text-purple-400" /> Phone: <a href="tel:07902870824" className="text-blue-600 underline">07902870824</a></li>
               <li className="text-sm text-gray-600">MR SHIRT PERSONALISATION LTD</li>
             </ul>
             <Link href="/contact" className="inline-block mt-4 px-6 py-2 bg-white text-black rounded-lg font-semibold shadow hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent transition">Contact Us</Link>

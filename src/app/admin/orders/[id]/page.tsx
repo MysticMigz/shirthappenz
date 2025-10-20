@@ -121,6 +121,16 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
   }>({ isOpen: false, orderReference: '', orderTotal: 0 });
   const [refundLoading, setRefundLoading] = useState(false);
   const [refundInfo, setRefundInfo] = useState<any>(null);
+  
+  // Label preview and custom dimensions state
+  const [showLabelPreview, setShowLabelPreview] = useState(false);
+  const [labelPreview, setLabelPreview] = useState<any>(null);
+  const [customDimensions, setCustomDimensions] = useState({
+    length: 0,
+    width: 0,
+    height: 0,
+    unit: 'centimeter' as 'centimeter' | 'inch'
+  });
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -272,6 +282,97 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
       fetchRefundInfo();
     }
   }, [order?.status]);
+
+  // Label preview and generation handlers
+  const handlePreviewLabel = async () => {
+    try {
+      setShowLabelPreview(true);
+      setLabelPreview(null); // Reset preview
+      
+      const response = await fetch(`/api/admin/orders/${params.id}/preview-label`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate label preview');
+      }
+
+      const preview = await response.json();
+      setLabelPreview(preview);
+      
+      // Initialize custom dimensions with first package dimensions
+      if (preview.packages && preview.packages.length > 0) {
+        setCustomDimensions({
+          length: preview.packages[0].dimensions.length,
+          width: preview.packages[0].dimensions.width,
+          height: preview.packages[0].dimensions.height,
+          unit: preview.packages[0].dimensions.unit
+        });
+      }
+    } catch (error) {
+      console.error('Error generating label preview:', error);
+      alert('Failed to generate label preview');
+      setShowLabelPreview(false);
+    }
+  };
+
+  const handleGenerateLabel = async () => {
+    try {
+      const response = await fetch(`/api/admin/orders/${params.id}/generate-label`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate shipping label');
+      }
+
+      const result = await response.json();
+      alert('Shipping label generated successfully!');
+      
+      // Refresh order data
+      const orderResponse = await fetch(`/api/admin/orders/${params.id}`);
+      if (orderResponse.ok) {
+        const orderData = await orderResponse.json();
+        setOrder(orderData.order);
+      }
+    } catch (error) {
+      console.error('Error generating label:', error);
+      alert('Failed to generate shipping label');
+    }
+  };
+
+  const handleGenerateCustomLabel = async () => {
+    try {
+      const response = await fetch(`/api/admin/orders/${params.id}/generate-label-custom`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customDimensions: customDimensions,
+          splitPackages: false
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate custom shipping label');
+      }
+
+      const result = await response.json();
+      alert('Custom shipping label generated successfully!');
+      setShowLabelPreview(false);
+      
+      // Refresh order data
+      const orderResponse = await fetch(`/api/admin/orders/${params.id}`);
+      if (orderResponse.ok) {
+        const orderData = await orderResponse.json();
+        setOrder(orderData.order);
+      }
+    } catch (error) {
+      console.error('Error generating custom label:', error);
+      alert('Failed to generate custom shipping label');
+    }
+  };
 
   const exportOrderItemForDTF = (customization: OrderItem['customization'], side = 'front', designName = 'dtf-design') => {
     if (!customization) return;
@@ -436,6 +537,304 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
                 </div>
               </div>
             </div>
+
+            {/* Label Generation Section */}
+            {order.productionStatus === 'ready_to_ship' && !order.shippingDetails?.labelDownloadUrl && (
+              <div className="mt-8">
+                <h2 className="text-lg font-medium text-gray-900 mb-4">Shipping Label Generation</h2>
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-medium text-yellow-900 mb-2">Generate Shipping Label</h3>
+                      <p className="text-sm text-yellow-700">
+                        This order is ready to ship. Preview the ShipEngine settings before generating the label.
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handlePreviewLabel}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium transition-colors"
+                      >
+                        Preview Settings
+                      </button>
+                      <button
+                        onClick={handleGenerateLabel}
+                        className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium transition-colors"
+                      >
+                        Generate Label
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Label Preview Modal */}
+            {showLabelPreview && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-medium text-gray-900">ShipEngine Settings Preview</h3>
+                    <button
+                      onClick={() => setShowLabelPreview(false)}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {labelPreview ? (
+                    <div className="space-y-6">
+                      {/* ShipEngine Configuration Summary */}
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <h4 className="text-sm font-medium text-blue-900 mb-3">ShipEngine Configuration</h4>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                          <div>
+                            <span className="font-medium text-blue-700">Carrier ID:</span>
+                            <p className="text-blue-600">{labelPreview.shipEngineConfig?.carrierId || 'se-340606'} (EVRi)</p>
+                          </div>
+                          <div>
+                            <span className="font-medium text-blue-700">Service Code:</span>
+                            <p className="text-blue-600">{labelPreview.shipEngineConfig?.serviceCode || 'hermes_domestic_parcelshop_dropoff'}</p>
+                          </div>
+                          <div>
+                            <span className="font-medium text-blue-700">Label Format:</span>
+                            <p className="text-blue-600">{labelPreview.shipEngineConfig?.labelFormat?.toUpperCase()} ({labelPreview.shipEngineConfig?.labelLayout})</p>
+                          </div>
+                          <div>
+                            <span className="font-medium text-blue-700">Test Mode:</span>
+                            <p className="text-blue-600">{labelPreview.shipEngineConfig?.testMode ? 'Yes' : 'No'}</p>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mt-3">
+                          <div>
+                            <span className="font-medium text-blue-700">Ship Date:</span>
+                            <p className="text-blue-600">{labelPreview.shipEngineConfig?.shipDate}</p>
+                          </div>
+                          <div>
+                            <span className="font-medium text-blue-700">Download Type:</span>
+                            <p className="text-blue-600">{labelPreview.shipEngineConfig?.labelDownloadType}</p>
+                          </div>
+                          <div>
+                            <span className="font-medium text-blue-700">External ID:</span>
+                            <p className="text-blue-600 font-mono text-xs">{labelPreview.shipEngineConfig?.externalShipmentId}</p>
+                          </div>
+                          <div>
+                            <span className="font-medium text-blue-700">Service Name:</span>
+                            <p className="text-blue-600">{labelPreview.shipEngineConfig?.serviceName}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Package Configuration */}
+                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                        <h4 className="text-sm font-medium text-gray-900 mb-3">Package Configuration</h4>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                          <div>
+                            <span className="font-medium text-gray-700">Total Weight:</span>
+                            <p className="text-gray-600">{labelPreview.totalWeight.toFixed(2)} kg</p>
+                          </div>
+                          <div>
+                            <span className="font-medium text-gray-700">Item Count:</span>
+                            <p className="text-gray-600">{labelPreview.itemCount}</p>
+                          </div>
+                          <div>
+                            <span className="font-medium text-gray-700">Package Count:</span>
+                            <p className="text-gray-600">{labelPreview.packageCount}</p>
+                          </div>
+                          <div>
+                            <span className="font-medium text-gray-700">Min Weight:</span>
+                            <p className="text-gray-600">0.1 kg</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* ShipEngine Request Details */}
+                      {labelPreview.packages.map((pkg: any, index: number) => (
+                        <div key={index} className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                          <h4 className="text-sm font-medium text-gray-900 mb-3">
+                            Package {index + 1} Configuration {labelPreview.packages.length > 1 ? `(${pkg.weight.toFixed(2)} kg)` : ''}
+                          </h4>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* ShipEngine Package Object */}
+                            <div>
+                              <h5 className="text-xs font-medium text-gray-700 mb-2">ShipEngine Package Object</h5>
+                              <div className="bg-white border border-gray-200 rounded p-3">
+                                <div className="space-y-2 text-sm font-mono">
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-500">weight.value:</span>
+                                    <span className="text-gray-900">{Math.max(pkg.weight, 0.1).toFixed(2)} kg</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-500">weight.unit:</span>
+                                    <span className="text-gray-900">kilogram</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-500">dimensions.length:</span>
+                                    <span className="text-gray-900">{pkg.dimensions.length} {pkg.dimensions.unit}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-500">dimensions.width:</span>
+                                    <span className="text-gray-900">{pkg.dimensions.width} {pkg.dimensions.unit}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-500">dimensions.height:</span>
+                                    <span className="text-gray-900">{pkg.dimensions.height} {pkg.dimensions.unit}</span>
+                                  </div>
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-500">dimensions.unit:</span>
+                                    <span className="text-gray-900">{pkg.dimensions.unit}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Custom Dimensions Override */}
+                            <div>
+                              <h5 className="text-xs font-medium text-gray-700 mb-2">Override Dimensions</h5>
+                              <div className="space-y-2">
+                                <div className="grid grid-cols-3 gap-2">
+                                  <input
+                                    type="number"
+                                    placeholder="Length"
+                                    value={customDimensions.length || ''}
+                                    onChange={(e) => setCustomDimensions(prev => ({ ...prev, length: parseInt(e.target.value) || 0 }))}
+                                    className="text-sm border border-gray-300 rounded px-2 py-1"
+                                  />
+                                  <input
+                                    type="number"
+                                    placeholder="Width"
+                                    value={customDimensions.width || ''}
+                                    onChange={(e) => setCustomDimensions(prev => ({ ...prev, width: parseInt(e.target.value) || 0 }))}
+                                    className="text-sm border border-gray-300 rounded px-2 py-1"
+                                  />
+                                  <input
+                                    type="number"
+                                    placeholder="Height"
+                                    value={customDimensions.height || ''}
+                                    onChange={(e) => setCustomDimensions(prev => ({ ...prev, height: parseInt(e.target.value) || 0 }))}
+                                    className="text-sm border border-gray-300 rounded px-2 py-1"
+                                  />
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <label className="flex items-center text-xs">
+                                    <input
+                                      type="radio"
+                                      name="unit"
+                                      value="centimeter"
+                                      checked={customDimensions.unit === 'centimeter'}
+                                      onChange={(e) => setCustomDimensions(prev => ({ ...prev, unit: e.target.value as 'centimeter' | 'inch' }))}
+                                      className="mr-1"
+                                    />
+                                    cm
+                                  </label>
+                                  <label className="flex items-center text-xs">
+                                    <input
+                                      type="radio"
+                                      name="unit"
+                                      value="inch"
+                                      checked={customDimensions.unit === 'inch'}
+                                      onChange={(e) => setCustomDimensions(prev => ({ ...prev, unit: e.target.value as 'centimeter' | 'inch' }))}
+                                      className="mr-1"
+                                    />
+                                    in
+                                  </label>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* ShipEngine Items Array */}
+                          <div className="mt-4">
+                            <h5 className="text-xs font-medium text-gray-700 mb-2">ShipEngine Items Array</h5>
+                            <div className="bg-white border border-gray-200 rounded p-3">
+                              <div className="space-y-1">
+                                {pkg.items.map((item: any, itemIndex: number) => (
+                                  <div key={itemIndex} className="flex justify-between text-sm font-mono">
+                                    <span className="text-gray-600">name: "{item.name}"</span>
+                                    <span className="text-gray-900">quantity: {item.quantity}, weight: {item.weight}kg</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Shipping Addresses */}
+                      {labelPreview.addresses && (
+                        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                          <h4 className="text-sm font-medium text-purple-900 mb-3">Shipping Addresses</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <h5 className="text-xs font-medium text-purple-700 mb-2">Ship To (Customer)</h5>
+                              <div className="bg-white border border-purple-200 rounded p-3">
+                                <div className="space-y-1 text-sm">
+                                  <div><span className="font-medium">Name:</span> {labelPreview.addresses.shipTo.name}</div>
+                                  <div><span className="font-medium">Address:</span> {labelPreview.addresses.shipTo.address}</div>
+                                  <div><span className="font-medium">Country:</span> {labelPreview.addresses.shipTo.country}</div>
+                                </div>
+                              </div>
+                            </div>
+                            <div>
+                              <h5 className="text-xs font-medium text-purple-700 mb-2">Ship From (Your Business)</h5>
+                              <div className="bg-white border border-purple-200 rounded p-3">
+                                <div className="space-y-1 text-sm">
+                                  <div><span className="font-medium">Name:</span> {labelPreview.addresses.shipFrom.name}</div>
+                                  <div><span className="font-medium">Address:</span> {labelPreview.addresses.shipFrom.address}</div>
+                                  <div><span className="font-medium">Country:</span> {labelPreview.addresses.shipFrom.country}</div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* ShipEngine Request Summary */}
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <h4 className="text-sm font-medium text-green-900 mb-3">Complete ShipEngine Request Object</h4>
+                        <div className="bg-white border border-green-200 rounded p-3">
+                          <div className="space-y-2 text-sm font-mono">
+                            <div><span className="text-green-700">carrier_id:</span> <span className="text-gray-900">"{labelPreview.shipEngineConfig?.carrierId || 'se-340606'}"</span></div>
+                            <div><span className="text-green-700">service_code:</span> <span className="text-gray-900">"{labelPreview.shipEngineConfig?.serviceCode || 'hermes_domestic_parcelshop_dropoff'}"</span></div>
+                            <div><span className="text-green-700">ship_date:</span> <span className="text-gray-900">"{labelPreview.shipEngineConfig?.shipDate}"</span></div>
+                            <div><span className="text-green-700">test_label:</span> <span className="text-gray-900">{labelPreview.shipEngineConfig?.testMode ? 'true' : 'false'}</span></div>
+                            <div><span className="text-green-700">label_download_type:</span> <span className="text-gray-900">"{labelPreview.shipEngineConfig?.labelDownloadType}"</span></div>
+                            <div><span className="text-green-700">label_format:</span> <span className="text-gray-900">"{labelPreview.shipEngineConfig?.labelFormat}"</span></div>
+                            <div><span className="text-green-700">label_layout:</span> <span className="text-gray-900">"{labelPreview.shipEngineConfig?.labelLayout}"</span></div>
+                            <div><span className="text-green-700">external_shipment_id:</span> <span className="text-gray-900">"{labelPreview.shipEngineConfig?.externalShipmentId}"</span></div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                        <button
+                          onClick={() => setShowLabelPreview(false)}
+                          className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm font-medium"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handleGenerateCustomLabel}
+                          className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium"
+                        >
+                          Generate Label with These Settings
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                      <p className="text-gray-500">Loading ShipEngine settings...</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Tracking Information */}
             {(order.shippingDetails?.trackingNumber || order.shippingDetails?.courier) && (

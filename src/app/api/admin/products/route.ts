@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
             uploadFormData.append('file', file);
 
             try {
-              const uploadResponse = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/upload`, {
+              const uploadResponse = await fetch(`${process.env.NEXTAUTH_URL || 'https://mrshirtpersonalisation.co.uk'}/api/upload`, {
                 method: 'POST',
                 body: uploadFormData,
               });

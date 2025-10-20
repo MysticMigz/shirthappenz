@@ -29,6 +29,7 @@ export default function NewVoucherPage() {
     validFrom: new Date().toISOString().split('T')[0],
     validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 30 days from now
     isActive: true,
+    showInDiscountWheel: true,
     description: '',
     appliesTo: 'all' as 'all' | 'specific_products' | 'specific_categories',
     productIds: [] as string[],
@@ -321,6 +322,19 @@ export default function NewVoucherPage() {
                   />
                   <label className="ml-2 block text-sm text-gray-900">
                     Active
+                  </label>
+                </div>
+
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    name="showInDiscountWheel"
+                    checked={formData.showInDiscountWheel}
+                    onChange={handleInputChange}
+                    className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                  />
+                  <label className="ml-2 block text-sm text-gray-900">
+                    Show in Discount Wheel
                   </label>
                 </div>
               </div>
