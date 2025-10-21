@@ -159,6 +159,54 @@ export default function ProductPage({ params }: { params: { id: string } }) {
     return { message: 'In stock', type: 'success' };
   };
 
+  const formatDescription = (description: string) => {
+    if (!description) return '';
+    
+    // Split by line breaks and format
+    return description
+      .split('\n')
+      .map((line, index) => {
+        const trimmedLine = line.trim();
+        if (!trimmedLine) return null; // Skip empty lines
+        
+        // Handle bullet points (lines starting with ■, •, -, or *)
+        if (trimmedLine.match(/^[■•\-\*]/)) {
+          return (
+            <div key={index} className="flex items-start mb-2">
+              <span className="text-purple-600 mr-2 mt-1">•</span>
+              <span className="text-gray-700">{trimmedLine.replace(/^[■•\-\*]\s*/, '')}</span>
+            </div>
+          );
+        }
+        
+        // Handle bold text (text between ** or __)
+        if (trimmedLine.includes('**') || trimmedLine.includes('__')) {
+          const parts = trimmedLine.split(/(\*\*.*?\*\*|__.*?__)/g);
+          return (
+            <p key={index} className="mb-3 text-gray-700">
+              {parts.map((part, partIndex) => {
+                if (part.startsWith('**') && part.endsWith('**')) {
+                  return <strong key={partIndex} className="font-semibold text-gray-900">{part.slice(2, -2)}</strong>;
+                }
+                if (part.startsWith('__') && part.endsWith('__')) {
+                  return <strong key={partIndex} className="font-semibold text-gray-900">{part.slice(2, -2)}</strong>;
+                }
+                return part;
+              })}
+            </p>
+          );
+        }
+        
+        // Regular paragraph
+        return (
+          <p key={index} className="mb-3 text-gray-700 leading-relaxed">
+            {trimmedLine}
+          </p>
+        );
+      })
+      .filter(Boolean);
+  };
+
   const addToCart = async () => {
     if (!product || !selectedSize || !selectedColor) return;
 
@@ -182,7 +230,7 @@ export default function ProductPage({ params }: { params: { id: string } }) {
       
       // Display appropriate message based on result
       if (result.success) {
-        if (result.addedQuantity && result.addedQuantity < result.requestedQuantity) {
+        if (result.addedQuantity && result.addedQuantity < (result.requestedQuantity || quantity)) {
           // Partial success - limited by stock
           setCartMessage({ 
             message: result.message || `Added ${result.addedQuantity} items. Only ${availableStock} available in stock.`, 
@@ -300,8 +348,8 @@ export default function ProductPage({ params }: { params: { id: string } }) {
                   £{product.price.toFixed(2)}
                 </p>
               )}
-              <div className="prose prose-sm text-gray-600 mb-6">
-                {product.description}
+              <div className="mb-6">
+                {formatDescription(product.description)}
               </div>
 
               {/* Color Options */}

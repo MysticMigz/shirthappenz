@@ -167,16 +167,46 @@ export default function PrivacyPolicyPage() {
 
             <section>
               <h2 className="text-2xl font-semibold text-gray-900 mb-4">7. Exercising Your Rights</h2>
-              <p className="text-gray-700 mb-4">
-                To exercise any of your rights, please contact us at:
-              </p>
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <p className="text-gray-700"><strong>Email:</strong> customer.service@mrshirtpersonalisation.com</p>
-                <p className="text-gray-700"><strong>Address:</strong> 10 Barney Close, SE7 8SS, United Kingdom</p>
+              
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-3">Accessing and Deleting Your Personal Data</h3>
+                  <p className="text-gray-700 mb-4">
+                    You can view, update, or delete your personal information at any time by:
+                  </p>
+                  <ul className="list-disc list-inside text-gray-700 space-y-2 ml-4">
+                    <li>
+                      <strong>Account Settings:</strong> Logging into your account and visiting the Account Settings page, where you can update or delete your information directly; or
+                    </li>
+                    <li>
+                      <strong>Email Request:</strong> Contacting us by email at{' '}
+                      <a href="mailto:customer.service@mrshirtpersonalisation.com" className="text-blue-600 underline">
+                        customer.service@mrshirtpersonalisation.com
+                      </a>{' '}
+                      to request access or deletion of your data.
+                    </li>
+                  </ul>
+                  <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p className="text-yellow-800 text-sm">
+                      <strong>Important:</strong> Please note that we may need to retain certain information for legal or accounting purposes, even after your deletion request is processed.
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-3">General Rights Requests</h3>
+                  <p className="text-gray-700 mb-4">
+                    To exercise any of your other rights, please contact us at:
+                  </p>
+                  <div className="p-4 bg-gray-50 rounded-lg">
+                    <p className="text-gray-700"><strong>Email:</strong> customer.service@mrshirtpersonalisation.com</p>
+                    <p className="text-gray-700"><strong>Address:</strong> 10 Barney Close, SE7 8SS, United Kingdom</p>
+                  </div>
+                  <p className="text-gray-700 mt-4">
+                    We will respond to your request within one month. If you're not satisfied with our response, you can contact the Information Commissioner's Office (ICO).
+                  </p>
+                </div>
               </div>
-              <p className="text-gray-700 mt-4">
-                We will respond to your request within one month. If you're not satisfied with our response, you can contact the Information Commissioner's Office (ICO).
-              </p>
             </section>
 
             <section>
