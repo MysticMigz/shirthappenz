@@ -311,7 +311,7 @@ export default function ProductPage({ params }: { params: { id: string } }) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* Product Images */}
-            <div className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden">
+            <div className="relative bg-gray-100 rounded-lg overflow-hidden">
               {(() => {
                 const productImage = getProductImage();
                 return productImage ? (
@@ -319,12 +319,13 @@ export default function ProductPage({ params }: { params: { id: string } }) {
                     key={selectedColor || 'default'} // Force re-render when color changes
                     src={productImage.url}
                     alt={productImage.alt || product.name}
-                    fill
-                    className="object-cover transition-opacity duration-300"
+                    width={600}
+                    height={600}
+                    className="w-full h-auto rounded-lg transition-opacity duration-300"
                     priority
                   />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                  <div className="w-full h-96 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center rounded-lg">
                     <div className="bg-gradient-to-r from-purple-600 via-blue-500 to-orange-400 text-white brand-text text-lg px-4 py-2 rounded-lg">
                       MR SHIRT PERSONALISATION LTD
                     </div>

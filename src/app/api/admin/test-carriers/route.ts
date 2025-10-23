@@ -1,6 +1,13 @@
 import { NextRequest } from 'next/server';
 import ShipEngineAPI from '@/lib/shipengine';
 
+interface Carrier {
+  carrier_id: string;
+  friendly_name: string;
+  supports_return_labels: boolean;
+  service_codes?: Array<{ service_code: string }>;
+}
+
 export async function GET(request: NextRequest) {
   console.log('🧪 Testing available carriers and services...');
   
@@ -11,14 +18,14 @@ export async function GET(request: NextRequest) {
     console.log('📡 Fetching carriers...');
     const carriers = await shipengine.getCarriers();
     
-    console.log('📋 Available carriers:', carriers.map(c => ({
+    console.log('📋 Available carriers:', carriers.map((c: Carrier) => ({
       carrier_id: c.carrier_id,
       friendly_name: c.friendly_name,
       supports_return_labels: c.supports_return_labels
     })));
     
     // Try to get services for Stamps.com
-    const stampsCarrier = carriers.find(c => c.carrier_id === 'se-340579');
+    const stampsCarrier = carriers.find((c: Carrier) => c.carrier_id === 'se-340579');
     if (stampsCarrier) {
       console.log('🎯 Found Stamps.com carrier:', stampsCarrier);
     }
@@ -26,7 +33,7 @@ export async function GET(request: NextRequest) {
     return new Response(JSON.stringify({
       success: true,
       message: 'Carriers fetched successfully',
-      carriers: carriers.map(c => ({
+      carriers: carriers.map((c: Carrier) => ({
         carrier_id: c.carrier_id,
         friendly_name: c.friendly_name,
         supports_return_labels: c.supports_return_labels
@@ -48,5 +55,6 @@ export async function GET(request: NextRequest) {
     });
   }
 }
+
 
 
