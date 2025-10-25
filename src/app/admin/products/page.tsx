@@ -25,18 +25,28 @@ interface Product {
   createdAt: string;
   updatedAt: string;
   barcode?: string;
+  collections?: Array<{ _id: string; name: string; slug: string }>;
+}
+
+interface Collection {
+  _id: string;
+  name: string;
+  slug: string;
 }
 
 export default function AdminProducts() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
+  const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [showCollectionModal, setShowCollectionModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   // Redirect if not admin
   useEffect(() => {
@@ -44,6 +54,18 @@ export default function AdminProducts() {
       router.push('/auth/signin');
     }
   }, [session, status, router]);
+
+  // Fetch collections
+  const fetchCollections = async () => {
+    try {
+      const response = await fetch('/api/collections');
+      if (!response.ok) throw new Error('Failed to fetch collections');
+      const data = await response.json();
+      setCollections(data.collections || []);
+    } catch (err) {
+      console.error('Error fetching collections:', err);
+    }
+  };
 
   // Fetch products
   useEffect(() => {
@@ -71,6 +93,7 @@ export default function AdminProducts() {
 
     if (session?.user?.isAdmin) {
       fetchProducts();
+      fetchCollections();
     }
   }, [session, page, searchTerm, selectedCategory]);
 
@@ -88,6 +111,36 @@ export default function AdminProducts() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete product');
     }
+  };
+
+  const handleCollectionToggle = async (productId: string, collectionId: string, isAdding: boolean) => {
+    try {
+      const response = await fetch(`/api/collections/${collectionId}/products`, {
+        method: isAdding ? 'POST' : 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productIds: [productId] })
+      });
+
+      if (!response.ok) throw new Error(`Failed to ${isAdding ? 'add' : 'remove'} product from collection`);
+
+      // Update the product in the local state
+      setProducts(products.map(product => {
+        if (product._id === productId) {
+          const updatedCollections = isAdding 
+            ? [...(product.collections || []), collections.find(c => c._id === collectionId)!]
+            : (product.collections || []).filter(c => c._id !== collectionId);
+          return { ...product, collections: updatedCollections };
+        }
+        return product;
+      }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update collection');
+    }
+  };
+
+  const openCollectionModal = (product: Product) => {
+    setSelectedProduct(product);
+    setShowCollectionModal(true);
   };
 
   if (status === 'loading' || loading) {
@@ -157,6 +210,7 @@ export default function AdminProducts() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Collections</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
@@ -195,6 +249,28 @@ export default function AdminProducts() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       £{product.price.toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex flex-wrap gap-1">
+                        {product.collections && product.collections.length > 0 ? (
+                          product.collections.map((collection) => (
+                            <span
+                              key={collection._id}
+                              className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                            >
+                              {collection.name}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-sm text-gray-400">No collections</span>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => openCollectionModal(product)}
+                        className="mt-1 text-xs text-purple-600 hover:text-purple-800"
+                      >
+                        Manage Collections
+                      </button>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {/* TODO: Implement stock display */}
@@ -241,6 +317,47 @@ export default function AdminProducts() {
             </button>
           </div>
         </div>
+
+        {/* Collection Management Modal */}
+        {showCollectionModal && selectedProduct && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+              <h3 className="text-lg font-semibold mb-4">
+                Manage Collections for "{selectedProduct.name}"
+              </h3>
+              
+              <div className="space-y-3 max-h-64 overflow-y-auto">
+                {collections.map((collection) => {
+                  const isInCollection = selectedProduct.collections?.some(c => c._id === collection._id);
+                  return (
+                    <div key={collection._id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <span className="text-sm font-medium">{collection.name}</span>
+                      <button
+                        onClick={() => handleCollectionToggle(selectedProduct._id, collection._id, !isInCollection)}
+                        className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                          isInCollection
+                            ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                            : 'bg-green-100 text-green-700 hover:bg-green-200'
+                        }`}
+                      >
+                        {isInCollection ? 'Remove' : 'Add'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="flex justify-end mt-6">
+                <button
+                  onClick={() => setShowCollectionModal(false)}
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

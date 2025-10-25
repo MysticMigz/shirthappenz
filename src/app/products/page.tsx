@@ -21,6 +21,7 @@ interface Product {
   colors: Array<{ name: string; hexCode: string; imageUrl?: string; stock?: { [size: string]: number } }>;
   featured: boolean;
   customizable: boolean;
+  collections?: Array<{ _id: string; name: string; slug: string }>;
 }
 
 interface Category {
@@ -42,6 +43,24 @@ interface CategoryVisibility {
   };
 }
 
+interface Collection {
+  _id: string;
+  name: string;
+  description: string;
+  slug: string;
+  image?: {
+    url: string;
+    alt: string;
+  };
+  bannerImage?: {
+    url: string;
+    alt: string;
+  };
+  isActive: boolean;
+  featured: boolean;
+  sortOrder: number;
+}
+
 export default function ProductsPage() {
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
@@ -58,6 +77,9 @@ export default function ProductsPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [categoryVisibility, setCategoryVisibility] = useState<CategoryVisibility[]>([]);
   const [categoryVisibilityLoading, setCategoryVisibilityLoading] = useState(true);
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [collectionsLoading, setCollectionsLoading] = useState(true);
+  const [selectedCollection, setSelectedCollection] = useState<string>('');
 
   // Read search parameters from URL on component mount
   useEffect(() => {
@@ -72,6 +94,7 @@ export default function ProductsPage() {
 
   useEffect(() => {
     fetchCategoryVisibility();
+    fetchCollections();
   }, [selectedGender]);
 
   const genderNav = [
@@ -140,7 +163,7 @@ export default function ProductsPage() {
 
   useEffect(() => {
     fetchProducts();
-  }, [searchQuery, selectedCategory, priceRange, sortBy]);
+  }, [searchQuery, selectedCategory, selectedCollection, priceRange, sortBy]);
 
   useEffect(() => {
     fetchCategoryVisibility();
@@ -173,6 +196,23 @@ export default function ProductsPage() {
       }
     } finally {
       setCategoryVisibilityLoading(false);
+    }
+  };
+
+  const fetchCollections = async () => {
+    try {
+      setCollectionsLoading(true);
+      const response = await fetch('/api/collections?isActive=true');
+      if (!response.ok) {
+        throw new Error('Failed to fetch collections');
+      }
+      const data = await response.json();
+      setCollections(data.collections || []);
+    } catch (err: any) {
+      console.error('Error fetching collections:', err);
+      setCollections([]);
+    } finally {
+      setCollectionsLoading(false);
     }
   };
 
@@ -241,6 +281,15 @@ export default function ProductsPage() {
       
       if (searchQuery) params.append('search', searchQuery);
       if (selectedCategory) params.append('category', selectedCategory);
+      if (selectedCollection) {
+        // If a collection is selected, fetch products from that collection
+        const response = await fetch(`/api/collections/${selectedCollection}/products?${params.toString()}`);
+        if (!response.ok) throw new Error('Failed to fetch collection products');
+        const data = await response.json();
+        setProducts(data.products || []);
+        setError(null);
+        return;
+      }
       if (priceRange.min) params.append('minPrice', priceRange.min.toString());
       if (priceRange.max) params.append('maxPrice', priceRange.max.toString());
       if (sortBy) params.append('sortBy', sortBy);
@@ -338,10 +387,17 @@ export default function ProductsPage() {
   const handleGenderClick = (key: string) => {
     setSelectedGender(key);
     setSelectedCategory('');
+    setSelectedCollection('');
   };
 
   const handleCategoryClick = (key: string) => {
     setSelectedCategory(key);
+    setSelectedCollection(''); // Clear collection selection when category is selected
+  };
+
+  const handleCollectionClick = (collectionId: string) => {
+    setSelectedCollection(collectionId);
+    setSelectedCategory(''); // Clear category selection when collection is selected
   };
 
   // Reset selected category if it's not visible for the current gender
@@ -380,7 +436,11 @@ export default function ProductsPage() {
       const matchesPriceRange = (priceRange.max === null || product.basePrice <= priceRange.max) &&
         product.basePrice >= priceRange.min;
 
-      return matchesSearch && matchesGender && categoryIsVisible && matchesCategory && matchesPriceRange;
+      // If a collection is selected, products are already filtered by the API
+      // So we don't need additional collection filtering here
+      const matchesCollection = selectedCollection === '' || true;
+
+      return matchesSearch && matchesGender && categoryIsVisible && matchesCategory && matchesPriceRange && matchesCollection;
     })
     .sort((a, b) => {
       switch (sortBy) {
@@ -441,6 +501,57 @@ export default function ProductsPage() {
             </button>
           ))}
         </div>
+
+        {/* Collections Section */}
+        {collections.length > 0 && (
+          <div className="mb-6 sm:mb-8">
+            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4 text-center">Collections</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+              {collectionsLoading ? (
+                // Show loading skeleton
+                Array.from({ length: 4 }).map((_, index) => (
+                  <div key={index} className="bg-white rounded-lg border border-gray-200 p-4 animate-pulse">
+                    <div className="aspect-video bg-gray-200 rounded-lg mb-3"></div>
+                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-3 bg-gray-200 rounded w-3/4"></div>
+                  </div>
+                ))
+              ) : (
+                collections.map((collection) => (
+                  <button
+                    key={collection._id}
+                    onClick={() => handleCollectionClick(collection._id)}
+                    className={`bg-white rounded-lg border border-black p-4 text-left transition-all duration-300 ease-in-out group hover:scale-105 focus:scale-105 hover:shadow-[0_4px_0_0_var(--brand-red)] focus:shadow-[0_4px_0_0_var(--brand-red)] active:scale-100
+                      focus-visible:ring-2 focus-visible:ring-[var(--brand-red)] focus-visible:ring-offset-2
+                      ${selectedCollection === collection._id ? 'shadow-[0_2px_0_0_var(--brand-red)]' : ''}`}
+                  >
+                    <div className="aspect-video bg-gray-100 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
+                      {collection.image ? (
+                        <img
+                          src={collection.image.url}
+                          alt={collection.image.alt || collection.name}
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                          <div className="bg-gradient-to-r from-purple-600 via-blue-500 to-orange-400 text-white brand-text text-xs px-2 py-1 rounded-lg">
+                            {collection.name}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <h3 className="font-semibold text-base text-gray-900 mb-1 group-hover:text-purple-600 transition-colors">
+                      {collection.name}
+                    </h3>
+                    <p className="text-sm text-gray-600 line-clamp-2">
+                      {collection.description}
+                    </p>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Category Cards for selected gender */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:flex lg:flex-wrap gap-3 sm:gap-4 justify-center mb-6 sm:mb-8">

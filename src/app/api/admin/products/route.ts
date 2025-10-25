@@ -4,6 +4,7 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { connectToDatabase } from '@/backend/utils/database';
 import Product from '@/backend/models/Product';
 import User from '@/backend/models/User';
+import Collection from '@/backend/models/Collection';
 import { productSchema, validateAndSanitize } from '@/lib/validation';
 
 interface ProductData {
@@ -63,6 +64,7 @@ export async function GET(request: NextRequest) {
     // Execute query with pagination
     const skip = (page - 1) * limit;
     const products = await Product.find(query)
+      .populate('collections', 'name slug')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);

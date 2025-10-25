@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import Product from '@/backend/models/Product';
 import Order from '@/backend/models/Order';
+import Collection from '@/backend/models/Collection';
 import { productSchema, validateAndSanitize } from '@/lib/validation';
 
 export async function GET(request: NextRequest) {
@@ -79,10 +80,21 @@ export async function GET(request: NextRequest) {
     if (sortBy === 'name-asc') sort = { name: 1 };
     if (sortBy === 'name-desc') sort = { name: -1 };
 
-    const products = await Product.find(query)
-      .sort(sort)
-      .skip((page - 1) * limit)
-      .limit(limit);
+    let products;
+    try {
+      products = await Product.find(query)
+        .populate('collections', 'name slug')
+        .sort(sort)
+        .skip((page - 1) * limit)
+        .limit(limit);
+    } catch (populateError) {
+      // If populate fails, fetch without populate
+      console.warn('Populate failed, fetching products without collections:', populateError);
+      products = await Product.find(query)
+        .sort(sort)
+        .skip((page - 1) * limit)
+        .limit(limit);
+    }
 
     // Format image URLs
     const formattedProducts = products.map(product => product.toObject());
