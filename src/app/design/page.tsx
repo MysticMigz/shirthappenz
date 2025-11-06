@@ -218,45 +218,8 @@ export default function DesignPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [isClient, setIsClient] = useState(false);
-
-  // Ensure this component only renders on the client side
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  // Redirect non-authenticated users
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/auth/login');
-    }
-  }, [status, router]);
-
-  // Show loading while checking authentication
-  if (status === 'loading' || !isClient) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-600"></div>
-      </div>
-    );
-  }
-
-  // Show access denied for non-authenticated users
-  if (status === 'unauthenticated') {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
-          <p className="text-gray-600 mb-4">You need to be logged in to access the design studio.</p>
-          <button
-            onClick={() => router.push('/auth/login')}
-            className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 transition-colors"
-          >
-            Login
-          </button>
-        </div>
-      </div>
-    );
-  }
+  
+  // All hooks must be called before any conditional returns
   const [selectedPosition, setSelectedPosition] = useState<string>('center-chest');
   const [selectedSize, setSelectedSize] = useState<'A3' | 'A4'>('A4');
   const [selectedClothingType, setSelectedClothingType] = useState<'tshirt' | 'jersey' | 'hoodie' | 'crewneck'>('tshirt');
@@ -266,7 +229,7 @@ export default function DesignPage() {
   const [error, setError] = useState<string | null>(null);
   const [showGuides, setShowGuides] = useState(true);
   const [selectedDesign, setSelectedDesign] = useState<string | null>(null);
-  const [customPositions, setCustomPositions] = useState<DesignPosition[]>(DESIGN_POSITIONS[selectedClothingType] || DESIGN_POSITIONS.tshirt);
+  const [customPositions, setCustomPositions] = useState<DesignPosition[]>(DESIGN_POSITIONS.tshirt);
   const [isEditingPositions, setIsEditingPositions] = useState(false);
   const [showRulers, setShowRulers] = useState(true);
   const [draggedDesign, setDraggedDesign] = useState<string | null>(null);
@@ -283,68 +246,89 @@ export default function DesignPage() {
   const stageRef = useRef<any>(null);
   const transformerRef = useRef<any>(null);
 
-  // Load mockup images based on selected clothing type
+  // All useEffect hooks must be called before any conditional returns
+  // Ensure this component only renders on the client side
   useEffect(() => {
-    const getImagePaths = (clothingType: string) => {
-      switch (clothingType) {
-        case 'tshirt':
-          return {
-            front: '/images/front-tshirt.png',
-            back: '/images/back-tshirt.png'
-          };
-        case 'jersey':
-          return {
-            front: '/images/Jersey-Front.png',
-            back: '/images/Jersey-Back.png'
-          };
-        case 'hoodie':
-          return {
-            front: '/images/Hoody-Front.png',
-            back: '/images/Hoody-Back.png'
-          };
-        case 'crewneck':
-          return {
-            front: '/images/front-tshirt.png', // Using t-shirt as fallback
-            back: '/images/back-tshirt.png'
-          };
-        default:
-          return {
-            front: '/images/front-tshirt.png',
-            back: '/images/back-tshirt.png'
-          };
-      }
-    };
+    setIsClient(true);
+  }, []);
 
-    const imagePaths = getImagePaths(selectedClothingType);
-
-    // Load front image
-    const frontImg = new window.Image();
-    frontImg.crossOrigin = 'anonymous';
-    frontImg.onload = () => setShirtImage(frontImg);
-    frontImg.src = imagePaths.front;
-
-    // Load back image
-    const backImg = new window.Image();
-    backImg.crossOrigin = 'anonymous';
-    backImg.onload = () => setBackShirtImage(backImg);
-    backImg.src = imagePaths.back;
-  }, [selectedClothingType]);
-
-  // Redirect if not authenticated
+  // Redirect non-authenticated users
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/auth/login');
     }
   }, [status, router]);
 
+  // Load mockup images based on selected clothing type
+  useEffect(() => {
+    if (status !== 'unauthenticated') {
+      const getImagePaths = (clothingType: string) => {
+        switch (clothingType) {
+          case 'tshirt':
+            return {
+              front: '/images/front-tshirt.png',
+              back: '/images/back-tshirt.png'
+            };
+          case 'jersey':
+            return {
+              front: '/images/Jersey-Front.png',
+              back: '/images/Jersey-Back.png'
+            };
+          case 'hoodie':
+            return {
+              front: '/images/Hoody-Front.png',
+              back: '/images/Hoody-Back.png'
+            };
+          case 'crewneck':
+            return {
+              front: '/images/front-tshirt.png', // Using t-shirt as fallback
+              back: '/images/back-tshirt.png'
+            };
+          default:
+            return {
+              front: '/images/front-tshirt.png',
+              back: '/images/back-tshirt.png'
+            };
+        }
+      };
+
+      const imagePaths = getImagePaths(selectedClothingType);
+
+      // Load front image
+      const frontImg = new window.Image();
+      frontImg.crossOrigin = 'anonymous';
+      frontImg.onload = () => setShirtImage(frontImg);
+      frontImg.src = imagePaths.front;
+
+      // Load back image
+      const backImg = new window.Image();
+      backImg.crossOrigin = 'anonymous';
+      backImg.onload = () => setBackShirtImage(backImg);
+      backImg.src = imagePaths.back;
+    }
+  }, [selectedClothingType, status]);
+
   // Load saved positions on component mount
   useEffect(() => {
-    loadSavedPositions();
-  }, []);
+    if (status !== 'unauthenticated' && isClient) {
+      // Function will be defined later, but we check here
+      const savedData = localStorage.getItem('designPositions');
+      if (savedData) {
+        try {
+          const parsed = JSON.parse(savedData);
+          if (parsed && Array.isArray(parsed)) {
+            setCustomPositions(parsed);
+          }
+        } catch (e) {
+          console.error('Error loading saved positions:', e);
+        }
+      }
+    }
+  }, [status, isClient]);
 
   // Attach transformer to selected design
   useEffect(() => {
-    if (selectedDesignForResize && transformerRef.current) {
+    if (selectedDesignForResize && transformerRef.current && status !== 'unauthenticated') {
       const stage = transformerRef.current.getStage();
       const selectedNode = stage.findOne(`#${selectedDesignForResize}`);
       if (selectedNode) {
@@ -352,33 +336,36 @@ export default function DesignPage() {
         transformerRef.current.getLayer().batchDraw();
       }
     }
-  }, [selectedDesignForResize]);
-
+  }, [selectedDesignForResize, status]);
 
   // Update positions when clothing type changes
   useEffect(() => {
-    setCustomPositions(DESIGN_POSITIONS[selectedClothingType] || DESIGN_POSITIONS.tshirt);
-    // Reset selected position to first available position
-    const newPositions = DESIGN_POSITIONS[selectedClothingType] || DESIGN_POSITIONS.tshirt;
-    if (newPositions.length > 0) {
-      setSelectedPosition(newPositions[0].id);
+    if (status !== 'unauthenticated') {
+      setCustomPositions(DESIGN_POSITIONS[selectedClothingType] || DESIGN_POSITIONS.tshirt);
+      // Reset selected position to first available position
+      const newPositions = DESIGN_POSITIONS[selectedClothingType] || DESIGN_POSITIONS.tshirt;
+      if (newPositions.length > 0) {
+        setSelectedPosition(newPositions[0].id);
+      }
     }
-  }, [selectedClothingType]);
+  }, [selectedClothingType, status]);
 
   // Auto-select first available position when view changes
   useEffect(() => {
-    const currentPositions = DESIGN_POSITIONS[selectedClothingType] || DESIGN_POSITIONS.tshirt;
-    const availablePositions = currentPositions.filter(position => {
-      const shouldShowPosition = 
-        (shirtView === 'front' && (position.id.includes('chest') || position.id === 'center-chest')) ||
-        (shirtView === 'back' && (position.id.includes('back') || position.id === 'center-chest'));
-      return shouldShowPosition;
-    });
-    
-    if (availablePositions.length > 0 && !availablePositions.some(pos => pos.id === selectedPosition)) {
-      setSelectedPosition(availablePositions[0].id);
+    if (status !== 'unauthenticated') {
+      const currentPositions = DESIGN_POSITIONS[selectedClothingType] || DESIGN_POSITIONS.tshirt;
+      const availablePositions = currentPositions.filter(position => {
+        const shouldShowPosition = 
+          (shirtView === 'front' && (position.id.includes('chest') || position.id === 'center-chest')) ||
+          (shirtView === 'back' && (position.id.includes('back') || position.id === 'center-chest'));
+        return shouldShowPosition;
+      });
+      
+      if (availablePositions.length > 0 && !availablePositions.some(pos => pos.id === selectedPosition)) {
+        setSelectedPosition(availablePositions[0].id);
+      }
     }
-  }, [shirtView, selectedPosition, selectedClothingType]);
+  }, [shirtView, selectedPosition, selectedClothingType, status]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];

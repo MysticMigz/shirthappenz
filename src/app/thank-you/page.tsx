@@ -113,7 +113,7 @@ export default function ThankYouPage() {
     }
 
     fetchOrder();
-  }, [searchParams]);
+  }, [searchParams, clearCart]);
 
   if (loading) {
     return (

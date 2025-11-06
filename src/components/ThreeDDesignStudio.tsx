@@ -123,7 +123,7 @@ export default function ThreeDDesignStudio({ className = "" }: ThreeDDesignStudi
     if (viewMode === '2d') {
       render2DPreview();
     }
-  }, [designElements, render2DPreview]);
+  }, [designElements, render2DPreview, viewMode]);
 
   const handleModelLoad = (model: any) => {
     setModelLoaded(true);

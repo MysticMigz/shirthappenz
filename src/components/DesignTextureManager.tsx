@@ -257,7 +257,7 @@ export default function DesignTextureManager({
         ctx.restore();
       }
     });
-  }, [designElements, drawHoodieTemplate]);
+  }, [designElements, drawHoodieTemplate, selectedElement]);
 
   // Generate texture and render preview when design elements change
   React.useEffect(() => {
