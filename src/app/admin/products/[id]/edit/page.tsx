@@ -309,12 +309,12 @@ export default function EditProduct({ params }: { params: { id: string } }) {
         Object.entries(colorImageUploads).map(async ([colorIndex, imageData]) => {
           if (!imageData) return null;
           
-          const formData = new FormData();
-          formData.append('file', imageData.file);
+          const uploadFormData = new FormData();
+          uploadFormData.append('file', imageData.file);
 
           const response = await fetch('/api/upload', {
             method: 'POST',
-            body: formData,
+            body: uploadFormData,
           });
 
           if (!response.ok) {

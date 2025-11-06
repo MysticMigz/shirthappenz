@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const carriers = await shipengine.getCarriers();
     
     // Find EVRi carriers
-    const evriCarriers = carriers.filter(c => 
+    const evriCarriers = carriers.filter((c: any) => 
       c.friendly_name.toLowerCase().includes('evri') || 
       c.friendly_name.toLowerCase().includes('hermes') ||
       c.carrier_id === 'se-340606'
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
         evriServices.push({
           carrier_id: carrier.carrier_id,
           friendly_name: carrier.friendly_name,
-          services: services.map(s => ({
+          services: services.map((s: any) => ({
             service_code: s.service_code,
             name: s.name,
             domestic: s.domestic,

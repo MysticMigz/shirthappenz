@@ -390,9 +390,10 @@ export default function FrontOfShopPage() {
                     />
                     <div className="absolute top-2 right-2 flex gap-2">
                       <button
-                        onClick={() => handlePreview(background.imageUrl)}
+                        onClick={() => background.imageUrl && handlePreview(background.imageUrl)}
                         className="bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70"
                         title="Preview"
+                        disabled={!background.imageUrl}
                       >
                         <FaEye className="w-3 h-3" />
                       </button>

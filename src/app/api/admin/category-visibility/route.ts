@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 import { connectToDatabase } from '@/backend/utils/database';
 import CategoryVisibility from '@/backend/models/CategoryVisibility';
 import User from '@/backend/models/User';
@@ -114,8 +114,9 @@ export async function POST(request: NextRequest) {
       message: 'Category visibility updated successfully',
       category: categoryDoc 
     });
-  } catch (error) {
-    console.error('Error updating category visibility:', error);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Error updating category visibility:', errorMessage);
     return NextResponse.json(
       { error: 'Failed to update category visibility' },
       { status: 500 }
@@ -185,7 +186,8 @@ export async function PATCH(request: NextRequest) {
           results.push({ category, success: false, error: 'Category not found' });
         }
       } catch (error) {
-        results.push({ category, success: false, error: error.message });
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        results.push({ category, success: false, error: errorMessage });
       }
     }
     

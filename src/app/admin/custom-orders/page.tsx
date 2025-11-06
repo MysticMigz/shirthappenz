@@ -153,7 +153,7 @@ export default function CustomOrdersPage() {
         },
         items: [
           {
-            description: `Custom ${productData.name} Design - ${order.paperSize} DTF Printing`,
+            description: `Custom ${productData?.name || 'Product'} Design - ${order.paperSize} DTF Printing`,
             quantity: totalQuantity,
             unitPrice: unitPrice,
             total: subtotal
@@ -261,8 +261,9 @@ export default function CustomOrdersPage() {
       console.log('Payment link generated:', data);
       setPaymentLink(data.paymentLink);
     } catch (error) {
-      console.error('Error generating payment link:', error);
-      alert(`Failed to generate payment link: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Error generating payment link:', errorMessage);
+      alert(`Failed to generate payment link: ${errorMessage}`);
     } finally {
       setGeneratingPaymentLink(false);
     }
@@ -960,6 +961,7 @@ export default function CustomOrdersPage() {
                           
                           // Save invoice data to database
                           try {
+                            if (!selectedOrder) return;
                             await fetch(`/api/custom-orders/${selectedOrder._id}`, {
                               method: 'PUT',
                               headers: {
