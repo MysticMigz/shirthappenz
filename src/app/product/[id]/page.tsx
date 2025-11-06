@@ -60,9 +60,40 @@ export default function ProductPage({ params }: { params: { id: string } }) {
   const [addingToCart, setAddingToCart] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [cartMessage, setCartMessage] = useState<{ message: string; type: 'success' | 'warning' | 'error' } | null>(null);
+  const [productsEnabled, setProductsEnabled] = useState<boolean | null>(null); // null = checking
+  const [checkingEnabled, setCheckingEnabled] = useState(true);
   const { addItem } = useCart();
 
+  // Check if products are enabled
   useEffect(() => {
+    const checkProductsEnabled = async () => {
+      try {
+        setCheckingEnabled(true);
+        const response = await fetch('/api/site-settings?key=productsEnabled');
+        if (response.ok) {
+          const data = await response.json();
+          setProductsEnabled(data.value !== false); // Default to true if not set
+        } else {
+          setProductsEnabled(true); // Default to enabled on error
+        }
+      } catch (err) {
+        console.error('Error checking products enabled status:', err);
+        // Default to enabled on error
+        setProductsEnabled(true);
+      } finally {
+        setCheckingEnabled(false);
+      }
+    };
+    checkProductsEnabled();
+  }, []);
+
+  useEffect(() => {
+    // Only fetch product if products are enabled
+    if (!productsEnabled) {
+      setLoading(false);
+      return;
+    }
+
     const fetchProduct = async () => {
       try {
         const response = await fetch(`/api/products/${params.id}`);
@@ -82,7 +113,7 @@ export default function ProductPage({ params }: { params: { id: string } }) {
     };
 
     fetchProduct();
-  }, [params.id]);
+  }, [params.id, productsEnabled]);
 
   // Hide success message after 3 seconds
   useEffect(() => {
@@ -263,6 +294,48 @@ export default function ProductPage({ params }: { params: { id: string } }) {
       setAddingToCart(false);
     }
   };
+
+  // Show loading while checking if products are enabled
+  if (checkingEnabled || productsEnabled === null) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <div className="flex-grow flex items-center justify-center">
+          <div className="flex flex-col items-center space-y-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+            <p className="text-gray-600">Loading...</p>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  // Show "Coming Soon" message if products are disabled
+  if (!productsEnabled) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <div className="flex-grow flex flex-col items-center justify-center">
+          <div className="text-center space-y-6">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900">
+              Products Coming Soon
+            </h1>
+            <p className="text-lg sm:text-xl text-gray-600 max-w-2xl">
+              We're currently updating our product catalog. Please check back soon!
+            </p>
+            <Link
+              href="/"
+              className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-[var(--brand-red)] to-[var(--brand-blue)] text-white rounded-lg hover:brightness-110 transition-all duration-200 font-medium"
+            >
+              Return to Home
+            </Link>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   if (loading) {
     return (

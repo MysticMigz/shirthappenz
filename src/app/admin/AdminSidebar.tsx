@@ -99,6 +99,11 @@ export default function AdminSidebar() {
       href: '/admin/front-of-shop',
       icon: FaStore,
       text: 'Front of Shop'
+    },
+    {
+      href: '/admin/site-settings',
+      icon: FaTachometerAlt,
+      text: 'Site Settings'
     }
   ];
 

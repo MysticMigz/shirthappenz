@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/backend/utils/database';
 import Product from '@/backend/models/Product';
+import SiteSettings from '@/backend/models/SiteSettings';
 
 export async function GET(
   request: NextRequest,
@@ -8,6 +9,17 @@ export async function GET(
 ) {
   try {
     await connectToDatabase();
+    
+    // Check if products are enabled
+    const productsEnabledSetting = await SiteSettings.findOne({ key: 'productsEnabled' });
+    const productsEnabled = productsEnabledSetting ? productsEnabledSetting.value !== false : true;
+    
+    if (!productsEnabled) {
+      return NextResponse.json(
+        { error: 'Products are currently unavailable' },
+        { status: 503 }
+      );
+    }
     
     const product = await Product.findById(params.id);
     

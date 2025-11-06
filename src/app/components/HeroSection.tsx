@@ -39,10 +39,30 @@ const HeroSection = () => {
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const [customBackgrounds, setCustomBackgrounds] = useState<CarouselBackground[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [productsEnabled, setProductsEnabled] = useState<boolean>(true);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const touchEnd = useRef<{ x: number; y: number } | null>(null);
 
   // No default slides - only custom backgrounds with images
+
+  // Check if products are enabled
+  useEffect(() => {
+    const checkProductsEnabled = async () => {
+      try {
+        const response = await fetch('/api/site-settings?key=productsEnabled');
+        if (response.ok) {
+          const data = await response.json();
+          setProductsEnabled(data.value !== false); // Default to true if not set
+        }
+      } catch (error) {
+        console.error('Error checking products enabled status:', error);
+        // Default to enabled on error
+        setProductsEnabled(true);
+      }
+    };
+
+    checkProductsEnabled();
+  }, []);
 
   // Load custom backgrounds on component mount
   useEffect(() => {
@@ -243,10 +263,10 @@ const HeroSection = () => {
                   </p>
                   <div className="space-y-2 sm:space-y-4">
                     <Link
-                      href={slide.buttonLink || '/products'}
+                      href={productsEnabled === true ? (slide.buttonLink || '/products') : '/custom-orders'}
                       className={`inline-block px-6 sm:px-8 py-3 sm:py-4 rounded-lg font-bold text-sm sm:text-base md:text-lg transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 touch-manipulation carousel-cta-button ${slide.buttonColor || 'bg-white text-gray-900 hover:bg-gray-100'}`}
                     >
-                      {slide.buttonText || 'EXPLORE'}
+                      {productsEnabled === true ? (slide.buttonText || 'EXPLORE') : 'CUSTOM ORDERS'}
                     </Link>
                     <p className="text-xs sm:text-sm opacity-80">No minimum order</p>
                   </div>

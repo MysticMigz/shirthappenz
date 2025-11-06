@@ -22,8 +22,34 @@ const ProductGrid = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [productsEnabled, setProductsEnabled] = useState<boolean>(true);
+
+  // Check if products are enabled
+  useEffect(() => {
+    const checkProductsEnabled = async () => {
+      try {
+        const response = await fetch('/api/site-settings?key=productsEnabled');
+        if (response.ok) {
+          const data = await response.json();
+          setProductsEnabled(data.value !== false); // Default to true if not set
+        }
+      } catch (error) {
+        console.error('Error checking products enabled status:', error);
+        // Default to enabled on error
+        setProductsEnabled(true);
+      }
+    };
+
+    checkProductsEnabled();
+  }, []);
 
   useEffect(() => {
+    // Only fetch products if they are enabled
+    if (!productsEnabled) {
+      setLoading(false);
+      return;
+    }
+
     const fetchProducts = async () => {
       try {
         const response = await fetch('/api/products');
@@ -39,12 +65,17 @@ const ProductGrid = () => {
     };
 
     fetchProducts();
-  }, []);
+  }, [productsEnabled]);
 
   const truncateDescription = (description: string, maxLength: number = 60) => {
     if (description.length <= maxLength) return description;
     return `${description.substring(0, maxLength).trim()}...`;
   };
+
+  // Don't render anything if products are disabled
+  if (!productsEnabled) {
+    return null;
+  }
 
   if (loading) {
     return (

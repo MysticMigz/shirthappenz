@@ -1,6 +1,31 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 const FeaturesSection = () => {
+  const [productsEnabled, setProductsEnabled] = useState<boolean | null>(null); // null = checking
+
+  // Check if products are enabled
+  useEffect(() => {
+    const checkProductsEnabled = async () => {
+      try {
+        const response = await fetch('/api/site-settings?key=productsEnabled');
+        if (response.ok) {
+          const data = await response.json();
+          setProductsEnabled(data.value !== false); // Default to true if not set
+        } else {
+          setProductsEnabled(true); // Default to enabled on error
+        }
+      } catch (error) {
+        console.error('Error checking products enabled status:', error);
+        // Default to enabled on error
+        setProductsEnabled(true);
+      }
+    };
+
+    checkProductsEnabled();
+  }, []);
   return (
     <section className="py-16 bg-gray-50">
       <div className="container mx-auto px-4">
@@ -113,14 +138,25 @@ const FeaturesSection = () => {
         <div className="text-center bg-gradient-to-r from-[var(--brand-red)] to-[var(--brand-blue)] rounded-lg p-8 text-white">
           <h3 className="text-2xl font-bold mb-4">Ready to Order Your Custom Apparel?</h3>
           <p className="text-lg mb-6 opacity-90">
-            Browse our products and place your order today for fast delivery!
+            {productsEnabled === true 
+              ? "Browse our products and place your order today for fast delivery!"
+              : "Get in touch with us to place your custom order today!"
+            }
           </p>
           <div className="space-x-4">
+            {productsEnabled === true && (
+              <Link
+                href="/products"
+                className="inline-block bg-white text-black px-8 py-3 rounded-lg font-bold hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent transition-colors"
+              >
+                Browse Products
+              </Link>
+            )}
             <Link
-              href="/products"
+              href="/custom-orders"
               className="inline-block bg-white text-black px-8 py-3 rounded-lg font-bold hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent transition-colors"
             >
-              Browse Products
+              {productsEnabled === true ? 'Custom Orders' : 'Place Custom Order'}
             </Link>
             <Link
               href="/contact"

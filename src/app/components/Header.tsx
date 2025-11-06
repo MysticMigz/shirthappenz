@@ -26,6 +26,7 @@ const Header = () => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
+  const [productsEnabled, setProductsEnabled] = useState<boolean | null>(null); // null = checking
 
   // Fetch active vouchers
   useEffect(() => {
@@ -42,6 +43,27 @@ const Header = () => {
     };
 
     fetchVouchers();
+  }, []);
+
+  // Check if products are enabled
+  useEffect(() => {
+    const checkProductsEnabled = async () => {
+      try {
+        const response = await fetch('/api/site-settings?key=productsEnabled');
+        if (response.ok) {
+          const data = await response.json();
+          setProductsEnabled(data.value !== false); // Default to true if not set
+        } else {
+          setProductsEnabled(true); // Default to enabled on error
+        }
+      } catch (error) {
+        console.error('Error checking products enabled status:', error);
+        // Default to enabled on error
+        setProductsEnabled(true);
+      }
+    };
+
+    checkProductsEnabled();
   }, []);
 
   const handleLogout = async () => {
@@ -97,7 +119,7 @@ const Header = () => {
                     value={searchInput}
                     onChange={e => setSearchInput(e.target.value)}
                     onKeyDown={e => {
-                      if (e.key === 'Enter') {
+                      if (e.key === 'Enter' && productsEnabled) {
                         router.push(`/products?search=${encodeURIComponent(searchInput)}`);
                       }
                     }}
@@ -105,11 +127,12 @@ const Header = () => {
                   <button
                     type="button"
                     onClick={() => {
-                      if (searchInput.trim()) {
+                      if (searchInput.trim() && productsEnabled) {
                         router.push(`/products?search=${encodeURIComponent(searchInput.trim())}`);
                       }
                     }}
                     className="focus:outline-none"
+                    disabled={!productsEnabled}
                   >
                     <svg className="w-5 h-5 text-gray-400 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
@@ -223,9 +246,11 @@ const Header = () => {
               <Link href="/" className="text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium transition">
                 Home
               </Link>
-              <Link href="/products" className="text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium transition">
-                Products
-              </Link>
+              {productsEnabled === true && (
+                <Link href="/products" className="text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium transition">
+                  Products
+                </Link>
+              )}
               <Link href="/custom-orders" className="text-gray-700 hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent font-medium transition">
                 Custom Orders
               </Link>
@@ -257,7 +282,7 @@ const Header = () => {
                     onChange={e => setSearchInput(e.target.value)}
                     onKeyDown={e => {
                       if (e.key === 'Enter') {
-                        if (searchInput.trim()) {
+                        if (searchInput.trim() && productsEnabled) {
                           router.push(`/products?search=${encodeURIComponent(searchInput.trim())}`);
                           setIsMobileMenuOpen(false);
                         }
@@ -266,12 +291,13 @@ const Header = () => {
                   />
                   <button
                     onClick={() => {
-                      if (searchInput.trim()) {
+                      if (searchInput.trim() && productsEnabled) {
                         router.push(`/products?search=${encodeURIComponent(searchInput.trim())}`);
                         setIsMobileMenuOpen(false);
                       }
                     }}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1"
+                    disabled={!productsEnabled}
                   >
                     <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
@@ -347,13 +373,15 @@ const Header = () => {
                 >
                   Home
                 </Link>
-                <Link 
-                  href="/products" 
-                  className="block py-3 px-4 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Products
-                </Link>
+                {productsEnabled === true && (
+                  <Link 
+                    href="/products" 
+                    className="block py-3 px-4 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Products
+                  </Link>
+                )}
                 <Link 
                   href="/custom-orders" 
                   className="block py-3 px-4 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors"

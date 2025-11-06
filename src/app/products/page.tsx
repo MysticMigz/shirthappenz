@@ -67,6 +67,8 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedColors, setSelectedColors] = useState<Record<string, string>>({});
+  const [productsEnabled, setProductsEnabled] = useState<boolean | null>(null); // null = checking
+  const [checkingEnabled, setCheckingEnabled] = useState(true);
   
   // Filters and sorting state
   const [searchQuery, setSearchQuery] = useState('');
@@ -81,6 +83,29 @@ export default function ProductsPage() {
   const [collectionsLoading, setCollectionsLoading] = useState(true);
   const [selectedCollection, setSelectedCollection] = useState<string>('');
 
+  // Check if products are enabled
+  useEffect(() => {
+    const checkProductsEnabled = async () => {
+      try {
+        setCheckingEnabled(true);
+        const response = await fetch('/api/site-settings?key=productsEnabled');
+        if (response.ok) {
+          const data = await response.json();
+          setProductsEnabled(data.value !== false); // Default to true if not set
+        } else {
+          setProductsEnabled(true); // Default to enabled on error
+        }
+      } catch (err) {
+        console.error('Error checking products enabled status:', err);
+        // Default to enabled on error
+        setProductsEnabled(true);
+      } finally {
+        setCheckingEnabled(false);
+      }
+    };
+    checkProductsEnabled();
+  }, []);
+
   // Read search parameters from URL on component mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -93,9 +118,12 @@ export default function ProductsPage() {
   }, []);
 
   useEffect(() => {
-    fetchCategoryVisibility();
-    fetchCollections();
-  }, [selectedGender]);
+    // Only fetch category visibility and collections if products are enabled
+    if (productsEnabled) {
+      fetchCategoryVisibility();
+      fetchCollections();
+    }
+  }, [selectedGender, productsEnabled]);
 
   const genderNav = [
     { key: 'men', label: 'Men' },
@@ -162,8 +190,11 @@ export default function ProductsPage() {
   };
 
   useEffect(() => {
-    fetchProducts();
-  }, [searchQuery, selectedCategory, selectedCollection, priceRange, sortBy]);
+    // Only fetch products if they are enabled
+    if (productsEnabled) {
+      fetchProducts();
+    }
+  }, [searchQuery, selectedCategory, selectedCollection, priceRange, sortBy, productsEnabled]);
 
   useEffect(() => {
     fetchCategoryVisibility();
@@ -456,6 +487,50 @@ export default function ProductsPage() {
           return 0;
       }
     });
+
+  // Show loading while checking if products are enabled
+  if (checkingEnabled || productsEnabled === null) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-grow container mx-auto px-4 py-4 sm:py-8">
+          <div className="flex flex-col justify-center items-center h-64 space-y-4">
+            <div className="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-t-2 border-b-2 border-purple-500"></div>
+            <p className="text-sm sm:text-base text-gray-600">Loading...</p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  // Show "Coming Soon" message if products are disabled
+  if (!productsEnabled) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-grow container mx-auto px-4 py-4 sm:py-8">
+          <div className="flex flex-col justify-center items-center h-96 space-y-6">
+            <div className="text-center">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+                Products Coming Soon
+              </h1>
+              <p className="text-lg sm:text-xl text-gray-600 mb-8 max-w-2xl">
+                We're currently updating our product catalog. Please check back soon!
+              </p>
+              <Link
+                href="/"
+                className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-[var(--brand-red)] to-[var(--brand-blue)] text-white rounded-lg hover:brightness-110 transition-all duration-200 font-medium"
+              >
+                Return to Home
+              </Link>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   if (loading) {
     return (

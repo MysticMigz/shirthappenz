@@ -270,10 +270,15 @@ export default function CustomOrdersPage() {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">Custom Orders</h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-4">
             Tell us about your idea. We will contact you within 2 working days to arrange all the details 
             to create the perfect customization for you.
           </p>
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 max-w-2xl mx-auto rounded">
+            <p className="text-sm text-yellow-800">
+              <strong>Delivery Timeframe:</strong> Custom orders typically take 1-2 weeks to complete, depending on order size. Large orders may require additional time.
+            </p>
+          </div>
         </div>
 
         {/* Pricing Information */}

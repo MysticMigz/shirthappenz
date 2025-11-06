@@ -1,7 +1,32 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 
 const Footer = () => {
+  const [productsEnabled, setProductsEnabled] = useState<boolean | null>(null); // null = checking
+
+  // Check if products are enabled
+  useEffect(() => {
+    const checkProductsEnabled = async () => {
+      try {
+        const response = await fetch('/api/site-settings?key=productsEnabled');
+        if (response.ok) {
+          const data = await response.json();
+          setProductsEnabled(data.value !== false); // Default to true if not set
+        } else {
+          setProductsEnabled(true); // Default to enabled on error
+        }
+      } catch (error) {
+        console.error('Error checking products enabled status:', error);
+        // Default to enabled on error
+        setProductsEnabled(true);
+      }
+    };
+
+    checkProductsEnabled();
+  }, []);
   return (
     <footer className="bg-[var(--brand-blue)] text-[var(--brand-white)]">
       {/* Main footer content */}
@@ -60,14 +85,23 @@ const Footer = () => {
           <div>
             <h3 className="text-lg font-semibold mb-4">Useful Links</h3>
             <ul className="space-y-2 text-sm">
+              {productsEnabled === true && (
+                <>
+                  <li>
+                    <Link href="/products/tshirts" className="text-gray-300 hover:text-purple-400 transition-colors">
+                      Personalised T-Shirts
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/products/workwear" className="text-gray-300 hover:text-purple-400 transition-colors">
+                      Personalised Workwear
+                    </Link>
+                  </li>
+                </>
+              )}
               <li>
-                <Link href="/products/tshirts" className="text-gray-300 hover:text-purple-400 transition-colors">
-                  Personalised T-Shirts
-                </Link>
-              </li>
-              <li>
-                <Link href="/products/workwear" className="text-gray-300 hover:text-purple-400 transition-colors">
-                  Personalised Workwear
+                <Link href="/custom-orders" className="text-gray-300 hover:text-purple-400 transition-colors">
+                  Custom Orders
                 </Link>
               </li>
               <li>
