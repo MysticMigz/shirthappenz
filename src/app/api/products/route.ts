@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
+import mongoose from 'mongoose';
 import Product from '@/backend/models/Product';
 import Order from '@/backend/models/Order';
 import Collection from '@/backend/models/Collection';
@@ -8,6 +9,15 @@ import { productSchema, validateAndSanitize } from '@/lib/validation';
 export async function GET(request: NextRequest) {
   try {
     await connectToDatabase();
+    
+    // Ensure Collection model is registered before populate
+    // This prevents "MissingSchemaError: Schema hasn't been registered for model 'Collection'"
+    // The Collection import at the top should register it, but we ensure it's available
+    // by checking and forcing registration if needed
+    if (!mongoose.models.Collection) {
+      // Force evaluation of the Collection module to ensure registration
+      await import('@/backend/models/Collection');
+    }
     
     // Get query parameters
     const { searchParams } = new URL(request.url);
