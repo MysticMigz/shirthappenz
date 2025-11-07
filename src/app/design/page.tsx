@@ -631,7 +631,7 @@ export default function DesignPage() {
   };
 
   const resetPositions = () => {
-    setCustomPositions(DESIGN_POSITIONS);
+    setCustomPositions(DESIGN_POSITIONS[selectedClothingType] || DESIGN_POSITIONS.tshirt);
     setIsEditingPositions(false);
   };
 

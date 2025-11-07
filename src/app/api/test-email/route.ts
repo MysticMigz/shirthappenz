@@ -26,7 +26,7 @@ export async function POST(request: Request) {
         county: 'Test County',
         postcode: 'TE1 1ST',
         country: 'United Kingdom',
-        shippingMethod: 'Standard Delivery',
+        shippingMethod: 'Standard Delivery' as const,
         shippingCost: 5
       },
       total: 15.99,

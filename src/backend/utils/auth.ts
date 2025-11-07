@@ -16,7 +16,7 @@ export async function requireAdmin(request: NextRequest) {
 
     await connectToDatabase();
     
-    const user = await User.findOne({ email: session.user.email });
+    const user = await (User as any).findOne({ email: session.user.email });
     if (!user?.isAdmin) {
       return NextResponse.json(
         { error: 'Admin access required' },

@@ -15,7 +15,7 @@ export default function CartPage() {
 
   const handleQuantityChange = (productId: string, size: string, newQuantity: number, customization?: { name?: string; number?: string }) => {
     if (newQuantity >= 0 && newQuantity <= 10) {
-      updateQuantity(productId, size, newQuantity, customization);
+      updateQuantity(productId, size, newQuantity, undefined, customization);
     }
   };
 
