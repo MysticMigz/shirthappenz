@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation';
 import { authOptions } from '@/lib/auth';
 import AdminSidebar from '@/app/admin/AdminSidebar';
 import AdminSessionDebugger from '@/components/AdminSessionDebugger';
+import { AdminSidebarProvider } from '@/context/AdminSidebarContext';
+import AdminMainContent from '@/app/admin/AdminMainContent';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -37,19 +39,12 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
   console.log('✅ [AdminLayout] Access granted - rendering admin layout');
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-purple-50">
-      <AdminSessionDebugger />
-      <AdminSidebar />
-      {/* Main content */}
-      <div className="ml-64">
-        <div className="min-h-screen pt-16">
-          <div className="p-6">
-            <div className="bg-white rounded-lg shadow-sm">
-              {children}
-            </div>
-          </div>
-        </div>
+    <AdminSidebarProvider>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-purple-50">
+        <AdminSessionDebugger />
+        <AdminSidebar />
+        <AdminMainContent>{children}</AdminMainContent>
       </div>
-    </div>
+    </AdminSidebarProvider>
   );
 } 
