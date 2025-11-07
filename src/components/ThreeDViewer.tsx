@@ -34,7 +34,7 @@ function HoodieModel({ hoodieColor, animationEnabled, selectedHoodiePart, onMode
       
       if (glbModel.scene) {
         glbModel.scene.traverse((child) => {
-          if ((child as any).isMesh && child.material) {
+          if ((child as any).isMesh && (child as any).material) {
             // Create a simple material with only the selected color
             const material = new THREE.MeshStandardMaterial({
               color: hoodieColor || '#8B5CF6', // Use selected color or default purple
@@ -57,23 +57,23 @@ function HoodieModel({ hoodieColor, animationEnabled, selectedHoodiePart, onMode
       setModelLoaded(true);
       console.log('✅ GLB model loaded successfully:', glbModel);
       console.log('GLB model structure:', {
-        type: glbModel.type,
-        children: glbModel.children?.length,
-        position: glbModel.position,
-        rotation: glbModel.rotation,
-        scale: glbModel.scale,
-        boundingBox: glbModel.geometry?.boundingBox
+        type: (glbModel as any).type,
+        children: (glbModel as any).children?.length,
+        position: (glbModel as any).position,
+        rotation: (glbModel as any).rotation,
+        scale: (glbModel as any).scale,
+        boundingBox: (glbModel as any).geometry?.boundingBox
       });
       
       // Log the model's world position and scale
       if (glbModel.scene) {
         glbModel.scene.traverse((child) => {
-          if (child.isMesh) {
+          if ((child as any).isMesh) {
             console.log('Mesh found:', {
               name: child.name,
               position: child.position,
               scale: child.scale,
-              geometry: child.geometry?.type
+              geometry: (child as any).geometry?.type
             });
           }
         });
@@ -123,12 +123,12 @@ function HoodieModel({ hoodieColor, animationEnabled, selectedHoodiePart, onMode
     // Debug: Check the original model structure
     let meshCount = 0;
     glbModel.scene.traverse((child) => {
-      if (child.isMesh) {
+      if ((child as any).isMesh) {
         meshCount++;
-        console.log('🔍 Found mesh in original model:', child.name, child.visible, child.material);
+        console.log('🔍 Found mesh in original model:', child.name, child.visible, (child as any).material);
         // Make sure the mesh is visible
         child.visible = true;
-        if (child.material) {
+        if ((child as any).material) {
           // Create a new material with the selected hoodie color
           const newMaterial = new THREE.MeshStandardMaterial({
             color: hoodieColor || '#8B5CF6', // Use selected color or default purple
@@ -138,8 +138,8 @@ function HoodieModel({ hoodieColor, animationEnabled, selectedHoodiePart, onMode
             opacity: 1,
             visible: true
           });
-          child.material = newMaterial;
-          child.material.needsUpdate = true;
+          (child as any).material = newMaterial;
+          (child as any).material.needsUpdate = true;
           console.log('🎨 Applied new material to mesh:', child.name, 'with color:', hoodieColor);
         }
       }

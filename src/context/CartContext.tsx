@@ -263,8 +263,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const updateQuantity = (productId: string, size: string, quantity: number, availableStock?: number, customization?: { name?: string; number?: string }) => {
     if (quantity <= 0) {
       removeItem(productId, size, customization);
-      return;
+      return { success: true, finalQuantity: 0 };
     }
+
+    let finalQuantity = quantity;
+    if (availableStock !== undefined) {
+      finalQuantity = Math.min(finalQuantity, availableStock);
+    }
+    finalQuantity = Math.min(finalQuantity, 10);
 
     setItems(currentItems =>
       currentItems.map(item => {
@@ -272,13 +278,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         const basicMatch = item.productId === productId && item.size === size;
         
         if (!basicMatch) return item;
-        
-        // Calculate final quantity with stock validation
-        let finalQuantity = quantity;
-        if (availableStock !== undefined) {
-          finalQuantity = Math.min(finalQuantity, availableStock);
-        }
-        finalQuantity = Math.min(finalQuantity, 10);
         
         // If no customization specified, update all items with this product and size
         if (!customization) {
@@ -309,6 +308,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         return item;
       })
     );
+
+    return { success: true, finalQuantity };
   };
 
   const clearCart = () => {

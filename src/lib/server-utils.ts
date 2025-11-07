@@ -8,7 +8,7 @@ export async function updateProductStock(productId: string, size: string, quanti
 
     // For decreasing stock (quantity is negative), check if we have enough
     if (quantity < 0) {
-      const product = await Product.findById(_id);
+      const product = await (Product as any).findById(_id);
       if (!product) {
         console.error(`Product not found: ${productId}`);
         return false;
@@ -34,7 +34,7 @@ export async function updateProductStock(productId: string, size: string, quanti
       runValidators: true
     };
 
-    const product = await Product.findOneAndUpdate(
+    const product = await (Product as any).findOneAndUpdate(
       {
         _id,
         [`stock.${size}`]: { $gte: Math.abs(quantity) }

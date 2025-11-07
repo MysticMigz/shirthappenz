@@ -24,7 +24,7 @@ export const authOptions: NextAuthOptions = {
         const email = credentials.email.toLowerCase().trim();
         
         // Check for account lockout
-        let lockout = await AccountLockout.findOne({ email, ip: ip as string });
+        let lockout = await (AccountLockout as any).findOne({ email, ip: ip as string });
         if (!lockout) {
           lockout = new AccountLockout({ email, ip: ip as string });
         }
@@ -33,7 +33,7 @@ export const authOptions: NextAuthOptions = {
           throw new Error('Account is temporarily locked due to too many failed attempts. Please try again later.');
         }
         
-        const user = await User.findOne({ email });
+        const user = await (User as any).findOne({ email });
         
         if (!user) {
           // Log failed login attempt and increment lockout
