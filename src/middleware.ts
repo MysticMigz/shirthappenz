@@ -60,70 +60,12 @@ export async function middleware(request: NextRequest) {
     );
   }
 
-  // Admin route protection
-  if (request.nextUrl.pathname.startsWith('/admin')) {
-    // Skip auth check for NextAuth callback routes
-    if (request.nextUrl.pathname.startsWith('/api/auth/')) {
-      return response;
-    }
-    
-    console.log('🔍 [Middleware] Checking admin route:', request.nextUrl.pathname);
-    console.log('🔍 [Middleware] NEXTAUTH_SECRET exists:', !!process.env.NEXTAUTH_SECRET);
-    
-    // Skip auth check if no secret is configured (let server-side handle it)
-    if (!process.env.NEXTAUTH_SECRET) {
-      console.warn('⚠️ [Middleware] NEXTAUTH_SECRET not set - skipping middleware auth check');
-      return response;
-    }
-    
-    try {
-      console.log('🔍 [Middleware] Attempting to get token...');
-      const token = await getToken({ 
-        req: request,
-        secret: process.env.NEXTAUTH_SECRET
-      });
-      
-      console.log('🔍 [Middleware] Token result:', {
-        exists: !!token,
-        isAdmin: token?.isAdmin,
-        email: token?.email
-      });
-      
-      if (!token) {
-        console.log('❌ [Middleware] No token found - redirecting to login');
-        // Not logged in, redirect to login page
-        const loginUrl = new URL('/auth/login', request.url);
-        // Add callback URL so user returns to admin after login
-        loginUrl.searchParams.set('callbackUrl', request.nextUrl.pathname);
-        return NextResponse.redirect(loginUrl);
-      }
-      
-      if (!token.isAdmin) {
-        console.log('❌ [Middleware] Token found but user is not admin - redirecting to home');
-        // Logged in but not admin, redirect to home
-        return NextResponse.redirect(new URL('/', request.url));
-      }
-      
-      console.log('✅ [Middleware] Admin access granted');
-    } catch (error) {
-      // If token decoding fails (e.g., JWT decryption error), it means:
-      // 1. The cookie has an old token encrypted with a different secret, OR
-      // 2. The secret is invalid/too short
-      // In this case, clear the cookie and redirect to login
-      console.error('❌ [Middleware] Token decryption failed (likely old token or invalid secret):', error instanceof Error ? error.message : error);
-      
-      // Clear the invalid cookie by setting it to expire
-      const loginUrl = new URL('/auth/login', request.url);
-      loginUrl.searchParams.set('callbackUrl', request.nextUrl.pathname);
-      const redirectResponse = NextResponse.redirect(loginUrl);
-      
-      // Clear the session token cookie
-      redirectResponse.cookies.delete('next-auth.session-token');
-      redirectResponse.cookies.delete('next-auth.csrf-token');
-      
-      return redirectResponse;
-    }
-  }
+  // Admin route protection - REMOVED
+  // Let the server-side admin layout handle authentication instead
+  // This is more reliable and avoids cookie/JWT decryption timing issues
+  // The server-side getServerSession() handles cookies better than middleware getToken()
+  
+  // Note: We still protect /api/admin routes below for API security
 
   // API route protection
   if (request.nextUrl.pathname.startsWith('/api/admin')) {
@@ -160,8 +102,8 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/admin/:path*',
-    '/api/admin/:path*',
+    // Match all routes except static files
+    // Admin routes are handled server-side, but middleware still adds security headers
     '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 }; 

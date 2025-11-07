@@ -10,7 +10,14 @@ interface AdminLayoutProps {
 }
 
 export default async function AdminLayout({ children }: AdminLayoutProps) {
-  const session = await getServerSession(authOptions);
+  let session;
+  try {
+    session = await getServerSession(authOptions);
+  } catch (error) {
+    console.error('❌ [AdminLayout] Error getting session:', error);
+    // If session check fails (e.g., JWT decryption error), redirect to login
+    redirect('/auth/login?error=session_error');
+  }
 
   // Server-side logging
   console.log('🔍 [AdminLayout] Server-side session check');
