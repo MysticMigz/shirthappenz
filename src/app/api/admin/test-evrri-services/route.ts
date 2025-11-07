@@ -9,23 +9,40 @@ export async function GET(request: NextRequest) {
     
     // Get the actual services available for your EVRi account
     console.log('📡 Fetching services for EVRi carrier se-340606...');
-    const services = await shipengine.getServices('se-340606');
+    const response = await shipengine.getServices('se-340606');
     
-    console.log('✅ EVRi services found:', services);
+    console.log('✅ EVRi services response:', response);
+    
+    // Handle different response structures from ShipEngine API
+    // The API might return an array directly or an object with a 'services' property
+    let services: any[] = [];
+    if (Array.isArray(response)) {
+      services = response;
+    } else if (response && typeof response === 'object' && 'services' in response && Array.isArray(response.services)) {
+      services = response.services;
+    } else if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {
+      services = response.data;
+    } else {
+      console.warn('⚠️ Unexpected response structure from ShipEngine:', response);
+      // Try to extract services from the response object
+      services = [];
+    }
+    
+    console.log('✅ EVRi services array:', services);
     
     return new Response(JSON.stringify({
       success: true,
       message: 'EVRi services retrieved successfully',
       carrier_id: 'se-340606',
       carrier_name: 'EVRi - ShipStation Carrier Services',
-      services: services.map(service => ({
+      services: services.map((service: any) => ({
         service_code: service.service_code,
         name: service.name,
         domestic: service.domestic,
         international: service.international
       })),
       total_services: services.length,
-      recommended_service: services.find(s => s.domestic)?.service_code || 'No domestic service found'
+      recommended_service: services.find((s: any) => s.domestic)?.service_code || 'No domestic service found'
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }

@@ -9,9 +9,26 @@ export async function GET(request: NextRequest) {
     
     // Use the List Carrier Services endpoint to get actual service codes
     console.log('📡 Calling ShipEngine List Carrier Services for EVRi...');
-    const services = await shipengine.getServices('se-340606');
+    const response = await shipengine.getServices('se-340606');
     
-    console.log('✅ EVRi services retrieved:', services);
+    console.log('✅ EVRi services response:', response);
+    
+    // Handle different response structures from ShipEngine API
+    // The API might return an array directly or an object with a 'services' property
+    let services: any[] = [];
+    if (Array.isArray(response)) {
+      services = response;
+    } else if (response && typeof response === 'object' && 'services' in response && Array.isArray(response.services)) {
+      services = response.services;
+    } else if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {
+      services = response.data;
+    } else {
+      console.warn('⚠️ Unexpected response structure from ShipEngine:', response);
+      // Try to extract services from the response object
+      services = [];
+    }
+    
+    console.log('✅ EVRi services array:', services);
     
     return new Response(JSON.stringify({
       success: true,
