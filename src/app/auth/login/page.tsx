@@ -39,137 +39,34 @@ export default function LoginPage() {
     console.log('🔍 [Login] Starting login process for:', formData.email);
 
     try {
-      console.log('🔍 [Login] Calling signIn...');
+      // Get callback URL from query params
+      const urlParams = new URLSearchParams(window.location.search);
+      const callbackUrl = urlParams.get('callbackUrl') || (formData.email.includes('admin') || formData.email.includes('@') ? '/admin/dashboard' : '/');
+      
+      console.log('🔍 [Login] Callback URL:', callbackUrl);
+      console.log('🔍 [Login] Using redirect: true to ensure cookie is set...');
+      
+      // IMPORTANT: Use redirect: true instead of false
+      // When redirect: false, NextAuth doesn't set the cookie via Set-Cookie headers
+      // Using redirect: true ensures the cookie is properly set in the browser
       const result = await signIn('credentials', {
-        redirect: false,
+        redirect: true,
         email: formData.email,
         password: formData.password,
+        callbackUrl: callbackUrl,
       });
 
-      console.log('🔍 [Login] signIn result:', {
-        error: result?.error,
-        ok: result?.ok,
-        status: result?.status,
-        url: result?.url
-      });
-
-      if (result?.error) {
-        console.error('❌ [Login] signIn error:', result.error);
-        throw new Error(result.error);
-      }
-
-      console.log('✅ [Login] signIn successful, waiting for cookie...');
+      // If we get here, redirect was successful and cookie should be set
+      // The redirect will happen automatically, so we don't need to handle it
+      console.log('✅ [Login] signIn called with redirect - cookie should be set');
       
-      // Check cookies before waiting
-      console.log('🔍 [Login] Cookies BEFORE wait:', document.cookie);
-      
-      // IMPORTANT: When using redirect: false, NextAuth might not set the cookie immediately
-      // The cookie is set by NextAuth's server-side handler, but it might not be visible
-      // to the client immediately. We need to wait and then check if it's actually set.
-      
-      // Wait for the session cookie to be set (NextAuth processes this server-side)
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Try to trigger session establishment by calling the session endpoint
-      // This sometimes helps NextAuth set the cookie properly
-      try {
-        console.log('🔍 [Login] Calling session endpoint to establish session...');
-        const sessionCheck = await fetch('/api/auth/session', {
-          method: 'GET',
-          credentials: 'include',
-          cache: 'no-store'
-        });
-        console.log('🔍 [Login] Session check response status:', sessionCheck.status);
-        const sessionData = await sessionCheck.json();
-        console.log('🔍 [Login] Session check response:', sessionData);
-      } catch (sessionError) {
-        console.warn('⚠️ [Login] Session check failed:', sessionError);
-      }
-      
-      // Wait a bit more after session check
-      await new Promise(resolve => setTimeout(resolve, 300));
-
-      // Check cookies after waiting
-      console.log('🔍 [Login] Cookies AFTER 500ms wait:', document.cookie);
-      
-      // Check for NextAuth session token specifically
-      const cookies = document.cookie.split(';').map(c => c.trim());
-      const sessionCookie = cookies.find(c => c.startsWith('next-auth.session-token'));
-      const csrfCookie = cookies.find(c => c.startsWith('next-auth.csrf-token'));
-      console.log('🔍 [Login] Session cookie found:', !!sessionCookie);
-      console.log('🔍 [Login] CSRF cookie found:', !!csrfCookie);
-      
-      if (!sessionCookie) {
-        console.error('❌ [Login] Session cookie STILL not found after callback!');
-        console.error('❌ [Login] This will cause authentication to fail.');
-        console.warn('⚠️ [Login] All cookies:', cookies);
-        console.warn('⚠️ [Login] Trying alternative approach: using redirect-based login...');
-        
-        // Fallback: Use redirect-based login if cookie isn't set
-        // This ensures the cookie gets set properly
-        const loginUrl = new URL('/api/auth/callback/credentials', window.location.origin);
-        loginUrl.searchParams.set('email', formData.email);
-        loginUrl.searchParams.set('password', formData.password);
-        loginUrl.searchParams.set('callbackUrl', new URLSearchParams(window.location.search).get('callbackUrl') || '/admin/dashboard');
-        window.location.href = loginUrl.toString();
-        return; // Exit early, redirect will handle the rest
-      }
-
-      // Fetch user data after successful login - retry if needed
-      let attempts = 0;
-      let data = null;
-      while (attempts < 3 && !data?.user) {
-        console.log(`🔍 [Login] Fetching session (attempt ${attempts + 1}/3)...`);
-        const response = await fetch('/api/auth/session', {
-          credentials: 'include',
-          cache: 'no-store'
-        });
-        console.log('🔍 [Login] Session API response status:', response.status);
-        data = await response.json();
-        console.log('🔍 [Login] Session API response data:', data);
-        
-        if (!data.user && attempts < 2) {
-          console.log('⏳ [Login] No user yet, waiting 200ms before retry...');
-          await new Promise(resolve => setTimeout(resolve, 200));
-        }
-        attempts++;
-      }
-      
-      if (data?.user) {
-        console.log('✅ [Login] User session retrieved:', {
-          email: data.user.email,
-          isAdmin: data.user.isAdmin,
-          role: data.user.role
-        });
-        setUser(data.user);
-        
-        // Check for callback URL or redirect admins to admin dashboard
-        const urlParams = new URLSearchParams(window.location.search);
-        const callbackUrl = urlParams.get('callbackUrl');
-        
-        console.log('🔍 [Login] Callback URL:', callbackUrl);
-        console.log('🔍 [Login] User isAdmin:', data.user.isAdmin);
-        
-        if (callbackUrl) {
-          console.log('🔍 [Login] Redirecting to callback URL:', callbackUrl);
-          router.push(callbackUrl);
-        } else if (data.user.isAdmin) {
-          console.log('🔍 [Login] Redirecting admin to dashboard');
-          router.push('/admin/dashboard');
-        } else {
-          console.log('🔍 [Login] Redirecting regular user to home');
-          router.push('/');
-        }
-      } else {
-        console.error('❌ [Login] Failed to retrieve user session after 3 attempts');
-        throw new Error('Failed to retrieve user session');
-      }
     } catch (err) {
       console.error('❌ [Login] Login error:', err);
       setError(err instanceof Error ? err.message : 'Login failed');
-    } finally {
       setLoading(false);
     }
+    // Note: We don't set loading to false here because the redirect will happen
+    // If there's an error, it will be caught above
   };
 
   return (
