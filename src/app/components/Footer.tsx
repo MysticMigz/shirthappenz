@@ -47,12 +47,9 @@ const Footer = () => {
               Your one-stop shop for custom apparel printing.
               DTF & Sublimation services for brand owners, individuals, and businesses.
             </p>
-                        <div className="space-y-2 text-sm text-blue-100">
-              <p>10 Barney Close</p>
-              <p>SE7 8SS</p>
-              <p>United Kingdom</p>
+            <div className="space-y-2 text-sm text-blue-100">
               <div className="pt-2">
-                <p>Phone: 07954746514</p>
+                <p>Phone: 07902870824</p>
                 <p>Email: customer.service@mrshirtpersonalisation.com</p>
                 <p>Instagram: <a href="https://www.instagram.com/mr_shirt_personalisation" target="_blank" rel="noopener noreferrer" className="text-blue-100 hover:text-[var(--brand-red)] transition-colors">@mr_shirt_personalisation</a></p>
               </div>
@@ -160,9 +157,8 @@ const Footer = () => {
             <div className="text-sm text-blue-100 mb-4 md:mb-0">
               <div>© MR SHIRT PERSONALISATION 2025. All rights reserved.</div>
               <div className="mt-1 text-xs">
-                Trading Address: 10 Barney Close, SE7 8SS, United Kingdom | 
                 Email: customer.service@mrshirtpersonalisation.com | 
-                Phone: 07954746514
+                Phone: 07902870824
               </div>
             </div>
             <div className="flex space-x-6 text-sm">
