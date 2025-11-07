@@ -34,7 +34,7 @@ function HoodieModel({ hoodieColor, animationEnabled, selectedHoodiePart, onMode
       
       if (glbModel.scene) {
         glbModel.scene.traverse((child) => {
-          if (child.isMesh && child.material) {
+          if ((child as any).isMesh && child.material) {
             // Create a simple material with only the selected color
             const material = new THREE.MeshStandardMaterial({
               color: hoodieColor || '#8B5CF6', // Use selected color or default purple
@@ -42,8 +42,8 @@ function HoodieModel({ hoodieColor, animationEnabled, selectedHoodiePart, onMode
               metalness: 0.2,
             });
             
-            child.material = material;
-            child.material.needsUpdate = true;
+            (child as any).material = material;
+            (child as any).material.needsUpdate = true;
             console.log('✅ Applied plain color material to mesh:', child.name, 'with color:', hoodieColor);
           }
         });
