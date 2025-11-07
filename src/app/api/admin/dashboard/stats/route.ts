@@ -6,6 +6,10 @@ import Order from '@/backend/models/Order';
 import Product from '@/backend/models/Product';
 import User from '@/backend/models/User';
 
+// Force dynamic rendering - this route uses getServerSession() which accesses headers
+// This prevents Next.js from trying to statically generate this route during build
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     // Check authentication

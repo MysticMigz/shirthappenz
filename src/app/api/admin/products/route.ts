@@ -7,6 +7,9 @@ import User from '@/backend/models/User';
 import Collection from '@/backend/models/Collection';
 import { productSchema, validateAndSanitize } from '@/lib/validation';
 
+// Force dynamic rendering - this route uses getServerSession() which accesses headers
+export const dynamic = 'force-dynamic';
+
 interface ProductData {
   name: string;
   description: string;

@@ -5,6 +5,9 @@ import { connectToDatabase } from '@/backend/utils/database';
 import Voucher from '@/backend/models/Voucher';
 import User from '@/backend/models/User';
 
+// Force dynamic rendering - this route uses getServerSession() which accesses headers
+export const dynamic = 'force-dynamic';
+
 // Helper function to check admin status
 async function verifyAdmin(email: string) {
   const user = await (User as any).findOne({ email });

@@ -5,6 +5,9 @@ import { connectToDatabase } from '@/lib/mongodb';
 import Order from '@/backend/models/Order';
 import User from '@/backend/models/User';
 
+// Force dynamic rendering - this route uses getServerSession() which accesses headers
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     // Check authentication and admin status

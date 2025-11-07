@@ -7,6 +7,9 @@ import Product from '@/backend/models/Product';
 import User from '@/backend/models/User';
 import mongoose from 'mongoose';
 
+// Force dynamic rendering - this route uses getServerSession() which accesses headers
+export const dynamic = 'force-dynamic';
+
 interface OrderItem {
   name: string;
   quantity: number;

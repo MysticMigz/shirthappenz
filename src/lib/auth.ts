@@ -104,9 +104,13 @@ export const authOptions: NextAuthOptions = {
         httpOnly: true,
         sameSite: 'lax',
         path: '/',
-        secure: process.env.NODE_ENV === 'production'
+        secure: process.env.NODE_ENV === 'production',
+        // Don't set domain explicitly - let browser handle it
+        // This ensures cookies work for both www and non-www
       }
     }
-  }
+  },
+  // Debug mode in development
+  debug: process.env.NODE_ENV === 'development'
 };
 

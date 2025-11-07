@@ -62,32 +62,69 @@ export async function middleware(request: NextRequest) {
 
   // Admin route protection
   if (request.nextUrl.pathname.startsWith('/admin')) {
-    const token = await getToken({ 
-      req: request,
-      secret: process.env.NEXTAUTH_SECRET
-    });
-    
-    if (!token) {
-      // Not logged in, redirect to login page
-      return NextResponse.redirect(new URL('/auth/login', request.url));
+    // Skip auth check for NextAuth callback routes
+    if (request.nextUrl.pathname.startsWith('/api/auth/')) {
+      return response;
     }
     
-    if (!token.isAdmin) {
-      // Logged in but not admin, redirect to home
-      return NextResponse.redirect(new URL('/', request.url));
+    // Skip auth check if no secret is configured (let server-side handle it)
+    if (!process.env.NEXTAUTH_SECRET) {
+      console.warn('NEXTAUTH_SECRET not set in middleware - skipping middleware auth check');
+      return response;
+    }
+    
+    try {
+      const token = await getToken({ 
+        req: request,
+        secret: process.env.NEXTAUTH_SECRET
+      });
+      
+      if (!token) {
+        // Not logged in, redirect to login page
+        const loginUrl = new URL('/auth/login', request.url);
+        // Add callback URL so user returns to admin after login
+        loginUrl.searchParams.set('callbackUrl', request.nextUrl.pathname);
+        return NextResponse.redirect(loginUrl);
+      }
+      
+      if (!token.isAdmin) {
+        // Logged in but not admin, redirect to home
+        return NextResponse.redirect(new URL('/', request.url));
+      }
+    } catch (error) {
+      // If token decoding fails, log but don't redirect - let server-side handle it
+      // This prevents redirect loops if there's a cookie/secret mismatch
+      console.error('Middleware auth error (allowing through to server-side check):', error);
+      // Don't redirect on error - let the admin layout handle authentication
+      return response;
     }
   }
 
   // API route protection
   if (request.nextUrl.pathname.startsWith('/api/admin')) {
-    const token = await getToken({ 
-      req: request,
-      secret: process.env.NEXTAUTH_SECRET
-    });
+    // Skip auth check if no secret is configured
+    if (!process.env.NEXTAUTH_SECRET) {
+      console.warn('NEXTAUTH_SECRET not set - API route protection disabled');
+      return response;
+    }
     
-    if (!token?.isAdmin) {
+    try {
+      const token = await getToken({ 
+        req: request,
+        secret: process.env.NEXTAUTH_SECRET
+      });
+      
+      if (!token?.isAdmin) {
+        return NextResponse.json(
+          { error: 'Admin access required' },
+          { status: 403 }
+        );
+      }
+    } catch (error) {
+      // If token decoding fails, return 403 but log the error
+      console.error('API route auth error:', error);
       return NextResponse.json(
-        { error: 'Admin access required' },
+        { error: 'Authentication failed' },
         { status: 403 }
       );
     }

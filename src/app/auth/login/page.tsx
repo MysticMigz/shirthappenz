@@ -47,13 +47,39 @@ export default function LoginPage() {
         throw new Error(result.error);
       }
 
-      // Fetch user data after successful login
-      const response = await fetch('/api/auth/session');
-      const data = await response.json();
+      // Wait a bit for the session cookie to be set
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Fetch user data after successful login - retry if needed
+      let attempts = 0;
+      let data = null;
+      while (attempts < 3 && !data?.user) {
+        const response = await fetch('/api/auth/session', {
+          credentials: 'include',
+          cache: 'no-store'
+        });
+        data = await response.json();
+        if (!data.user && attempts < 2) {
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
+        attempts++;
+      }
       
-      if (data.user) {
+      if (data?.user) {
         setUser(data.user);
-        router.push('/');
+        // Check for callback URL or redirect admins to admin dashboard
+        const urlParams = new URLSearchParams(window.location.search);
+        const callbackUrl = urlParams.get('callbackUrl');
+        
+        if (callbackUrl) {
+          router.push(callbackUrl);
+        } else if (data.user.isAdmin) {
+          router.push('/admin/dashboard');
+        } else {
+          router.push('/');
+        }
+      } else {
+        throw new Error('Failed to retrieve user session');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');

@@ -3,6 +3,9 @@ import { connectToDatabase } from '@/backend/utils/database';
 import { requireAdmin } from '@/backend/utils/auth';
 import StockAlert from '@/backend/models/StockAlert';
 
+// Force dynamic rendering - this route uses requireAdmin which accesses headers
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   try {
     // Check admin authorization

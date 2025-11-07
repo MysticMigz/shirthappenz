@@ -16,9 +16,25 @@ export async function GET(request: NextRequest) {
     
     // Test getting carriers
     console.log('📡 Fetching carriers from ShipEngine...');
-    const carriers = await shipengine.getCarriers();
+    const response = await shipengine.getCarriers();
     
-    console.log('📋 Available carriers:', carriers.map(c => ({
+    console.log('📋 ShipEngine API response:', response);
+    
+    // Handle different response structures from ShipEngine API
+    // The API might return an object with a 'carriers' property or an array directly
+    let carriers: any[] = [];
+    if (Array.isArray(response)) {
+      carriers = response;
+    } else if (response && typeof response === 'object' && 'carriers' in response && Array.isArray(response.carriers)) {
+      carriers = response.carriers;
+    } else if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {
+      carriers = response.data;
+    } else {
+      console.warn('⚠️ Unexpected response structure from ShipEngine:', response);
+      carriers = [];
+    }
+    
+    console.log('📋 Available carriers:', carriers.map((c: any) => ({
       carrier_id: c.carrier_id,
       friendly_name: c.friendly_name,
       supports_return_labels: c.supports_return_labels
@@ -32,7 +48,11 @@ export async function GET(request: NextRequest) {
     return new Response(JSON.stringify({
       success: true,
       message: 'ShipEngine API connection successful',
-      carriers: carriers.slice(0, 5), // Return first 5 carriers for testing
+      carriers: carriers.slice(0, 5).map((c: any) => ({
+        carrier_id: c.carrier_id,
+        friendly_name: c.friendly_name,
+        supports_return_labels: c.supports_return_labels
+      })), // Return first 5 carriers for testing
       totalCarriers: carriers.length
     }), {
       status: 200,
