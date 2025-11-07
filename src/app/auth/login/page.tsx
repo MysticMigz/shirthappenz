@@ -59,11 +59,61 @@ export default function LoginPage() {
       }
 
       console.log('✅ [Login] signIn successful, waiting for cookie...');
-      // Wait a bit for the session cookie to be set
-      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Check cookies before waiting
+      console.log('🔍 [Login] Cookies BEFORE wait:', document.cookie);
+      
+      // IMPORTANT: When using redirect: false, NextAuth might not set the cookie immediately
+      // The cookie is set by NextAuth's server-side handler, but it might not be visible
+      // to the client immediately. We need to wait and then check if it's actually set.
+      
+      // Wait for the session cookie to be set (NextAuth processes this server-side)
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Try to trigger session establishment by calling the session endpoint
+      // This sometimes helps NextAuth set the cookie properly
+      try {
+        console.log('🔍 [Login] Calling session endpoint to establish session...');
+        const sessionCheck = await fetch('/api/auth/session', {
+          method: 'GET',
+          credentials: 'include',
+          cache: 'no-store'
+        });
+        console.log('🔍 [Login] Session check response status:', sessionCheck.status);
+        const sessionData = await sessionCheck.json();
+        console.log('🔍 [Login] Session check response:', sessionData);
+      } catch (sessionError) {
+        console.warn('⚠️ [Login] Session check failed:', sessionError);
+      }
+      
+      // Wait a bit more after session check
+      await new Promise(resolve => setTimeout(resolve, 300));
 
-      // Check cookies immediately after signIn
-      console.log('🔍 [Login] Cookies after signIn:', document.cookie);
+      // Check cookies after waiting
+      console.log('🔍 [Login] Cookies AFTER 500ms wait:', document.cookie);
+      
+      // Check for NextAuth session token specifically
+      const cookies = document.cookie.split(';').map(c => c.trim());
+      const sessionCookie = cookies.find(c => c.startsWith('next-auth.session-token'));
+      const csrfCookie = cookies.find(c => c.startsWith('next-auth.csrf-token'));
+      console.log('🔍 [Login] Session cookie found:', !!sessionCookie);
+      console.log('🔍 [Login] CSRF cookie found:', !!csrfCookie);
+      
+      if (!sessionCookie) {
+        console.error('❌ [Login] Session cookie STILL not found after callback!');
+        console.error('❌ [Login] This will cause authentication to fail.');
+        console.warn('⚠️ [Login] All cookies:', cookies);
+        console.warn('⚠️ [Login] Trying alternative approach: using redirect-based login...');
+        
+        // Fallback: Use redirect-based login if cookie isn't set
+        // This ensures the cookie gets set properly
+        const loginUrl = new URL('/api/auth/callback/credentials', window.location.origin);
+        loginUrl.searchParams.set('email', formData.email);
+        loginUrl.searchParams.set('password', formData.password);
+        loginUrl.searchParams.set('callbackUrl', new URLSearchParams(window.location.search).get('callbackUrl') || '/admin/dashboard');
+        window.location.href = loginUrl.toString();
+        return; // Exit early, redirect will handle the rest
+      }
 
       // Fetch user data after successful login - retry if needed
       let attempts = 0;
