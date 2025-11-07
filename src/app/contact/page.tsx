@@ -31,7 +31,6 @@ export default function ContactPage() {
               <div className="text-gray-700 space-y-2 text-base">
                 <div><span className="font-semibold">Business Name:</span> <span>MR SHIRT PERSONALISATION LTD</span></div>
                 <div><span className="font-semibold">Legal Structure:</span> <span>Limited Company</span></div>
-                <div><span className="font-semibold">Trading Address:</span> <span>10 Barney Close, SE7 8SS, United Kingdom</span></div>
                 <div><span className="font-semibold">Email:</span> <a href="mailto:customer.service@mrshirtpersonalisation.com" className="text-blue-600 underline">customer.service@mrshirtpersonalisation.com</a></div>
                 <div><span className="font-semibold">Phone:</span> <span>07902870824</span></div>
                 <div><span className="font-semibold">Business Hours:</span> <span>Mon-Fri 9:00am - 6:00pm</span></div>

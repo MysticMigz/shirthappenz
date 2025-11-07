@@ -1044,21 +1044,21 @@ export default function CustomOrdersPage() {
         {/* Contact Information */}
         <div className="mt-12 bg-white rounded-lg shadow-sm p-6">
           <h3 className="text-xl font-semibold text-gray-900 mb-4">Need Help?</h3>
-          <p className="text-gray-600 mb-4">
+          <p className="text-gray-600 mb-8">
             We will be more than happy to assist you to fill this form. Please contact one of our customer service agents.
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="text-center">
-              <h4 className="font-medium text-gray-900">Customer Service</h4>
-              <p className="text-sm text-gray-600">customer.service@mrshirtpersonalisation.co.uk</p>
+              <h4 className="font-medium text-gray-900 mb-3">Customer Service</h4>
+              <p className="text-sm text-gray-600 break-words px-4">customer.service@mrshirtpersonalisation.co.uk</p>
             </div>
             <div className="text-center">
-              <h4 className="font-medium text-gray-900">Sales</h4>
-              <p className="text-sm text-gray-600">customer.service@mrshirtpersonalisation.co.uk</p>
+              <h4 className="font-medium text-gray-900 mb-3">Sales</h4>
+              <p className="text-sm text-gray-600 break-words px-4">customer.service@mrshirtpersonalisation.co.uk</p>
             </div>
             <div className="text-center">
-              <h4 className="font-medium text-gray-900">Hotline</h4>
-              <p className="text-sm text-gray-600">020 3597 3380</p>
+              <h4 className="font-medium text-gray-900 mb-3">Hotline</h4>
+              <p className="text-sm text-gray-600 mb-2">020 3597 3380</p>
               <p className="text-xs text-gray-500">Monday - Friday 9h-12h and 13h30-16h30</p>
             </div>
           </div>
