@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10');
     const sortBy = searchParams.get('sortBy');
     const search = searchParams.get('search');
+    const customizable = searchParams.get('customizable'); // Allow filtering by customizable flag
 
     // Build query
     const query: any = {};
@@ -46,6 +47,15 @@ export async function GET(request: NextRequest) {
     }
     if (search) {
       query.$text = { $search: search };
+    }
+    // Filter by customizable flag
+    // If customizable=true, only show customizable products
+    // If customizable is not specified or false, exclude customizable products (default behavior)
+    if (customizable === 'true') {
+      query.customizable = true;
+    } else {
+      // Default: exclude customizable products from regular products page
+      query.customizable = { $ne: true };
     }
 
     // Best Sellers logic

@@ -93,7 +93,8 @@ export default function CustomOrdersPage() {
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch('/api/products');
+      // Only fetch customizable products for custom orders page
+      const response = await fetch('/api/products?customizable=true');
       if (response.ok) {
         const data = await response.json();
         setProducts(data.products || []);
