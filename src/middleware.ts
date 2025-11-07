@@ -67,19 +67,30 @@ export async function middleware(request: NextRequest) {
       return response;
     }
     
+    console.log('🔍 [Middleware] Checking admin route:', request.nextUrl.pathname);
+    console.log('🔍 [Middleware] NEXTAUTH_SECRET exists:', !!process.env.NEXTAUTH_SECRET);
+    
     // Skip auth check if no secret is configured (let server-side handle it)
     if (!process.env.NEXTAUTH_SECRET) {
-      console.warn('NEXTAUTH_SECRET not set in middleware - skipping middleware auth check');
+      console.warn('⚠️ [Middleware] NEXTAUTH_SECRET not set - skipping middleware auth check');
       return response;
     }
     
     try {
+      console.log('🔍 [Middleware] Attempting to get token...');
       const token = await getToken({ 
         req: request,
         secret: process.env.NEXTAUTH_SECRET
       });
       
+      console.log('🔍 [Middleware] Token result:', {
+        exists: !!token,
+        isAdmin: token?.isAdmin,
+        email: token?.email
+      });
+      
       if (!token) {
+        console.log('❌ [Middleware] No token found - redirecting to login');
         // Not logged in, redirect to login page
         const loginUrl = new URL('/auth/login', request.url);
         // Add callback URL so user returns to admin after login
@@ -88,13 +99,16 @@ export async function middleware(request: NextRequest) {
       }
       
       if (!token.isAdmin) {
+        console.log('❌ [Middleware] Token found but user is not admin - redirecting to home');
         // Logged in but not admin, redirect to home
         return NextResponse.redirect(new URL('/', request.url));
       }
+      
+      console.log('✅ [Middleware] Admin access granted');
     } catch (error) {
       // If token decoding fails, log but don't redirect - let server-side handle it
       // This prevents redirect loops if there's a cookie/secret mismatch
-      console.error('Middleware auth error (allowing through to server-side check):', error);
+      console.error('❌ [Middleware] Auth error (allowing through to server-side check):', error);
       // Don't redirect on error - let the admin layout handle authentication
       return response;
     }

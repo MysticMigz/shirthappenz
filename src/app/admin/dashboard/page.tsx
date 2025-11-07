@@ -24,10 +24,21 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    console.log('🔍 [AdminDashboard] Component mounted');
+    console.log('🔍 [AdminDashboard] Session status:', status);
+    console.log('🔍 [AdminDashboard] Session data:', session);
+    
     if (status === 'unauthenticated') {
+      console.log('❌ [AdminDashboard] Unauthenticated - redirecting to login');
       router.push('/admin/login');
+    } else if (status === 'authenticated') {
+      console.log('✅ [AdminDashboard] Authenticated');
+      console.log('🔍 [AdminDashboard] User isAdmin:', session?.user?.isAdmin);
+      if (!session?.user?.isAdmin) {
+        console.error('❌ [AdminDashboard] User is not admin!');
+      }
     }
-  }, [status, router]);
+  }, [status, router, session]);
 
   useEffect(() => {
     const fetchDashboardStats = async () => {

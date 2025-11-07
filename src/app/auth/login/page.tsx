@@ -36,52 +36,86 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
 
+    console.log('🔍 [Login] Starting login process for:', formData.email);
+
     try {
+      console.log('🔍 [Login] Calling signIn...');
       const result = await signIn('credentials', {
         redirect: false,
         email: formData.email,
         password: formData.password,
       });
 
+      console.log('🔍 [Login] signIn result:', {
+        error: result?.error,
+        ok: result?.ok,
+        status: result?.status,
+        url: result?.url
+      });
+
       if (result?.error) {
+        console.error('❌ [Login] signIn error:', result.error);
         throw new Error(result.error);
       }
 
+      console.log('✅ [Login] signIn successful, waiting for cookie...');
       // Wait a bit for the session cookie to be set
       await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Check cookies immediately after signIn
+      console.log('🔍 [Login] Cookies after signIn:', document.cookie);
 
       // Fetch user data after successful login - retry if needed
       let attempts = 0;
       let data = null;
       while (attempts < 3 && !data?.user) {
+        console.log(`🔍 [Login] Fetching session (attempt ${attempts + 1}/3)...`);
         const response = await fetch('/api/auth/session', {
           credentials: 'include',
           cache: 'no-store'
         });
+        console.log('🔍 [Login] Session API response status:', response.status);
         data = await response.json();
+        console.log('🔍 [Login] Session API response data:', data);
+        
         if (!data.user && attempts < 2) {
+          console.log('⏳ [Login] No user yet, waiting 200ms before retry...');
           await new Promise(resolve => setTimeout(resolve, 200));
         }
         attempts++;
       }
       
       if (data?.user) {
+        console.log('✅ [Login] User session retrieved:', {
+          email: data.user.email,
+          isAdmin: data.user.isAdmin,
+          role: data.user.role
+        });
         setUser(data.user);
+        
         // Check for callback URL or redirect admins to admin dashboard
         const urlParams = new URLSearchParams(window.location.search);
         const callbackUrl = urlParams.get('callbackUrl');
         
+        console.log('🔍 [Login] Callback URL:', callbackUrl);
+        console.log('🔍 [Login] User isAdmin:', data.user.isAdmin);
+        
         if (callbackUrl) {
+          console.log('🔍 [Login] Redirecting to callback URL:', callbackUrl);
           router.push(callbackUrl);
         } else if (data.user.isAdmin) {
+          console.log('🔍 [Login] Redirecting admin to dashboard');
           router.push('/admin/dashboard');
         } else {
+          console.log('🔍 [Login] Redirecting regular user to home');
           router.push('/');
         }
       } else {
+        console.error('❌ [Login] Failed to retrieve user session after 3 attempts');
         throw new Error('Failed to retrieve user session');
       }
     } catch (err) {
+      console.error('❌ [Login] Login error:', err);
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
       setLoading(false);
