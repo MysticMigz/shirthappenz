@@ -128,6 +128,9 @@ export const authOptions: NextAuthOptions = {
         secure: process.env.NODE_ENV === 'production',
         // Don't set domain explicitly - let browser handle it
         // This ensures cookies work for both www and non-www
+        // In production, ensure NEXTAUTH_URL matches your domain exactly
+        // If cookies still don't work, you may need to explicitly set domain:
+        // domain: process.env.NODE_ENV === 'production' ? '.mrshirtpersonalisation.co.uk' : undefined
       }
     }
   },
