@@ -26,7 +26,16 @@ export async function GET(request: Request) {
 
     const session = await getServerSession(authOptions);
 
+    console.log('🔍 [Session API] getServerSession result:', {
+      hasSession: !!session,
+      hasUser: !!session?.user,
+      userEmail: session?.user?.email,
+      userIsAdmin: session?.user?.isAdmin,
+      fullSession: session
+    });
+
     if (!session?.user?.email) {
+      console.log('❌ [Session API] No session or user email');
       return NextResponse.json({ user: null });
     }
 
@@ -34,8 +43,19 @@ export async function GET(request: Request) {
     const user = await (User as any).findOne({ email: session.user.email });
 
     if (!user) {
+      console.log('❌ [Session API] User not found in database');
       return NextResponse.json({ user: null });
     }
+
+    console.log('🔍 [Session API] Database user:', {
+      email: user.email,
+      isAdmin: user.isAdmin,
+      sessionIsAdmin: session.user.isAdmin
+    });
+
+    // Use isAdmin from session (JWT token) if available, otherwise fall back to database
+    // This ensures we're using the most up-to-date value from the token
+    const isAdmin = session.user.isAdmin ?? user.isAdmin;
 
     // Return user data (excluding sensitive information)
     const userData = {
@@ -44,8 +64,10 @@ export async function GET(request: Request) {
       firstName: user.firstName,
       lastName: user.lastName,
       role: user.role,
-      isAdmin: user.isAdmin
+      isAdmin: isAdmin
     };
+
+    console.log('✅ [Session API] Returning user data:', userData);
 
     return NextResponse.json({ user: userData });
   } catch (error) {

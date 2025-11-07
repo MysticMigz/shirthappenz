@@ -68,16 +68,37 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }: any) {
       // Initial sign in
       if (user) {
+        console.log('🔍 [Auth JWT Callback] User signing in:', {
+          id: user.id,
+          email: user.email,
+          isAdmin: user.isAdmin
+        });
         token.id = user.id;
         token.isAdmin = user.isAdmin;
+        token.email = user.email;
       }
       // Ensure isAdmin is always preserved
+      console.log('🔍 [Auth JWT Callback] Token:', {
+        id: token.id,
+        email: token.email,
+        isAdmin: token.isAdmin
+      });
       return token;
     },
     async session({ session, token }: any) {
+      console.log('🔍 [Auth Session Callback] Token:', {
+        id: token.id,
+        email: token.email,
+        isAdmin: token.isAdmin
+      });
       if (token) {
         session.user.id = token.id;
         session.user.isAdmin = token.isAdmin ?? false;
+        console.log('🔍 [Auth Session Callback] Session user:', {
+          id: session.user.id,
+          email: session.user.email,
+          isAdmin: session.user.isAdmin
+        });
       }
       return session;
     }
