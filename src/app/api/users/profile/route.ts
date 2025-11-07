@@ -5,6 +5,9 @@ import { connectToDatabase } from '@/lib/mongodb';
 import User from '@/backend/models/User';
 import { z } from 'zod';
 
+// Force dynamic rendering - this route uses getServerSession() which accesses headers
+export const dynamic = 'force-dynamic';
+
 // Profile update schema
 const profileUpdateSchema = z.object({
   firstName: z.string().min(1, 'First name is required').max(50).trim(),

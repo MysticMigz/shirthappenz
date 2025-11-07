@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import Order from '@/backend/models/Order';
 
+// Force dynamic rendering - admin route with database queries cannot be statically generated
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
   await connectToDatabase();
   const { searchParams } = new URL(request.url);
