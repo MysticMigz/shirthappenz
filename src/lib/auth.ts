@@ -66,16 +66,18 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async jwt({ token, user }: any) {
+      // Initial sign in
       if (user) {
         token.id = user.id;
         token.isAdmin = user.isAdmin;
       }
+      // Ensure isAdmin is always preserved
       return token;
     },
     async session({ session, token }: any) {
       if (token) {
         session.user.id = token.id;
-        session.user.isAdmin = token.isAdmin;
+        session.user.isAdmin = token.isAdmin ?? false;
       }
       return session;
     }

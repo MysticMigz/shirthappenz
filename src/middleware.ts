@@ -62,7 +62,10 @@ export async function middleware(request: NextRequest) {
 
   // Admin route protection
   if (request.nextUrl.pathname.startsWith('/admin')) {
-    const token = await getToken({ req: request });
+    const token = await getToken({ 
+      req: request,
+      secret: process.env.NEXTAUTH_SECRET
+    });
     
     if (!token) {
       // Not logged in, redirect to login page
@@ -77,7 +80,10 @@ export async function middleware(request: NextRequest) {
 
   // API route protection
   if (request.nextUrl.pathname.startsWith('/api/admin')) {
-    const token = await getToken({ req: request });
+    const token = await getToken({ 
+      req: request,
+      secret: process.env.NEXTAUTH_SECRET
+    });
     
     if (!token?.isAdmin) {
       return NextResponse.json(
