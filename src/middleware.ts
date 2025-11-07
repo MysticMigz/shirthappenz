@@ -61,41 +61,13 @@ export async function middleware(request: NextRequest) {
   }
 
   // Admin route protection - REMOVED
-  // Let the server-side admin layout handle authentication instead
+  // Let the server-side admin layout and API routes handle authentication instead
   // This is more reliable and avoids cookie/JWT decryption timing issues
   // The server-side getServerSession() handles cookies better than middleware getToken()
   
-  // Note: We still protect /api/admin routes below for API security
-
-  // API route protection
-  if (request.nextUrl.pathname.startsWith('/api/admin')) {
-    // Skip auth check if no secret is configured
-    if (!process.env.NEXTAUTH_SECRET) {
-      console.warn('NEXTAUTH_SECRET not set - API route protection disabled');
-      return response;
-    }
-    
-    try {
-      const token = await getToken({ 
-        req: request,
-        secret: process.env.NEXTAUTH_SECRET
-      });
-      
-      if (!token?.isAdmin) {
-        return NextResponse.json(
-          { error: 'Admin access required' },
-          { status: 403 }
-        );
-      }
-    } catch (error) {
-      // If token decoding fails, return 403 but log the error
-      console.error('API route auth error:', error);
-      return NextResponse.json(
-        { error: 'Authentication failed' },
-        { status: 403 }
-      );
-    }
-  }
+  // API route protection - REMOVED
+  // Each API route should handle its own authentication using getServerSession()
+  // This is more reliable and consistent with how admin pages work
 
   return response;
 }
