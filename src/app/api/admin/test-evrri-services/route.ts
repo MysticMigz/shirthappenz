@@ -34,15 +34,23 @@ export async function GET(request: NextRequest) {
       success: true,
       message: 'EVRi services retrieved successfully',
       carrier_id: 'se-340606',
+      carrier_code: services.length > 0 ? services[0].carrier_code : 'hermes',
       carrier_name: 'EVRi - ShipStation Carrier Services',
       services: services.map((service: any) => ({
         service_code: service.service_code,
         name: service.name,
+        carrier_code: service.carrier_code,
         domestic: service.domestic,
-        international: service.international
+        international: service.international,
+        is_multi_package_supported: service.is_multi_package_supported || false,
+        is_return_supported: service.is_return_supported || false,
+        display_schemes: service.display_schemes || []
       })),
       total_services: services.length,
-      recommended_service: services.find((s: any) => s.domestic)?.service_code || 'No domestic service found'
+      domestic_services: services.filter((s: any) => s.domestic).length,
+      international_services: services.filter((s: any) => s.international).length,
+      recommended_service: services.find((s: any) => s.domestic)?.service_code || 'No domestic service found',
+      recommended_service_name: services.find((s: any) => s.domestic)?.name || 'No domestic service found'
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }

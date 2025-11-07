@@ -6,6 +6,9 @@ import User from '@/backend/models/User';
 import { apiRateLimiter } from '@/lib/rate-limit';
 import { securityLogger } from '@/lib/security-audit';
 
+// Force dynamic rendering - this route uses headers() and cannot be statically generated
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: Request) {
   try {
     // Rate limiting check
