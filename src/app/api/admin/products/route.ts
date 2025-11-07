@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     await connectToDatabase();
     
     // Verify admin status
-    const user = await User.findOne({ email: session.user.email });
+    const user = await (User as any).findOne({ email: session.user.email });
     if (!user?.isAdmin) {
       return NextResponse.json(
         { error: 'Admin access required' },
@@ -63,13 +63,13 @@ export async function GET(request: NextRequest) {
     
     // Execute query with pagination
     const skip = (page - 1) * limit;
-    const products = await Product.find(query)
+    const products = await (Product as any).find(query)
       .populate('collections', 'name slug')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
     
-    const total = await Product.countDocuments(query);
+    const total = await (Product as any).countDocuments(query);
     
     return NextResponse.json({
       products,
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
     await connectToDatabase();
     
     // Verify admin status
-    const user = await User.findOne({ email: session.user.email });
+    const user = await (User as any).findOne({ email: session.user.email });
     if (!user?.isAdmin) {
       return NextResponse.json(
         { error: 'Admin access required' },
@@ -197,7 +197,7 @@ export async function POST(request: NextRequest) {
     const validation = validateAndSanitize(productSchema, productData);
     if (!validation.success) {
       console.error('❌ Product validation failed:', {
-        errors: validation.errors,
+        errors: (validation as any).errors,
         productData: {
           name: productData.name,
           category: productData.category,
@@ -208,7 +208,7 @@ export async function POST(request: NextRequest) {
         validationSchema: 'Updated schema with crewneck and shortsleeve'
       });
       return NextResponse.json(
-        { error: validation.errors[0] },
+        { error: (validation as any).errors[0] },
         { status: 400 }
       );
     }
@@ -237,7 +237,7 @@ export async function POST(request: NextRequest) {
     console.log('Final product data being saved:', JSON.stringify(finalProductData, null, 2));
     console.log('Colors in final data:', finalProductData.colors);
 
-    const product = await Product.create(finalProductData);
+    const product = await (Product as any).create(finalProductData);
     
     return NextResponse.json(product, { status: 201 });
   } catch (error) {

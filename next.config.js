@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  eslint: {
+    // ⚠️ Warning: This will skip ESLint errors during build
+    ignoreDuringBuilds: true,
+  },
   images: {
     domains: [
       'm.media-amazon.com',

@@ -7,7 +7,7 @@ import User from '@/backend/models/User';
 
 // Helper function to check admin status
 async function verifyAdmin(email: string) {
-  const user = await User.findOne({ email });
+  const user = await (User as any).findOne({ email });
   if (!user?.isAdmin) {
     throw new Error('Admin access required');
   }
@@ -28,7 +28,7 @@ export async function GET(
     await connectToDatabase();
     await verifyAdmin(session.user.email);
 
-    const voucher = await Voucher.findById(params.id);
+    const voucher = await (Voucher as any).findById(params.id);
     if (!voucher) {
       return NextResponse.json({ error: 'Voucher not found' }, { status: 404 });
     }
@@ -66,7 +66,7 @@ export async function PATCH(
     const updateData = await request.json();
 
     // Find and update the voucher
-    const voucher = await Voucher.findByIdAndUpdate(
+    const voucher = await (Voucher as any).findByIdAndUpdate(
       params.id,
       updateData,
       { new: true, runValidators: true }
@@ -112,7 +112,7 @@ export async function DELETE(
     await verifyAdmin(session.user.email);
 
     // Find and delete the voucher
-    const voucher = await Voucher.findByIdAndDelete(params.id);
+    const voucher = await (Voucher as any).findByIdAndDelete(params.id);
 
     if (!voucher) {
       return NextResponse.json({ error: 'Voucher not found' }, { status: 404 });

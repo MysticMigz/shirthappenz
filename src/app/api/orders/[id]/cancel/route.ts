@@ -23,7 +23,7 @@ export async function POST(
     await connectToDatabase();
 
     // Get user from database
-    const user = await User.findOne({ email: session.user.email });
+    const user = await (User as any).findOne({ email: session.user.email });
     if (!user) {
       return NextResponse.json(
         { error: 'User not found' },
@@ -42,7 +42,7 @@ export async function POST(
     }
 
     // Find the order
-    const order = await Order.findById(id);
+    const order = await (Order as any).findById(id);
     if (!order) {
       return NextResponse.json(
         { error: 'Order not found' },
@@ -124,7 +124,7 @@ export async function POST(
     }
 
     // Update order with cancellation request
-    const updatedOrder = await Order.findByIdAndUpdate(
+    const updatedOrder = await (Order as any).findByIdAndUpdate(
       id,
       {
         cancellationRequested: true,

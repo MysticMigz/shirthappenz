@@ -34,7 +34,7 @@ export async function GET() {
     await connectToDatabase();
 
     // Find user
-    const user = await User.findOne({ email: session.user.email }).select('-password');
+    const user = await (User as any).findOne({ email: session.user.email }).select('-password');
     if (!user) {
       return NextResponse.json(
         { error: 'User not found' },
@@ -67,7 +67,7 @@ export async function PUT(request: NextRequest) {
     await connectToDatabase();
 
     // Find user
-    const user = await User.findOne({ email: session.user.email });
+    const user = await (User as any).findOne({ email: session.user.email });
     if (!user) {
       return NextResponse.json(
         { error: 'User not found' },
@@ -94,7 +94,7 @@ export async function PUT(request: NextRequest) {
     await user.save({ validateModifiedOnly: true });
 
     // Return updated user (excluding password)
-    const updatedUser = await User.findById(user._id).select('-password');
+    const updatedUser = await (User as any).findById(user._id).select('-password');
     return NextResponse.json(updatedUser);
   } catch (error) {
     console.error('Error updating profile:', error);

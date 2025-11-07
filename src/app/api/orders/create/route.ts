@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
                    (date.getMonth() + 1).toString().padStart(2, '0') + 
                    date.getDate().toString().padStart(2, '0');
     
-    const orderCount = await Order.countDocuments({
+    const orderCount = await (Order as any).countDocuments({
       createdAt: {
         $gte: new Date(date.getFullYear(), date.getMonth(), date.getDate()),
         $lt: new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1)
@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
         order.shippingDetails,
         order.total,
         order.vat,
-        order.createdAt,
+        order.createdAt instanceof Date ? order.createdAt.toISOString() : order.createdAt,
         order.status,
         order.voucherCode,
         order.voucherDiscount,

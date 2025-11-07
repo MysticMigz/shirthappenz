@@ -80,7 +80,7 @@ export async function GET(request: Request) {
     
     if (session?.user?.email) {
       // User is logged in - get their orders by user ID
-      const user = await User.findOne({ email: session.user.email });
+      const user = await (User as any).findOne({ email: session.user.email });
       if (!user) {
         return NextResponse.json(
           { error: 'User not found' },
@@ -89,7 +89,7 @@ export async function GET(request: Request) {
       }
 
       // Get user's orders using the user's ObjectId
-      const orders = await Order.find({ userId: user._id.toString() })
+      const orders = await (Order as any).find({ userId: user._id.toString() })
         .sort({ createdAt: -1 });
 
       return NextResponse.json(orders);
@@ -106,7 +106,7 @@ export async function GET(request: Request) {
       }
 
       // Get orders by visitor ID for guest users
-      const orders = await Order.find({ visitorId })
+      const orders = await (Order as any).find({ visitorId })
         .sort({ createdAt: -1 });
 
       return NextResponse.json(orders);
@@ -149,7 +149,7 @@ export async function POST(request: Request) {
     // Temporarily bypass validation to see the actual data structure
     const validation = validateAndSanitize(orderSchema, body);
     if (!validation.success) {
-      console.log('Order validation errors:', validation.errors);
+      console.log('Order validation errors:', (validation as any).errors);
       // For now, let's continue with the original data to see what works
       console.log('Bypassing validation temporarily for debugging');
     }
@@ -169,7 +169,7 @@ export async function POST(request: Request) {
       const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
       const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
       
-      const todayCount = await Order.countDocuments({
+      const todayCount = await (Order as any).countDocuments({
         createdAt: {
           $gte: startOfDay,
           $lt: endOfDay
@@ -309,7 +309,7 @@ export async function PUT(
     
     // If the order is being cancelled, we need to restore stock
     if (data.status === 'cancelled') {
-      const existingOrder = await Order.findById(params.id);
+      const existingOrder = await (Order as any).findById(params.id);
       if (!existingOrder) {
         return NextResponse.json(
           { error: 'Order not found' },
@@ -336,7 +336,7 @@ export async function PUT(
       }
     }
 
-    const order = await Order.findByIdAndUpdate(
+    const order = await (Order as any).findByIdAndUpdate(
       params.id,
       { $set: data },
       { new: true }

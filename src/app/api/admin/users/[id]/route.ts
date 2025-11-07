@@ -22,7 +22,7 @@ export async function GET(
     await connectToDatabase();
     
     // Verify admin status
-    const adminUser = await User.findOne({ email: session.user.email });
+    const adminUser = await (User as any).findOne({ email: session.user.email });
     if (!adminUser?.isAdmin) {
       return NextResponse.json(
         { error: 'Admin access required' },
@@ -31,7 +31,7 @@ export async function GET(
     }
 
     // Find user
-    const user = await User.findById(params.id).select('-password');
+    const user = await (User as any).findById(params.id).select('-password');
     if (!user) {
       return NextResponse.json(
         { error: 'User not found' },
@@ -67,7 +67,7 @@ export async function PUT(
     await connectToDatabase();
     
     // Verify admin status
-    const adminUser = await User.findOne({ email: session.user.email });
+    const adminUser = await (User as any).findOne({ email: session.user.email });
     if (!adminUser?.isAdmin) {
       return NextResponse.json(
         { error: 'Admin access required' },
@@ -78,7 +78,7 @@ export async function PUT(
     const data = await request.json();
 
     // Find user to update
-    const user = await User.findById(params.id);
+    const user = await (User as any).findById(params.id);
     if (!user) {
       return NextResponse.json(
         { error: 'User not found' },
@@ -88,7 +88,7 @@ export async function PUT(
 
     // If email is being changed, check if new email already exists
     if (data.email && data.email !== user.email) {
-      const existingUser = await User.findOne({ email: data.email });
+      const existingUser = await (User as any).findOne({ email: data.email });
       if (existingUser) {
         return NextResponse.json(
           { error: 'Email already registered' },
@@ -107,7 +107,7 @@ export async function PUT(
     await user.save({ validateModifiedOnly: true });
 
     // Return updated user (excluding password)
-    const userData = await User.findById(user._id).select('-password');
+    const userData = await (User as any).findById(user._id).select('-password');
     return NextResponse.json(userData);
   } catch (error) {
     console.error('Error updating user:', error);
@@ -136,7 +136,7 @@ export async function DELETE(
     await connectToDatabase();
     
     // Verify admin status
-    const adminUser = await User.findOne({ email: session.user.email });
+    const adminUser = await (User as any).findOne({ email: session.user.email });
     if (!adminUser?.isAdmin) {
       return NextResponse.json(
         { error: 'Admin access required' },
@@ -145,7 +145,7 @@ export async function DELETE(
     }
 
     // Find user to delete
-    const user = await User.findById(params.id);
+    const user = await (User as any).findById(params.id);
     if (!user) {
       return NextResponse.json(
         { error: 'User not found' },
@@ -155,7 +155,7 @@ export async function DELETE(
 
     // Prevent deleting the last admin user
     if (user.isAdmin) {
-      const adminCount = await User.countDocuments({ isAdmin: true });
+      const adminCount = await (User as any).countDocuments({ isAdmin: true });
       if (adminCount <= 1) {
         return NextResponse.json(
           { error: 'Cannot delete the last admin user' },

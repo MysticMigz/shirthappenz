@@ -5,7 +5,7 @@ import Order from '@/backend/models/Order';
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   await connectToDatabase();
   const { id } = params;
-  const order = await Order.findById(id);
+  const order = await (Order as any).findById(id);
   if (!order) {
     return NextResponse.json({ error: 'Order not found' }, { status: 404 });
   }
@@ -26,7 +26,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
   }
 
-  const updatedOrder = await Order.findByIdAndUpdate(id, update, { new: true });
+  const updatedOrder = await (Order as any).findByIdAndUpdate(id, update, { new: true });
   if (!updatedOrder) {
     return NextResponse.json({ error: 'Order not found' }, { status: 404 });
   }

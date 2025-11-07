@@ -15,7 +15,7 @@ interface OrderItem {
 
 // Helper function to check admin status
 async function verifyAdmin(email: string) {
-  const user = await User.findOne({ email });
+  const user = await (User as any).findOne({ email });
   if (!user?.isAdmin) {
     throw new Error('Admin access required');
   }
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch orders within date range (excluding cancelled and refunded orders)
-    const orders = await Order.find({
+    const orders = await (Order as any).find({
       createdAt: { $gte: startDate, $lte: endDate },
       status: { $in: ['pending', 'in_production', 'paid', 'shipped', 'completed', 'delivered'] },
       $or: [
@@ -95,7 +95,7 @@ export async function GET(request: NextRequest) {
           if (!item.productId || !mongoose.Types.ObjectId.isValid(item.productId)) {
             category = item.productId === 'custom-design' ? 'Custom Design' : 'Unknown';
           } else {
-            const product = await Product.findById(item.productId).select('category');
+            const product = await (Product as any).findById(item.productId).select('category');
             category = product?.category || 'Unknown';
           }
           productIdToCategory[item.productId] = category;
@@ -137,7 +137,7 @@ export async function GET(request: NextRequest) {
     // 1. Find all unique userIds in this period
     const userIdsInPeriod = Array.from(new Set(orders.map(order => order.userId)));
     // 2. Find which of these had an order before the period (excluding cancelled and refunded orders)
-    const previousOrders = await Order.find({
+    const previousOrders = await (Order as any).find({
       userId: { $in: userIdsInPeriod },
       createdAt: { $lt: startDate },
       status: { $in: ['paid', 'shipped', 'completed', 'delivered'] },

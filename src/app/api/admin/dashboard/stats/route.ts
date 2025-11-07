@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
 
     // Get user from database and verify admin status
     await connectToDatabase();
-    const user = await User.findOne({ email: session.user.email });
+    const user = await (User as any).findOne({ email: session.user.email });
     if (!user?.isAdmin) {
       return NextResponse.json(
         { error: 'Admin access required' },
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get total orders and revenue (excluding cancelled and refunded orders)
-    const totalOrders = await Order.countDocuments({
+    const totalOrders = await (Order as any).countDocuments({
       status: { $nin: ['cancelled', 'payment_failed'] },
       $or: [
         { 'metadata.refundAmount': { $exists: false } },
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       ]
     });
     
-    const orders = await Order.find({
+    const orders = await (Order as any).find({
       status: { $nin: ['cancelled', 'payment_failed'] },
       $or: [
         { 'metadata.refundAmount': { $exists: false } },
@@ -47,10 +47,10 @@ export async function GET(request: NextRequest) {
     const totalRevenue = orders.reduce((sum, order) => sum + order.total, 0);
 
     // Get pending orders
-    const pendingOrders = await Order.countDocuments({ status: 'pending' });
+    const pendingOrders = await (Order as any).countDocuments({ status: 'pending' });
 
     // Get low stock products (less than 10 items)
-    const lowStockProducts = await Product.countDocuments({ stock: { $lt: 10 } });
+    const lowStockProducts = await (Product as any).countDocuments({ stock: { $lt: 10 } });
 
     return NextResponse.json({
       totalOrders,

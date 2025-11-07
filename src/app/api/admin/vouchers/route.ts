@@ -7,7 +7,7 @@ import User from '@/backend/models/User';
 
 // Helper function to check admin status
 async function verifyAdmin(email: string) {
-  const user = await User.findOne({ email });
+  const user = await (User as any).findOne({ email });
   if (!user?.isAdmin) {
     throw new Error('Admin access required');
   }
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     await verifyAdmin(session.user.email);
 
     // Get all vouchers, sorted by creation date
-    const vouchers = await Voucher.find().sort({ createdAt: -1 });
+    const vouchers = await (Voucher as any).find().sort({ createdAt: -1 });
 
     return NextResponse.json({ vouchers });
   } catch (error) {
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if voucher code already exists
-    const existingVoucher = await Voucher.findOne({ code: voucherData.code.toUpperCase() });
+    const existingVoucher = await (Voucher as any).findOne({ code: voucherData.code.toUpperCase() });
     if (existingVoucher) {
       return NextResponse.json({ error: 'Voucher code already exists' }, { status: 400 });
     }

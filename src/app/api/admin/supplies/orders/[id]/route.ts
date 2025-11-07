@@ -24,7 +24,7 @@ export async function PATCH(
     }
 
     // Find the order
-    const order = await SupplyOrder.findById(id);
+    const order = await (SupplyOrder as any).findById(id);
     if (!order) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
@@ -80,7 +80,7 @@ export async function DELETE(
     const { id } = params;
 
     // Find the order
-    const order = await SupplyOrder.findById(id);
+    const order = await (SupplyOrder as any).findById(id);
     if (!order) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }

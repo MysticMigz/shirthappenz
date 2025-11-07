@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
       );
     }
     await connectToDatabase();
-    const user = await User.findOne({ email: session.user.email });
+    const user = await (User as any).findOne({ email: session.user.email });
     if (!user?.isAdmin) {
       return NextResponse.json(
         { error: 'Admin access required' },
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
       { 'metadata.refundAmount': { $exists: true, $eq: null } }
     ];
 
-    const orders = await Order.find(query);
+    const orders = await (Order as any).find(query);
     let totalNet = 0, totalVAT = 0, totalGross = 0;
     const orderList = orders.map(order => {
       const net = order.total - order.vat;

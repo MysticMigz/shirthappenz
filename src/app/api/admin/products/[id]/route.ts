@@ -22,7 +22,7 @@ export async function GET(
 
     await connectToDatabase();
     
-    const product = await Product.findById(params.id);
+    const product = await (Product as any).findById(params.id);
     
     if (!product) {
       return NextResponse.json(
@@ -108,7 +108,8 @@ export async function PUT(
       for (const color of data.colors) {
         if (color.stock && typeof color.stock === 'object') {
           for (const [size, quantity] of Object.entries(color.stock)) {
-            if (!Number.isInteger(quantity) || quantity < 0) {
+            const qty = Number(quantity);
+            if (!Number.isInteger(qty) || qty < 0) {
               return NextResponse.json(
                 { error: `Invalid stock quantity for color ${color.name}, size ${size}. Must be a non-negative integer.` },
                 { status: 400 }
@@ -119,7 +120,7 @@ export async function PUT(
       }
 
       // Get current product data
-      const currentProduct = await Product.findById(params.id);
+      const currentProduct = await (Product as any).findById(params.id);
       if (!currentProduct) {
         return NextResponse.json(
           { error: 'Product not found' },
@@ -128,7 +129,7 @@ export async function PUT(
       }
 
       // Update the product with new colors data
-      const updatedProduct = await Product.findByIdAndUpdate(
+      const updatedProduct = await (Product as any).findByIdAndUpdate(
         params.id,
         { colors: data.colors },
         { new: true, runValidators: true }
@@ -162,7 +163,7 @@ export async function PUT(
       }
 
       // Get current product data
-      const currentProduct = await Product.findById(params.id);
+      const currentProduct = await (Product as any).findById(params.id);
       if (!currentProduct) {
         return NextResponse.json(
           { error: 'Product not found' },
@@ -174,14 +175,14 @@ export async function PUT(
       for (const [size, quantity] of Object.entries(stockData)) {
         if (quantity <= LOW_STOCK_THRESHOLD) {
           // Check if there's already an active alert for this product and size
-          const existingAlert = await StockAlert.findOne({
+          const existingAlert = await (StockAlert as any).findOne({
             productId: params.id,
             size,
             status: 'active'
           });
 
           if (!existingAlert) {
-            await StockAlert.create({
+            await (StockAlert as any).create({
               productId: params.id,
               productName: currentProduct.name,
               size,
@@ -195,7 +196,7 @@ export async function PUT(
           }
         } else {
           // If stock is now above threshold, resolve any existing alerts
-          await StockAlert.updateMany(
+          await (StockAlert as any).updateMany(
             {
               productId: params.id,
               size,
@@ -228,7 +229,7 @@ export async function PUT(
       }
     }
     
-    const product = await Product.findByIdAndUpdate(
+    const product = await (Product as any).findByIdAndUpdate(
       params.id,
       { ...data, updatedAt: new Date() },
       { new: true, runValidators: true }
@@ -263,7 +264,7 @@ export async function DELETE(
 
     await connectToDatabase();
     
-    const product = await Product.findByIdAndDelete(params.id);
+    const product = await (Product as any).findByIdAndDelete(params.id);
     
     if (!product) {
       return NextResponse.json(

@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch orders with populated supply details
-    const orders = await SupplyOrder.find(query)
+    const orders = await (SupplyOrder as any).find(query)
       .populate({
         path: 'items.supply',
         select: 'name description image price unit category minimumOrderQuantity supplier notes'
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
     // Fetch complete supply information for each item
     const itemsWithSupplyInfo = await Promise.all(
       data.items.map(async (item: any) => {
-        const supply = await Supply.findById(item.supply._id || item.supply);
+        const supply = await (Supply as any).findById(item.supply._id || item.supply);
         if (!supply) {
           throw new Error(`Supply not found for ID: ${item.supply._id || item.supply}`);
         }
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
     const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
     
-    const todayCount = await SupplyOrder.countDocuments({
+    const todayCount = await (SupplyOrder as any).countDocuments({
       createdAt: {
         $gte: startOfDay,
         $lt: endOfDay
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
     await order.save();
 
     // Fetch the complete order with populated supply information
-    const populatedOrder = await SupplyOrder.findById(order._id).populate({
+    const populatedOrder = await (SupplyOrder as any).findById(order._id).populate({
       path: 'items.supply',
       select: 'name description image price unit category minimumOrderQuantity supplier notes'
     });
@@ -165,7 +165,7 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const order = await SupplyOrder.findById(orderId);
+    const order = await (SupplyOrder as any).findById(orderId);
     if (!order) {
       return NextResponse.json(
         { error: 'Order not found' },
@@ -184,7 +184,7 @@ export async function PATCH(request: NextRequest) {
     await order.save();
 
     // Return populated order
-    const populatedOrder = await SupplyOrder.findById(order._id).populate({
+    const populatedOrder = await (SupplyOrder as any).findById(order._id).populate({
       path: 'items.supply',
       select: 'name description image price unit category minimumOrderQuantity supplier notes'
     });

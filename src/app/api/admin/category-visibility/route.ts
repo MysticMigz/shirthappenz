@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     await connectToDatabase();
     
     // Verify admin status
-    const user = await User.findOne({ email: session.user.email });
+    const user = await (User as any).findOne({ email: session.user.email });
     if (!user?.isAdmin) {
       return NextResponse.json(
         { error: 'Admin access required' },
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     }
     
     // Get all category visibility settings
-    const categories = await CategoryVisibility.find()
+    const categories = await (CategoryVisibility as any).find()
       .sort({ sortOrder: 1, category: 1 });
     
     return NextResponse.json({ categories });
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     await connectToDatabase();
     
     // Verify admin status
-    const user = await User.findOne({ email: session.user.email });
+    const user = await (User as any).findOne({ email: session.user.email });
     if (!user?.isAdmin) {
       return NextResponse.json(
         { error: 'Admin access required' },
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Check if category already exists
-    let categoryDoc = await CategoryVisibility.findOne({ category });
+    let categoryDoc = await (CategoryVisibility as any).findOne({ category });
     
     if (categoryDoc) {
       // Update existing category
@@ -139,7 +139,7 @@ export async function PATCH(request: NextRequest) {
     await connectToDatabase();
     
     // Verify admin status
-    const user = await User.findOne({ email: session.user.email });
+    const user = await (User as any).findOne({ email: session.user.email });
     if (!user?.isAdmin) {
       return NextResponse.json(
         { error: 'Admin access required' },
@@ -168,7 +168,7 @@ export async function PATCH(request: NextRequest) {
       }
       
       try {
-        const categoryDoc = await CategoryVisibility.findOne({ category });
+        const categoryDoc = await (CategoryVisibility as any).findOne({ category });
         
         if (categoryDoc) {
           if (isVisible !== undefined) categoryDoc.isVisible = isVisible;

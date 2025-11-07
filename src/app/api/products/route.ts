@@ -51,14 +51,14 @@ export async function GET(request: NextRequest) {
     // Best Sellers logic
     if (sortBy === 'bestsellers') {
       // Aggregate order items to count sales per productId
-      const sales = await Order.aggregate([
+      const sales = await (Order as any).aggregate([
         { $unwind: '$items' },
         { $group: { _id: '$items.productId', salesCount: { $sum: '$items.quantity' } } },
         { $sort: { salesCount: -1 } }
       ]);
       const salesMap = Object.fromEntries(sales.map(s => [s._id, s.salesCount]));
       // Fetch all products matching query
-      const products = await Product.find(query);
+      const products = await (Product as any).find(query);
       // Attach salesCount to each product (default 0)
       const productsWithSales = products.map(p => ({
         ...p.toObject(),
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get total count for pagination
-    const total = await Product.countDocuments(query);
+    const total = await (Product as any).countDocuments(query);
     const totalPages = Math.ceil(total / limit);
     
     // Fetch products
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
 
     let products;
     try {
-      products = await Product.find(query)
+      products = await (Product as any).find(query)
         .populate('collections', 'name slug')
         .sort(sort)
         .skip((page - 1) * limit)
@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
     } catch (populateError) {
       // If populate fails, fetch without populate
       console.warn('Populate failed, fetching products without collections:', populateError);
-      products = await Product.find(query)
+      products = await (Product as any).find(query)
         .sort(sort)
         .skip((page - 1) * limit)
         .limit(limit);
@@ -136,13 +136,13 @@ export async function POST(request: Request) {
     const validation = validateAndSanitize(productSchema, data);
     if (!validation.success) {
       return NextResponse.json(
-        { error: validation.errors[0] },
+        { error: (validation as any).errors[0] },
         { status: 400 }
       );
     }
 
     const validatedData = validation.data;
-    const product = await Product.create(validatedData);
+    const product = await (Product as any).create(validatedData);
     return NextResponse.json(product, { status: 201 });
   } catch (error) {
     console.error('Error creating product:', error);
@@ -160,7 +160,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Product ID is required' }, { status: 400 });
     }
 
-    const deletedProduct = await Product.findByIdAndDelete(id);
+    const deletedProduct = await (Product as any).findByIdAndDelete(id);
     
     if (!deletedProduct) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });

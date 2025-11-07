@@ -34,7 +34,7 @@ export async function GET(
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
-    const order = await Order.findOne(query);
+    const order = await (Order as any).findOne(query);
     
     if (!order) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });

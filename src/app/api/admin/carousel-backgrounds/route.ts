@@ -27,7 +27,7 @@ export async function GET() {
     }
 
     await connectToDatabase();
-    const backgrounds = await CarouselBackground.find({})
+    const backgrounds = await (CarouselBackground as any).find({})
       .sort({ order: 1, createdAt: -1 })
       .lean();
 

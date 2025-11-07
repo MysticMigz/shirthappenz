@@ -18,7 +18,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       console.log('🏷️ Generating ShipEngine label for order:', params.id);
       try {
         const shipengine = new ShipEngineAPI();
-        const order = await Order.findById(params.id);
+        const order = await (Order as any).findById(params.id);
         
         if (!order) {
           return new Response(JSON.stringify({ error: 'Order not found' }), { 
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       labelGenerated: generateLabel
     });
     
-    const order = await Order.findByIdAndUpdate(
+    const order = await (Order as any).findByIdAndUpdate(
       params.id,
       { $set: update },
       { new: true }

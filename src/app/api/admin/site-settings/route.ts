@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     await connectToDatabase();
     
     // Verify admin status
-    const user = await User.findOne({ email: session.user.email });
+    const user = await (User as any).findOne({ email: session.user.email });
     if (!user?.isAdmin) {
       return NextResponse.json(
         { error: 'Admin access required' },
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     
     if (key) {
       // Get specific setting
-      const setting = await SiteSettings.findOne({ key });
+      const setting = await (SiteSettings as any).findOne({ key });
       if (!setting) {
         return NextResponse.json({ setting: null });
       }
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     }
     
     // Get all settings
-    const settings = await SiteSettings.find().sort({ key: 1 });
+    const settings = await (SiteSettings as any).find().sort({ key: 1 });
     
     return NextResponse.json({ settings });
   } catch (error) {
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     await connectToDatabase();
     
     // Verify admin status
-    const user = await User.findOne({ email: session.user.email });
+    const user = await (User as any).findOne({ email: session.user.email });
     if (!user?.isAdmin) {
       return NextResponse.json(
         { error: 'Admin access required' },
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Check if setting already exists
-    let setting = await SiteSettings.findOne({ key });
+    let setting = await (SiteSettings as any).findOne({ key });
     
     if (setting) {
       // Update existing setting
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
       await setting.save();
     } else {
       // Create new setting
-      setting = await SiteSettings.create({
+      setting = await (SiteSettings as any).create({
         key,
         value,
         description: description || '',

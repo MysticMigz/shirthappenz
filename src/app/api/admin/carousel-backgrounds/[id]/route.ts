@@ -38,7 +38,7 @@ export async function PATCH(
     
     console.log('🔧 About to update with data:', updateData);
     
-    const background = await CarouselBackground.findByIdAndUpdate(
+    const background = await (CarouselBackground as any).findByIdAndUpdate(
       id,
       updateData,
       { new: true, upsert: false }
@@ -84,7 +84,7 @@ export async function DELETE(
     const { id } = params;
 
     await connectToDatabase();
-    const background = await CarouselBackground.findById(id);
+    const background = await (CarouselBackground as any).findById(id);
 
     if (!background) {
       return NextResponse.json({ error: 'Background not found' }, { status: 404 });
@@ -108,7 +108,7 @@ export async function DELETE(
     }
 
     // Delete from database
-    await CarouselBackground.findByIdAndDelete(id);
+    await (CarouselBackground as any).findByIdAndDelete(id);
 
     return NextResponse.json({ message: 'Background deleted successfully' });
 

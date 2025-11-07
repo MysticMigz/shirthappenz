@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     }
     
     // Get visible categories sorted by sort order
-    const categories = await CategoryVisibility.find(query)
+    const categories = await (CategoryVisibility as any).find(query)
       .sort({ sortOrder: 1, category: 1 })
       .select('category displayName description sortOrder genderVisibility');
     

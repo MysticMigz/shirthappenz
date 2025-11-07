@@ -31,7 +31,7 @@ export async function POST(
     await connectToDatabase();
 
     // Get user from database and verify admin status
-    const user = await User.findOne({ email: session.user.email });
+    const user = await (User as any).findOne({ email: session.user.email });
     if (!user?.isAdmin) {
       return NextResponse.json(
         { error: 'Admin access required' },
@@ -43,7 +43,7 @@ export async function POST(
     const { refundAmount, reason, notes } = await request.json();
 
     // Find the order
-    const order = await Order.findById(id);
+    const order = await (Order as any).findById(id);
     if (!order) {
       return NextResponse.json(
         { error: 'Order not found' },
@@ -60,7 +60,7 @@ export async function POST(
     }
 
     // Find the transaction
-    const transaction = await Transaction.findOne({ orderId: order._id });
+    const transaction = await (Transaction as any).findOne({ orderId: order._id });
     if (!transaction) {
       return NextResponse.json(
         { error: 'Transaction not found for this order. Cannot process refund without transaction record.' },
@@ -85,7 +85,7 @@ export async function POST(
       if (existingRefunds.data.length > 0) {
         console.log('Found existing refunds:', existingRefunds.data.length);
         // Update transaction status to reflect the existing refund
-        await Transaction.findByIdAndUpdate(transaction._id, {
+        await (Transaction as any).findByIdAndUpdate(transaction._id, {
           status: 'refunded',
           refundId: existingRefunds.data[0].id,
         });
@@ -171,7 +171,7 @@ export async function POST(
       refundedBy: user.email,
     };
 
-    await Transaction.findByIdAndUpdate(transaction._id, {
+    await (Transaction as any).findByIdAndUpdate(transaction._id, {
       status: 'refunded',
       refundId: refund.id,
       metadata: updatedMetadata,
@@ -188,7 +188,7 @@ export async function POST(
       stripeRefundId: refund.id,
     };
 
-    await Order.findByIdAndUpdate(order._id, {
+    await (Order as any).findByIdAndUpdate(order._id, {
       metadata: orderMetadata,
     });
 
@@ -260,7 +260,7 @@ export async function GET(
     await connectToDatabase();
 
     // Get user from database and verify admin status
-    const user = await User.findOne({ email: session.user.email });
+    const user = await (User as any).findOne({ email: session.user.email });
     if (!user?.isAdmin) {
       return NextResponse.json(
         { error: 'Admin access required' },
@@ -272,7 +272,7 @@ export async function GET(
     console.log('Looking for order with ID:', id);
 
     // Find the order
-    const order = await Order.findById(id);
+    const order = await (Order as any).findById(id);
     if (!order) {
       console.log('Order not found');
       return NextResponse.json(
@@ -284,7 +284,7 @@ export async function GET(
     console.log('Order found:', order.reference);
 
     // Find the transaction
-    const transaction = await Transaction.findOne({ orderId: order._id });
+    const transaction = await (Transaction as any).findOne({ orderId: order._id });
     if (!transaction) {
       console.log('Transaction not found - creating placeholder transaction');
       // Create a placeholder transaction for orders without transaction records

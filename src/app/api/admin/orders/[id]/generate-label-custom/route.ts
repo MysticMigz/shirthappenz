@@ -8,7 +8,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     await connectToDatabase();
     
     // Get the order
-    const order = await Order.findById(params.id);
+    const order = await (Order as any).findById(params.id);
     if (!order) {
       return new Response(JSON.stringify({ error: 'Order not found' }), { 
         status: 404, 
@@ -20,6 +20,16 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     if (order.productionStatus !== 'ready_to_ship') {
       return new Response(JSON.stringify({ 
         error: 'Order must be in "ready_to_ship" status to generate label' 
+      }), { 
+        status: 400, 
+        headers: { 'Content-Type': 'application/json' } 
+      });
+    }
+
+    // Check if shipping details exist
+    if (!order.shippingDetails) {
+      return new Response(JSON.stringify({ 
+        error: 'Order shipping details are missing' 
       }), { 
         status: 400, 
         headers: { 'Content-Type': 'application/json' } 
@@ -67,14 +77,14 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     });
 
     // Update order with tracking information
-    order.trackingNumber = labelResponse.tracking_number;
-    order.shipmentId = labelResponse.shipment_id;
-    order.labelId = labelResponse.label_id;
-    order.labelDownloadUrl = labelResponse.label_download?.pdf;
-    order.shippingCost = labelResponse.shipping_cost?.amount || 0;
-    order.shippingCurrency = labelResponse.shipping_cost?.currency || 'GBP';
-    order.productionStatus = 'shipped';
-    order.shippedAt = new Date();
+    (order as any).trackingNumber = labelResponse.tracking_number;
+    (order as any).shipmentId = labelResponse.shipment_id;
+    (order as any).labelId = labelResponse.label_id;
+    (order as any).labelDownloadUrl = labelResponse.label_download?.pdf;
+    (order as any).shippingCost = labelResponse.shipping_cost?.amount || 0;
+    (order as any).shippingCurrency = labelResponse.shipping_cost?.currency || 'GBP';
+    (order as any).productionStatus = 'shipped';
+    (order as any).shippedAt = new Date();
 
     await order.save();
 

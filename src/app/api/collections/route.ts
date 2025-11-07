@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     if (sortBy === 'created') sort = { createdAt: -1 };
     if (sortBy === 'updated') sort = { updatedAt: -1 };
 
-    const collections = await Collection.find(query)
+    const collections = await (Collection as any).find(query)
       .sort(sort)
       .lean();
 
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     if (includeProducts) {
       const collectionsWithProducts = await Promise.all(
         collections.map(async (collection) => {
-          const products = await Product.find({ collections: collection._id })
+          const products = await (Product as any).find({ collections: collection._id })
             .select('name price basePrice images category gender featured')
             .lean();
           
@@ -81,7 +81,7 @@ export async function POST(request: Request) {
         .replace(/(^-|-$)/g, '');
     }
 
-    const collection = await Collection.create(data);
+    const collection = await (Collection as any).create(data);
     return NextResponse.json(collection, { status: 201 });
   } catch (error: any) {
     console.error('Error creating collection:', error);

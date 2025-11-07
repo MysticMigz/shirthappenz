@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     await connectToDatabase();
     
     // Verify admin status
-    const user = await User.findOne({ email: session.user.email });
+    const user = await (User as any).findOne({ email: session.user.email });
     if (!user?.isAdmin) {
       return NextResponse.json(
         { error: 'Admin access required' },
@@ -46,13 +46,13 @@ export async function GET(request: NextRequest) {
     
     // Execute query with pagination
     const skip = (page - 1) * limit;
-    const users = await User.find(query)
+    const users = await (User as any).find(query)
       .select('-password') // Exclude password field
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
     
-    const total = await User.countDocuments(query);
+    const total = await (User as any).countDocuments(query);
     
     return NextResponse.json({
       users,
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     await connectToDatabase();
     
     // Verify admin status
-    const adminUser = await User.findOne({ email: session.user.email });
+    const adminUser = await (User as any).findOne({ email: session.user.email });
     if (!adminUser?.isAdmin) {
       return NextResponse.json(
         { error: 'Admin access required' },
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
     const validation = validateAndSanitize(userRegistrationSchema, data);
     if (!validation.success) {
       return NextResponse.json(
-        { error: validation.errors[0] },
+        { error: (validation as any).errors[0] },
         { status: 400 }
       );
     }
@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
     const validatedData = validation.data;
 
     // Check if user already exists
-    const existingUser = await User.findOne({ email: validatedData.email });
+    const existingUser = await (User as any).findOne({ email: validatedData.email });
     if (existingUser) {
       return NextResponse.json(
         { error: 'Email already registered' },
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create new user with validated data
-    const user = await User.create(validatedData);
+    const user = await (User as any).create(validatedData);
     
     // Return user data (excluding password)
     const userData = {

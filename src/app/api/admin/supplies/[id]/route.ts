@@ -20,7 +20,7 @@ export async function GET(
 
     await connectToDatabase();
 
-    const user = await User.findOne({ email: session.user.email });
+    const user = await (User as any).findOne({ email: session.user.email });
     if (!user?.isAdmin) {
       return NextResponse.json(
         { error: 'Admin access required' },
@@ -28,7 +28,7 @@ export async function GET(
       );
     }
 
-    const supply = await Supply.findById(params.id);
+    const supply = await (Supply as any).findById(params.id);
     if (!supply) {
       return NextResponse.json(
         { error: 'Supply not found' },
@@ -61,7 +61,7 @@ export async function PATCH(
 
     await connectToDatabase();
 
-    const user = await User.findOne({ email: session.user.email });
+    const user = await (User as any).findOne({ email: session.user.email });
     if (!user?.isAdmin) {
       return NextResponse.json(
         { error: 'Admin access required' },
@@ -93,7 +93,7 @@ export async function PATCH(
     }
 
     // Find and update the supply
-    const supply = await Supply.findById(params.id);
+    const supply = await (Supply as any).findById(params.id);
     if (!supply) {
       return NextResponse.json(
         { error: 'Supply not found' },
@@ -145,7 +145,7 @@ export async function DELETE(
 
     await connectToDatabase();
 
-    const user = await User.findOne({ email: session.user.email });
+    const user = await (User as any).findOne({ email: session.user.email });
     if (!user?.isAdmin) {
       return NextResponse.json(
         { error: 'Admin access required' },
@@ -153,7 +153,7 @@ export async function DELETE(
       );
     }
 
-    const supply = await Supply.findById(params.id);
+    const supply = await (Supply as any).findById(params.id);
     if (!supply) {
       return NextResponse.json(
         { error: 'Supply not found' },

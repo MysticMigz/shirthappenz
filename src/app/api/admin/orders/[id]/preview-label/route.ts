@@ -8,10 +8,20 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     await connectToDatabase();
     
     // Get the order
-    const order = await Order.findById(params.id);
+    const order = await (Order as any).findById(params.id);
     if (!order) {
       return new Response(JSON.stringify({ error: 'Order not found' }), { 
         status: 404, 
+        headers: { 'Content-Type': 'application/json' } 
+      });
+    }
+
+    // Check if shipping details exist
+    if (!order.shippingDetails) {
+      return new Response(JSON.stringify({ 
+        error: 'Order shipping details are missing' 
+      }), { 
+        status: 400, 
         headers: { 'Content-Type': 'application/json' } 
       });
     }

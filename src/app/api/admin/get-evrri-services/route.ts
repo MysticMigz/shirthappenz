@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
       message: 'EVRi services retrieved successfully',
       carrier_id: 'se-340606',
       carrier_name: 'EVRi - ShipStation Carrier Services',
-      services: services.map(service => ({
+      services: services.map((service: any) => ({
         service_code: service.service_code,
         name: service.name,
         domestic: service.domestic,

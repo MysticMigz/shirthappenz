@@ -41,16 +41,16 @@ export async function GET(request: NextRequest) {
     }
 
     // Get total customers count
-    const totalCustomers = await User.countDocuments({ role: 'customer' });
+    const totalCustomers = await (User as any).countDocuments({ role: 'customer' });
 
     // Get new customers in period
-    const newCustomers = await User.countDocuments({
+    const newCustomers = await (User as any).countDocuments({
       role: 'customer',
       createdAt: { $gte: startDate, $lte: endDate }
     });
 
     // Get orders data (excluding cancelled and refunded orders)
-    const orders = await Order.find({
+    const orders = await (Order as any).find({
       createdAt: { $gte: startDate, $lte: endDate },
       status: { $nin: ['cancelled', 'payment_failed'] },
       $or: [
@@ -95,7 +95,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Get daily new customers for trend
-    const dailyNewCustomers = await User.aggregate([
+    const dailyNewCustomers = await (User as any).aggregate([
       {
         $match: {
           role: 'customer',
@@ -118,8 +118,9 @@ export async function GET(request: NextRequest) {
     const uniqueVisitors = uniqueVisitorsSet.size;
 
     // Visitor-to-Registered Conversion (visitorIds that became users)
-    const usersWithVisitorId = await User.find({ visitorId: { $in: Array.from(uniqueVisitorsSet) } }, 'visitorId');
-    const convertedVisitors = new Set(usersWithVisitorId.map(u => u.visitorId).filter(Boolean));
+    const visitorIdsArray = Array.from(uniqueVisitorsSet);
+    const usersWithVisitorId = await (User as any).find({ visitorId: { $in: visitorIdsArray } }).select('visitorId').lean();
+    const convertedVisitors = new Set(usersWithVisitorId.map((u: any) => u.visitorId).filter(Boolean));
     const visitorToRegistered = convertedVisitors.size;
 
     // Guest Orders vs. Registered Orders

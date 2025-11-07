@@ -5,7 +5,7 @@ import CarouselBackground from '@/backend/models/CarouselBackground';
 export async function GET() {
   try {
     await connectToDatabase();
-    const backgrounds = await CarouselBackground.find({ isActive: true })
+    const backgrounds = await (CarouselBackground as any).find({ isActive: true })
       .sort({ order: 1, createdAt: -1 })
       .lean();
 

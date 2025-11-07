@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
 
     // Get user from database and verify admin status
     await connectToDatabase();
-    const user = await User.findOne({ email: session.user.email });
+    const user = await (User as any).findOne({ email: session.user.email });
     if (!user?.isAdmin) {
       return NextResponse.json(
         { error: 'Admin access required' },
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get all orders (excluding cancelled and refunded orders), sorted by deliveryPriority and createdAt
-    const orders = await Order.find({
+    const orders = await (Order as any).find({
       status: { $nin: ['cancelled', 'payment_failed'] },
       $or: [
         { 'metadata.refundAmount': { $exists: false } },

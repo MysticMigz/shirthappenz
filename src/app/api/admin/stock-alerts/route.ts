@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     }
     
     // Fetch alerts with sorting
-    const alerts = await StockAlert.find(query)
+    const alerts = await (StockAlert as any).find(query)
       .sort({ createdAt: -1 });
     
     return NextResponse.json({ alerts });

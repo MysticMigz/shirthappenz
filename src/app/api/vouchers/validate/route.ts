@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Find the voucher by code
-    const voucher = await Voucher.findOne({ 
+    const voucher = await (Voucher as any).findOne({ 
       code: code.toUpperCase().trim(),
       isActive: true 
     });

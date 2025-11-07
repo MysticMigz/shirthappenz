@@ -10,7 +10,7 @@ export async function GET() {
     const now = new Date();
     console.log('Fetching active vouchers at:', now.toISOString());
     
-    const activeVouchers = await Voucher.find({
+    const activeVouchers = await (Voucher as any).find({
       isActive: true,
       showInDiscountWheel: true,
       validFrom: { $lte: now },

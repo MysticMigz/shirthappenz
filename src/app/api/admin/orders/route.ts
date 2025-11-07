@@ -103,6 +103,6 @@ export async function GET(request: NextRequest) {
   if (sortBy === 'production') sort = { productionStatus: 1, createdAt: -1 };
   if (sortBy === 'date') sort = { createdAt: -1 };
 
-  const orders = await Order.find(query).sort(sort);
+  const orders = await (Order as any).find(query).sort(sort);
   return NextResponse.json({ orders });
 } 

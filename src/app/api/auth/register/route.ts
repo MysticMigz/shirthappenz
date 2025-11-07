@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     const validation = validateAndSanitize(userRegistrationSchema, data);
     if (!validation.success) {
       return NextResponse.json(
-        { error: validation.errors[0] },
+        { error: (validation as any).errors[0] },
         { status: 400 }
       );
     }
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     const validatedData = validation.data;
 
     // Check if user already exists
-    const existingUser = await User.findOne({ email: validatedData.email });
+    const existingUser = await (User as any).findOne({ email: validatedData.email });
     if (existingUser) {
       const ip = request.ip || request.headers.get('x-forwarded-for') || 'unknown';
       const userAgent = request.headers.get('user-agent') || undefined;
@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create new user with validated and sanitized data
-    const user = await User.create({
+    const user = await (User as any).create({
       email: validatedData.email.toLowerCase().trim(),
       password: validatedData.password, // Will be hashed by the User model pre-save hook
       firstName: sanitizeUserInput(validatedData.firstName),

@@ -75,7 +75,7 @@ export async function GET(
 
     let order: any = null;
     if (isPublic) {
-      order = await Order.findOne({ _id: params.id }).lean();
+      order = await (Order as any).findOne({ _id: params.id }).lean();
       order = order as any;
     } else {
       const session = await getServerSession(authOptions);
@@ -85,7 +85,7 @@ export async function GET(
           { status: 401 }
         );
       }
-      order = await Order.findOne({
+      order = await (Order as any).findOne({
         _id: params.id,
         userId: session.user.email,
       }).lean();
@@ -181,7 +181,7 @@ export async function PUT(
 
     // Get user from database
     await connectToDatabase();
-    const user = await User.findOne({ email: session.user.email });
+    const user = await (User as any).findOne({ email: session.user.email });
     if (!user) {
       return NextResponse.json(
         { error: 'User not found' },
@@ -198,7 +198,7 @@ export async function PUT(
     }
 
     const data = await request.json();
-    const order = await Order.findByIdAndUpdate(
+    const order = await (Order as any).findByIdAndUpdate(
       params.id,
       { $set: data },
       { new: true }
@@ -237,7 +237,7 @@ export async function DELETE(
 
     // Get user from database
     await connectToDatabase();
-    const user = await User.findOne({ email: session.user.email });
+    const user = await (User as any).findOne({ email: session.user.email });
     if (!user) {
       return NextResponse.json(
         { error: 'User not found' },
@@ -253,7 +253,7 @@ export async function DELETE(
       );
     }
 
-    const order = await Order.findByIdAndDelete(params.id);
+    const order = await (Order as any).findByIdAndDelete(params.id);
     
     if (!order) {
       return NextResponse.json(

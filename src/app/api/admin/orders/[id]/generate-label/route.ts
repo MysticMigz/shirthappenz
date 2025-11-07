@@ -8,7 +8,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     await connectToDatabase();
     
     // Get the order
-    const order = await Order.findById(params.id);
+    const order = await (Order as any).findById(params.id);
     if (!order) {
       return new Response(JSON.stringify({ error: 'Order not found' }), { 
         status: 404, 
@@ -20,6 +20,16 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     if (order.productionStatus !== 'ready_to_ship') {
       return new Response(JSON.stringify({ 
         error: 'Order must be in "ready_to_ship" status to generate label' 
+      }), { 
+        status: 400, 
+        headers: { 'Content-Type': 'application/json' } 
+      });
+    }
+
+    // Check if shipping details exist
+    if (!order.shippingDetails) {
+      return new Response(JSON.stringify({ 
+        error: 'Order shipping details are missing' 
       }), { 
         status: 400, 
         headers: { 'Content-Type': 'application/json' } 
@@ -76,7 +86,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     
     console.log('📝 Update data being sent to database:', updateData);
 
-    const updatedOrder = await Order.findByIdAndUpdate(
+    const updatedOrder = await (Order as any).findByIdAndUpdate(
       params.id,
       { $set: updateData },
       { new: true }

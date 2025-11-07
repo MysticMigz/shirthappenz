@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Email is required' }, { status: 400 });
     }
     await connectToDatabase();
-    const user = await User.findOne({ email });
+    const user = await (User as any).findOne({ email });
     // Always respond with success to prevent user enumeration
     if (user) {
       // Generate reset token and expiry

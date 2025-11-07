@@ -21,7 +21,7 @@ export async function PUT(
 
     // Get admin user from database
     await connectToDatabase();
-    const adminUser = await User.findOne({ email: session.user.email });
+    const adminUser = await (User as any).findOne({ email: session.user.email });
     if (!adminUser?.isAdmin) {
       return NextResponse.json(
         { error: 'Admin access required' },
@@ -39,7 +39,7 @@ export async function PUT(
     }
 
     // Find user to update
-    const user = await User.findById(params.id);
+    const user = await (User as any).findById(params.id);
     if (!user) {
       return NextResponse.json(
         { error: 'User not found' },

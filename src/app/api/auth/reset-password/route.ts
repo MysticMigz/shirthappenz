@@ -26,7 +26,7 @@ export async function POST(req: Request) {
 
     await connectToDatabase();
 
-    const user = await User.findOne({
+    const user = await (User as any).findOne({
       resetPasswordToken: token,
       resetPasswordExpiry: { $gt: Date.now() },
     });

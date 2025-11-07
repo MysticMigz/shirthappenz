@@ -19,7 +19,7 @@ export async function PUT(request: NextRequest) {
     await connectToDatabase();
 
     // Find user
-    const user = await User.findOne({ email: session.user.email });
+    const user = await (User as any).findOne({ email: session.user.email });
     if (!user) {
       return NextResponse.json(
         { error: 'User not found' },

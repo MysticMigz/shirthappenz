@@ -18,7 +18,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
     // Get user from database and verify admin status
     await connectToDatabase();
-    const user = await User.findOne({ email: session.user.email });
+    const user = await (User as any).findOne({ email: session.user.email });
     if (!user?.isAdmin) {
       return NextResponse.json(
         { error: 'Admin access required' },
@@ -36,7 +36,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       );
     }
 
-    const order = await Order.findByIdAndUpdate(
+    const order = await (Order as any).findByIdAndUpdate(
       id,
       { productionStatus },
       { new: true }

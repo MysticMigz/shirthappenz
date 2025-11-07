@@ -11,7 +11,7 @@ export async function GET(
     await connectToDatabase();
     
     // Check if products are enabled
-    const productsEnabledSetting = await SiteSettings.findOne({ key: 'productsEnabled' });
+    const productsEnabledSetting = await (SiteSettings as any).findOne({ key: 'productsEnabled' });
     const productsEnabled = productsEnabledSetting ? productsEnabledSetting.value !== false : true;
     
     if (!productsEnabled) {
@@ -21,7 +21,7 @@ export async function GET(
       );
     }
     
-    const product = await Product.findById(params.id);
+    const product = await (Product as any).findById(params.id);
     
     if (!product) {
       return NextResponse.json(

@@ -18,7 +18,7 @@ export async function GET(
     const category = searchParams.get('category');
 
     // Verify collection exists
-    const collection = await Collection.findById(params.id);
+    const collection = await (Collection as any).findById(params.id);
     if (!collection) {
       return NextResponse.json(
         { error: 'Collection not found' },
@@ -51,11 +51,11 @@ export async function GET(
     if (sortBy === 'featured') sort = { featured: -1, createdAt: -1 };
 
     // Get total count
-    const total = await Product.countDocuments(query);
+    const total = await (Product as any).countDocuments(query);
     const totalPages = Math.ceil(total / limit);
 
     // Fetch products
-    const products = await Product.find(query)
+    const products = await (Product as any).find(query)
       .sort(sort)
       .skip((page - 1) * limit)
       .limit(limit)
@@ -101,7 +101,7 @@ export async function POST(
     }
 
     // Verify collection exists
-    const collection = await Collection.findById(params.id);
+    const collection = await (Collection as any).findById(params.id);
     if (!collection) {
       return NextResponse.json(
         { error: 'Collection not found' },
@@ -110,7 +110,7 @@ export async function POST(
     }
 
     // Add products to collection
-    const result = await Product.updateMany(
+    const result = await (Product as any).updateMany(
       { _id: { $in: productIds } },
       { $addToSet: { collections: params.id } }
     );
@@ -144,7 +144,7 @@ export async function DELETE(
     }
 
     // Remove products from collection
-    const result = await Product.updateMany(
+    const result = await (Product as any).updateMany(
       { _id: { $in: productIds } },
       { $pull: { collections: params.id } }
     );

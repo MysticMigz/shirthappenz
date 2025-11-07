@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     
     if (key) {
       // Get specific setting
-      const setting = await SiteSettings.findOne({ key });
+      const setting = await (SiteSettings as any).findOne({ key });
       if (!setting) {
         // Return default value if setting doesn't exist
         return NextResponse.json({ 
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     }
     
     // Get all public settings (only return key and value, not admin info)
-    const settings = await SiteSettings.find()
+    const settings = await (SiteSettings as any).find()
       .select('key value')
       .sort({ key: 1 });
     

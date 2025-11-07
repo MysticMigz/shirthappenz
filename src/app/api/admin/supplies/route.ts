@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     await connectToDatabase();
 
     // Get user and check admin status
-    const user = await User.findOne({ email: session.user.email });
+    const user = await (User as any).findOne({ email: session.user.email });
     if (!user?.isAdmin) {
       return NextResponse.json(
         { error: 'Admin access required' },
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    const supplies = await Supply.find(query).sort({ category: 1, name: 1 });
+    const supplies = await (Supply as any).find(query).sort({ category: 1, name: 1 });
     return NextResponse.json(supplies);
 
   } catch (error) {
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     await connectToDatabase();
 
     // Get user and check admin status
-    const user = await User.findOne({ email: session.user.email });
+    const user = await (User as any).findOne({ email: session.user.email });
     if (!user?.isAdmin) {
       return NextResponse.json(
         { error: 'Admin access required' },

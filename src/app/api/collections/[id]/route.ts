@@ -13,7 +13,7 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const includeProducts = searchParams.get('includeProducts') === 'true';
 
-    const collection = await Collection.findById(params.id).lean();
+    const collection = await (Collection as any).findById(params.id).lean();
     
     if (!collection) {
       return NextResponse.json(
@@ -23,7 +23,7 @@ export async function GET(
     }
 
     if (includeProducts) {
-      const products = await Product.find({ collections: params.id })
+      const products = await (Product as any).find({ collections: params.id })
         .select('name price basePrice images category gender featured')
         .lean();
       
@@ -63,7 +63,7 @@ export async function PUT(
         .replace(/(^-|-$)/g, '');
     }
 
-    const collection = await Collection.findByIdAndUpdate(
+    const collection = await (Collection as any).findByIdAndUpdate(
       params.id,
       { ...data, updatedAt: new Date() },
       { new: true, runValidators: true }
@@ -102,7 +102,7 @@ export async function DELETE(
     await connectToDatabase();
     
     // Check if collection has products
-    const productsCount = await Product.countDocuments({ collections: params.id });
+    const productsCount = await (Product as any).countDocuments({ collections: params.id });
     if (productsCount > 0) {
       return NextResponse.json(
         { error: 'Cannot delete collection with products. Remove products first.' },
@@ -110,7 +110,7 @@ export async function DELETE(
       );
     }
 
-    const collection = await Collection.findByIdAndDelete(params.id);
+    const collection = await (Collection as any).findByIdAndDelete(params.id);
     
     if (!collection) {
       return NextResponse.json(

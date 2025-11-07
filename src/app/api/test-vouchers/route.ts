@@ -7,7 +7,7 @@ export async function GET() {
     await connectToDatabase();
 
     // Get all vouchers for debugging
-    const allVouchers = await Voucher.find({}).select('code description validFrom validUntil isActive usageLimit usedCount type value');
+    const allVouchers = await (Voucher as any).find({}).select('code description validFrom validUntil isActive usageLimit usedCount type value');
 
     return NextResponse.json({ 
       total: allVouchers.length,
