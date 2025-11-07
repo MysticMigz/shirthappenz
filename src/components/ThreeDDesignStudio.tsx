@@ -209,7 +209,6 @@ export default function ThreeDDesignStudio({ className = "" }: ThreeDDesignStudi
               ) : (
                 <div className="w-full h-full bg-gray-50 rounded-lg overflow-hidden">
                   <div className="relative w-full h-full">
-                    {console.log('🎨 Rendering 2D editor with designElements:', designElements.length)}
                     <canvas
                       ref={canvasRef}
                       className="w-full h-full cursor-crosshair"
