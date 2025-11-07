@@ -106,11 +106,22 @@ export async function middleware(request: NextRequest) {
       
       console.log('✅ [Middleware] Admin access granted');
     } catch (error) {
-      // If token decoding fails, log but don't redirect - let server-side handle it
-      // This prevents redirect loops if there's a cookie/secret mismatch
-      console.error('❌ [Middleware] Auth error (allowing through to server-side check):', error);
-      // Don't redirect on error - let the admin layout handle authentication
-      return response;
+      // If token decoding fails (e.g., JWT decryption error), it means:
+      // 1. The cookie has an old token encrypted with a different secret, OR
+      // 2. The secret is invalid/too short
+      // In this case, clear the cookie and redirect to login
+      console.error('❌ [Middleware] Token decryption failed (likely old token or invalid secret):', error instanceof Error ? error.message : error);
+      
+      // Clear the invalid cookie by setting it to expire
+      const loginUrl = new URL('/auth/login', request.url);
+      loginUrl.searchParams.set('callbackUrl', request.nextUrl.pathname);
+      const redirectResponse = NextResponse.redirect(loginUrl);
+      
+      // Clear the session token cookie
+      redirectResponse.cookies.delete('next-auth.session-token');
+      redirectResponse.cookies.delete('next-auth.csrf-token');
+      
+      return redirectResponse;
     }
   }
 
