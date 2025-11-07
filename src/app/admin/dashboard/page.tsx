@@ -28,15 +28,21 @@ export default function AdminDashboardPage() {
     console.log('🔍 [AdminDashboard] Session status:', status);
     console.log('🔍 [AdminDashboard] Session data:', session);
     
+    // Only redirect if we're definitely unauthenticated (not loading)
+    // The server-side layout already handles authentication, so we can be less strict here
+    // This prevents redirect loops if the client-side session hasn't loaded yet
     if (status === 'unauthenticated') {
       console.log('❌ [AdminDashboard] Unauthenticated - redirecting to login');
-      router.push('/admin/login');
+      router.push('/auth/login');
     } else if (status === 'authenticated') {
       console.log('✅ [AdminDashboard] Authenticated');
       console.log('🔍 [AdminDashboard] User isAdmin:', session?.user?.isAdmin);
       if (!session?.user?.isAdmin) {
         console.error('❌ [AdminDashboard] User is not admin!');
+        // Don't redirect here - let the server-side layout handle it
       }
+    } else if (status === 'loading') {
+      console.log('⏳ [AdminDashboard] Session loading...');
     }
   }, [status, router, session]);
 
@@ -60,7 +66,9 @@ export default function AdminDashboardPage() {
     }
   }, [session]);
 
-  if (loading) {
+  // Don't show loading spinner if session is still loading
+  // The server-side layout already handles authentication
+  if (loading || status === 'loading') {
     return (
       <div className="min-h-screen bg-gray-100 p-6">
         <div className="max-w-7xl mx-auto">
