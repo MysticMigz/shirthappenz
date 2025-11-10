@@ -178,7 +178,7 @@ const HeroSection = () => {
   // Show loading state while fetching custom backgrounds
   if (isLoading) {
     return (
-      <section className="relative h-80 sm:h-96 md:h-[500px] overflow-hidden carousel-section">
+      <section className="relative h-96 sm:h-[500px] md:h-[600px] lg:h-[700px] overflow-hidden carousel-section">
         <div className="w-full h-full bg-gradient-to-r from-gray-300 to-gray-400 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
@@ -192,7 +192,7 @@ const HeroSection = () => {
   // Show message when no custom slides with images are configured
   if (slides.length === 0) {
     return (
-      <section className="relative h-80 sm:h-96 md:h-[500px] overflow-hidden carousel-section">
+      <section className="relative h-96 sm:h-[500px] md:h-[600px] lg:h-[700px] overflow-hidden carousel-section">
         <div className="w-full h-full bg-gradient-to-r from-gray-800 to-gray-900 flex items-center justify-center">
           <div className="text-center text-white">
             <div className="text-6xl mb-4">🖼️</div>
@@ -206,7 +206,7 @@ const HeroSection = () => {
 
   return (
     <section 
-      className="relative h-80 sm:h-96 md:h-[500px] overflow-hidden carousel-section"
+      className="relative h-96 sm:h-[500px] md:h-[600px] lg:h-[700px] overflow-hidden carousel-section"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -226,14 +226,15 @@ const HeroSection = () => {
                 src={slide.backgroundImage}
                 alt={slide.title || 'Carousel background'}
                 fill
-                className="object-contain sm:object-contain md:object-cover lg:object-cover xl:object-cover"
+                className="object-cover"
                 priority
                 style={{ 
                   zIndex: 1,
                   objectPosition: 'center center'
                 }}
                 sizes="100vw"
-                quality={85}
+                quality={100}
+                unoptimized={false}
                 onLoad={() => console.log('🎨 Background image loaded successfully:', slide.backgroundImage)}
                 onError={(e) => {
                   console.log('❌ Background image failed to load:', slide.backgroundImage);
