@@ -71,7 +71,7 @@ export default function RegisterPage() {
       if (value.length > 0) {
         const result = emailSchema.safeParse(value);
         if (!result.success) {
-          setEmailError(result.error.errors[0]?.message || 'Invalid email format');
+          setEmailError(result.error.issues[0]?.message || 'Invalid email format');
         } else {
           setEmailError('');
         }
@@ -89,7 +89,7 @@ export default function RegisterPage() {
     // Validate email
     const emailValidation = emailSchema.safeParse(formData.email);
     if (!emailValidation.success) {
-      setEmailError(emailValidation.error.errors[0]?.message || 'Invalid email format');
+      setEmailError(emailValidation.error.issues[0]?.message || 'Invalid email format');
       setError('Please enter a valid email address');
       setLoading(false);
       return;
