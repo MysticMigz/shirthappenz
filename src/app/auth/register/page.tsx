@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useVisitorId } from '../../providers';
-import { checkPasswordStrength } from '@/lib/validation';
+import { checkPasswordStrength, emailSchema } from '@/lib/validation';
 import SecurityHeaders from '@/components/SecurityHeaders';
 
 export default function RegisterPage() {
@@ -27,6 +27,7 @@ export default function RegisterPage() {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState('');
   const [passwordStrength, setPasswordStrength] = useState<{
     score: number;
     feedback: string[];
@@ -64,12 +65,35 @@ export default function RegisterPage() {
         setPasswordStrength(null);
       }
     }
+
+    // Validate email when email field changes
+    if (name === 'email') {
+      if (value.length > 0) {
+        const result = emailSchema.safeParse(value);
+        if (!result.success) {
+          setEmailError(result.error.errors[0]?.message || 'Invalid email format');
+        } else {
+          setEmailError('');
+        }
+      } else {
+        setEmailError('');
+      }
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
+
+    // Validate email
+    const emailValidation = emailSchema.safeParse(formData.email);
+    if (!emailValidation.success) {
+      setEmailError(emailValidation.error.errors[0]?.message || 'Invalid email format');
+      setError('Please enter a valid email address');
+      setLoading(false);
+      return;
+    }
 
     // Enhanced validation
     if (formData.password !== formData.confirmPassword) {
@@ -211,8 +235,13 @@ export default function RegisterPage() {
                   required
                   value={formData.email}
                   onChange={handleChange}
-                  className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                  className={`mt-1 appearance-none relative block w-full px-3 py-2 border ${
+                    emailError ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-purple-500 focus:border-purple-500'
+                  } placeholder-gray-500 text-gray-900 rounded-md focus:outline-none sm:text-sm`}
                 />
+                {emailError && (
+                  <p className="mt-1 text-sm text-red-600">{emailError}</p>
+                )}
               </div>
 
               <div>
