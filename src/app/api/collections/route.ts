@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/mongodb';
 import Collection from '@/backend/models/Collection';
 import Product from '@/backend/models/Product';
+import { v2 as cloudinary } from 'cloudinary';
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 export async function GET(request: NextRequest) {
   try {
@@ -62,11 +71,102 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: Request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.isAdmin) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     await connectToDatabase();
-    const data = await request.json();
+    
+    const contentType = request.headers.get('content-type') || '';
+    let collectionData: any = {};
+
+    if (contentType.includes('multipart/form-data')) {
+      // Handle FormData (with image uploads)
+      const formData = await request.formData();
+      const imageFile = formData.get('image') as File;
+      const bannerImageFile = formData.get('bannerImage') as File;
+      
+      collectionData.name = formData.get('name') as string;
+      collectionData.description = formData.get('description') as string;
+      collectionData.slug = formData.get('slug') as string;
+      collectionData.isActive = formData.get('isActive') === 'true';
+      collectionData.featured = formData.get('featured') === 'true';
+      collectionData.sortOrder = parseInt(formData.get('sortOrder') as string) || 0;
+      collectionData.imageAlt = formData.get('imageAlt') as string || '';
+      collectionData.bannerImageAlt = formData.get('bannerImageAlt') as string || '';
+
+      // Upload collection image if provided
+      if (imageFile && imageFile.size > 0) {
+        const arrayBuffer = await imageFile.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+
+        const uploadResult = await new Promise<any>((resolve, reject) => {
+          cloudinary.uploader.upload_stream(
+            { 
+              folder: 'collections',
+              public_id: `collection-${Date.now()}`,
+              transformation: [
+                { width: 800, height: 800, crop: 'fill', quality: 'auto' }
+              ]
+            },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
+            }
+          ).end(buffer);
+        });
+
+        collectionData.image = {
+          url: uploadResult.secure_url,
+          alt: collectionData.imageAlt
+        };
+      } else if (formData.get('imageUrl')) {
+        collectionData.image = {
+          url: formData.get('imageUrl') as string,
+          alt: collectionData.imageAlt
+        };
+      }
+
+      // Upload banner image if provided
+      if (bannerImageFile && bannerImageFile.size > 0) {
+        const arrayBuffer = await bannerImageFile.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+
+        const uploadResult = await new Promise<any>((resolve, reject) => {
+          cloudinary.uploader.upload_stream(
+            { 
+              folder: 'collections',
+              public_id: `collection-banner-${Date.now()}`,
+              transformation: [
+                { width: 1920, height: 600, crop: 'fill', quality: 'auto' }
+              ]
+            },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
+            }
+          ).end(buffer);
+        });
+
+        collectionData.bannerImage = {
+          url: uploadResult.secure_url,
+          alt: collectionData.bannerImageAlt
+        };
+      } else if (formData.get('bannerImageUrl')) {
+        collectionData.bannerImage = {
+          url: formData.get('bannerImageUrl') as string,
+          alt: collectionData.bannerImageAlt
+        };
+      }
+    } else {
+      // Handle JSON (no file uploads)
+      const data = await request.json();
+      collectionData = data;
+    }
     
     // Validate required fields
-    if (!data.name || !data.description) {
+    if (!collectionData.name || !collectionData.description) {
       return NextResponse.json(
         { error: 'Name and description are required' },
         { status: 400 }
@@ -74,14 +174,14 @@ export async function POST(request: Request) {
     }
 
     // Generate slug if not provided
-    if (!data.slug) {
-      data.slug = data.name
+    if (!collectionData.slug) {
+      collectionData.slug = collectionData.name
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/(^-|-$)/g, '');
     }
 
-    const collection = await (Collection as any).create(data);
+    const collection = await (Collection as any).create(collectionData);
     return NextResponse.json(collection, { status: 201 });
   } catch (error: any) {
     console.error('Error creating collection:', error);

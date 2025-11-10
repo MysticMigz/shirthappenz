@@ -60,6 +60,11 @@ export default function CollectionsPage() {
     seoTitle: '',
     seoDescription: ''
   });
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [bannerImageFile, setBannerImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [bannerImagePreview, setBannerImagePreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
     fetchCollections();
@@ -96,25 +101,62 @@ export default function CollectionsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsUploading(true);
     try {
-      const collectionData = {
-        ...formData,
-        image: formData.imageUrl ? { url: formData.imageUrl, alt: formData.imageAlt } : undefined,
-        bannerImage: formData.bannerImageUrl ? { url: formData.bannerImageUrl, alt: formData.bannerImageAlt } : undefined
-      };
-
       const url = editingCollection ? `/api/collections/${editingCollection._id}` : '/api/collections';
       const method = editingCollection ? 'PUT' : 'POST';
 
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(collectionData)
-      });
+      // If there are files to upload, use FormData
+      if (imageFile || bannerImageFile) {
+        const formDataToSend = new FormData();
+        formDataToSend.append('name', formData.name);
+        formDataToSend.append('description', formData.description);
+        formDataToSend.append('slug', formData.slug);
+        formDataToSend.append('isActive', formData.isActive.toString());
+        formDataToSend.append('featured', formData.featured.toString());
+        formDataToSend.append('sortOrder', formData.sortOrder.toString());
+        
+        if (imageFile) {
+          formDataToSend.append('image', imageFile);
+        } else if (formData.imageUrl) {
+          formDataToSend.append('imageUrl', formData.imageUrl);
+        }
+        formDataToSend.append('imageAlt', formData.imageAlt);
+        
+        if (bannerImageFile) {
+          formDataToSend.append('bannerImage', bannerImageFile);
+        } else if (formData.bannerImageUrl) {
+          formDataToSend.append('bannerImageUrl', formData.bannerImageUrl);
+        }
+        formDataToSend.append('bannerImageAlt', formData.bannerImageAlt);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to save collection');
+        const response = await fetch(url, {
+          method,
+          body: formDataToSend
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to save collection');
+        }
+      } else {
+        // No files, use JSON
+        const collectionData = {
+          ...formData,
+          image: formData.imageUrl ? { url: formData.imageUrl, alt: formData.imageAlt } : undefined,
+          bannerImage: formData.bannerImageUrl ? { url: formData.bannerImageUrl, alt: formData.bannerImageAlt } : undefined
+        };
+
+        const response = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(collectionData)
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to save collection');
+        }
       }
 
       await fetchCollections();
@@ -123,6 +165,8 @@ export default function CollectionsPage() {
     } catch (err: any) {
       setError(err.message);
       console.error('Error saving collection:', err);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -142,6 +186,10 @@ export default function CollectionsPage() {
       seoTitle: '',
       seoDescription: ''
     });
+    setImageFile(null);
+    setBannerImageFile(null);
+    setImagePreview(collection.image?.url || null);
+    setBannerImagePreview(collection.bannerImage?.url || null);
     setShowCreateForm(true);
   };
 
@@ -178,8 +226,33 @@ export default function CollectionsPage() {
       seoTitle: '',
       seoDescription: ''
     });
+    setImageFile(null);
+    setBannerImageFile(null);
+    setImagePreview(null);
+    setBannerImagePreview(null);
     setEditingCollection(null);
     setShowCreateForm(false);
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'bannerImage') => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (type === 'image') {
+        setImageFile(file);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setImagePreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        setBannerImageFile(file);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setBannerImagePreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+      }
+    }
   };
 
   const openProductModal = async (collection: Collection) => {
@@ -317,20 +390,64 @@ export default function CollectionsPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Image URL
-                    </label>
-                    <input
-                      type="url"
-                      name="imageUrl"
-                      value={formData.imageUrl}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Collection Image
+                  </label>
+                  {imagePreview ? (
+                    <div className="mb-2">
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="w-full h-48 object-cover rounded-lg border border-gray-300"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImageFile(null);
+                          setImagePreview(null);
+                          setFormData({ ...formData, imageUrl: '' });
+                        }}
+                        className="mt-2 text-sm text-red-600 hover:text-red-800"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : formData.imageUrl ? (
+                    <div className="mb-2">
+                      <p className="text-xs text-gray-500 mb-1">Current image:</p>
+                      <img
+                        src={formData.imageUrl}
+                        alt="Current"
+                        className="w-full h-48 object-cover rounded-lg border border-gray-300"
+                      />
+                    </div>
+                  ) : null}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleImageChange(e, 'image')}
+                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Upload an image or enter URL below</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Image URL (alternative)
+                      </label>
+                      <input
+                        type="url"
+                        name="imageUrl"
+                        value={formData.imageUrl}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        placeholder="Or enter image URL"
+                      />
+                    </div>
                   </div>
-                  <div>
+                  <div className="mt-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Image Alt Text
                     </label>
@@ -344,20 +461,64 @@ export default function CollectionsPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Banner Image URL
-                    </label>
-                    <input
-                      type="url"
-                      name="bannerImageUrl"
-                      value={formData.bannerImageUrl}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Banner Image
+                  </label>
+                  {bannerImagePreview ? (
+                    <div className="mb-2">
+                      <img
+                        src={bannerImagePreview}
+                        alt="Preview"
+                        className="w-full h-48 object-cover rounded-lg border border-gray-300"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBannerImageFile(null);
+                          setBannerImagePreview(null);
+                          setFormData({ ...formData, bannerImageUrl: '' });
+                        }}
+                        className="mt-2 text-sm text-red-600 hover:text-red-800"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : formData.bannerImageUrl ? (
+                    <div className="mb-2">
+                      <p className="text-xs text-gray-500 mb-1">Current banner image:</p>
+                      <img
+                        src={formData.bannerImageUrl}
+                        alt="Current"
+                        className="w-full h-48 object-cover rounded-lg border border-gray-300"
+                      />
+                    </div>
+                  ) : null}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleImageChange(e, 'bannerImage')}
+                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Upload an image or enter URL below</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Banner Image URL (alternative)
+                      </label>
+                      <input
+                        type="url"
+                        name="bannerImageUrl"
+                        value={formData.bannerImageUrl}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        placeholder="Or enter image URL"
+                      />
+                    </div>
                   </div>
-                  <div>
+                  <div className="mt-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Banner Image Alt Text
                     </label>
@@ -418,9 +579,10 @@ export default function CollectionsPage() {
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                    disabled={isUploading}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {editingCollection ? 'Update' : 'Create'} Collection
+                    {isUploading ? 'Uploading...' : editingCollection ? 'Update' : 'Create'} Collection
                   </button>
                 </div>
               </form>
