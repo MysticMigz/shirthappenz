@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 
@@ -91,22 +91,44 @@ const HeroSection = () => {
     loadCustomBackgrounds();
   }, []);
 
-  // Create slides from custom backgrounds
-  const slides: Slide[] = customBackgrounds
-    .filter(bg => bg.isActive && bg.imageUrl)
-    .sort((a, b) => a.order - b.order)
-    .map(bg => ({
-      id: bg.slideId,
-      title: bg.title,
-      subtitle: bg.subtitle,
-      description: bg.description,
-      buttonText: bg.buttonText,
-      buttonLink: bg.buttonLink,
-      bgGradient: bg.bgGradient,
-      textColor: bg.textColor,
-      buttonColor: bg.buttonColor,
-      backgroundImage: bg.imageUrl
-    }));
+  // Create slides from custom backgrounds (memoized for performance)
+  const slides: Slide[] = useMemo(() => {
+    return customBackgrounds
+      .filter(bg => bg.isActive && bg.imageUrl)
+      .sort((a, b) => a.order - b.order)
+      .map(bg => ({
+        id: bg.slideId,
+        title: bg.title,
+        subtitle: bg.subtitle,
+        description: bg.description,
+        buttonText: bg.buttonText,
+        buttonLink: bg.buttonLink,
+        bgGradient: bg.bgGradient,
+        textColor: bg.textColor,
+        buttonColor: bg.buttonColor,
+        backgroundImage: bg.imageUrl
+      }));
+  }, [customBackgrounds]);
+
+  // Preload next slide image for smoother transitions
+  useEffect(() => {
+    if (slides.length > 0) {
+      const nextSlideIndex = (currentSlide + 1) % slides.length;
+      const nextSlide = slides[nextSlideIndex];
+      if (nextSlide?.backgroundImage) {
+        const link = document.createElement('link');
+        link.rel = 'preload';
+        link.as = 'image';
+        link.href = nextSlide.backgroundImage;
+        document.head.appendChild(link);
+        return () => {
+          if (document.head.contains(link)) {
+            document.head.removeChild(link);
+          }
+        };
+      }
+    }
+  }, [currentSlide, slides]);
 
   console.log('🎨 Created slides:', slides.length, slides);
   slides.forEach((slide, index) => {
@@ -211,72 +233,85 @@ const HeroSection = () => {
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {slides.map((slide, index) => (
-        <div
-          key={slide.id}
-          className={`absolute inset-0 transition-transform duration-500 ease-in-out ${
-            index === currentSlide ? 'translate-x-0' : 
-            index < currentSlide ? '-translate-x-full' : 'translate-x-full'
-          }`}
-        >
-          <div className="w-full h-full relative">
-            {/* Background Image using Next.js Image component with improved scaling */}
-            {slide.backgroundImage ? (
-              <Image
-                src={slide.backgroundImage}
-                alt={slide.title || 'Carousel background'}
-                fill
-                className="object-cover"
-                priority
-                style={{ 
-                  zIndex: 1,
-                  objectPosition: 'center center'
-                }}
-                sizes="100vw"
-                quality={100}
-                unoptimized={false}
-                onLoad={() => console.log('🎨 Background image loaded successfully:', slide.backgroundImage)}
-                onError={(e) => {
-                  console.log('❌ Background image failed to load:', slide.backgroundImage);
-                  console.log('❌ Error details:', e);
-                }}
-              />
-            ) : (
-              <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                <div className="bg-gradient-to-r from-purple-600 via-blue-500 to-orange-400 text-white brand-text text-lg px-4 py-2 rounded-lg">
-                  MR SHIRT PERSONALISATION LTD
-                </div>
-              </div>
-            )}
-            {/* Overlay for better text readability */}
-            <div className="absolute inset-0 bg-black bg-opacity-40"></div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="container mx-auto px-4 text-center relative z-10">
-                <div className={`max-w-3xl mx-auto ${slide.textColor || 'text-white'}`}>
-                  <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-6xl font-bold mb-2 sm:mb-4 leading-tight">
-                    {slide.title || 'Custom Design'}
-                  </h1>
-                  <p className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-semibold mb-1 sm:mb-2">
-                    {slide.subtitle || 'Explore Our Products'}
-                  </p>
-                  <p className="text-sm sm:text-base md:text-lg lg:text-xl mb-4 sm:mb-6 lg:mb-8 opacity-90 px-2">
-                    {slide.description || 'Discover our amazing collection'}
-                  </p>
-                  <div className="space-y-2 sm:space-y-4">
-                    <Link
-                      href={productsEnabled === true ? (slide.buttonLink || '/products') : '/custom-orders'}
-                      className={`inline-block px-6 sm:px-8 py-3 sm:py-4 rounded-lg font-bold text-sm sm:text-base md:text-lg transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 touch-manipulation carousel-cta-button ${slide.buttonColor || 'bg-white text-gray-900 hover:bg-gray-100'}`}
-                    >
-                      {productsEnabled === true ? (slide.buttonText || 'EXPLORE') : 'CUSTOM ORDERS'}
-                    </Link>
-                    <p className="text-xs sm:text-sm opacity-80">No minimum order</p>
+      {slides.map((slide, index) => {
+        const isCurrentSlide = index === currentSlide;
+        const isNextSlide = index === (currentSlide + 1) % slides.length;
+        const isVisible = isCurrentSlide || isNextSlide;
+        
+        return (
+          <div
+            key={slide.id}
+            className={`absolute inset-0 transition-transform duration-500 ease-in-out ${
+              isCurrentSlide ? 'translate-x-0' : 
+              index < currentSlide ? '-translate-x-full' : 'translate-x-full'
+            }`}
+          >
+            <div className="w-full h-full relative">
+              {/* Background Image using Next.js Image component with optimized loading */}
+              {slide.backgroundImage ? (
+                <Image
+                  src={slide.backgroundImage}
+                  alt={slide.title || 'Carousel background'}
+                  fill
+                  className="object-cover"
+                  priority={isCurrentSlide}
+                  loading={isCurrentSlide ? undefined : 'lazy'}
+                  style={{ 
+                    zIndex: 1,
+                    objectPosition: 'center center'
+                  }}
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 100vw, 1920px"
+                  quality={85}
+                  unoptimized={false}
+                  onLoad={() => {
+                    if (isCurrentSlide) {
+                      console.log('🎨 Background image loaded successfully:', slide.backgroundImage);
+                    }
+                  }}
+                  onError={(e) => {
+                    console.log('❌ Background image failed to load:', slide.backgroundImage);
+                    console.log('❌ Error details:', e);
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                  <div className="bg-gradient-to-r from-purple-600 via-blue-500 to-orange-400 text-white brand-text text-lg px-4 py-2 rounded-lg">
+                    MR SHIRT PERSONALISATION LTD
                   </div>
                 </div>
-              </div>
+              )}
+              {/* Overlay for better text readability */}
+              <div className="absolute inset-0 bg-black bg-opacity-40"></div>
+              {isCurrentSlide && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="container mx-auto px-4 text-center relative z-10">
+                    <div className={`max-w-3xl mx-auto ${slide.textColor || 'text-white'}`}>
+                      <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-6xl font-bold mb-2 sm:mb-4 leading-tight">
+                        {slide.title || 'Custom Design'}
+                      </h1>
+                      <p className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-semibold mb-1 sm:mb-2">
+                        {slide.subtitle || 'Explore Our Products'}
+                      </p>
+                      <p className="text-sm sm:text-base md:text-lg lg:text-xl mb-4 sm:mb-6 lg:mb-8 opacity-90 px-2">
+                        {slide.description || 'Discover our amazing collection'}
+                      </p>
+                      <div className="space-y-2 sm:space-y-4">
+                        <Link
+                          href={productsEnabled === true ? (slide.buttonLink || '/products') : '/custom-orders'}
+                          className={`inline-block px-6 sm:px-8 py-3 sm:py-4 rounded-lg font-bold text-sm sm:text-base md:text-lg transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 touch-manipulation carousel-cta-button ${slide.buttonColor || 'bg-white text-gray-900 hover:bg-gray-100'}`}
+                        >
+                          {productsEnabled === true ? (slide.buttonText || 'EXPLORE') : 'CUSTOM ORDERS'}
+                        </Link>
+                        <p className="text-xs sm:text-sm opacity-80">No minimum order</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
 
       {/* Navigation arrows - Mobile optimized */}
       <button

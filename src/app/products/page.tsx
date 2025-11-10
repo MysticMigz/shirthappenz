@@ -596,10 +596,15 @@ export default function ProductsPage() {
                   >
                     <div className="aspect-video bg-gray-100 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
                       {collection.image ? (
-                        <img
+                        <Image
                           src={collection.image.url}
                           alt={collection.image.alt || collection.name}
+                          width={400}
+                          height={225}
                           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                          loading="lazy"
+                          quality={85}
+                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                         />
                       ) : (
                         <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
