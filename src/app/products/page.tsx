@@ -120,8 +120,13 @@ export default function ProductsPage() {
   useEffect(() => {
     // Only fetch category visibility and collections if products are enabled
     if (productsEnabled) {
-      fetchCategoryVisibility();
-      fetchCollections();
+      // Fetch in parallel for better performance
+      Promise.all([
+        fetchCategoryVisibility(),
+        fetchCollections()
+      ]).catch(err => {
+        console.error('Error fetching category visibility or collections:', err);
+      });
     }
   }, [selectedGender, productsEnabled]);
 
@@ -193,12 +198,11 @@ export default function ProductsPage() {
     // Only fetch products if they are enabled
     if (productsEnabled) {
       fetchProducts();
+    } else if (productsEnabled === false) {
+      // If products are disabled, set loading to false immediately
+      setLoading(false);
     }
   }, [searchQuery, selectedCategory, selectedCollection, priceRange, sortBy, productsEnabled]);
-
-  useEffect(() => {
-    fetchCategoryVisibility();
-  }, [selectedGender]);
 
   // Refresh category visibility when products change to ensure proper filtering
   useEffect(() => {
@@ -307,6 +311,8 @@ export default function ProductsPage() {
 
   const fetchProducts = async () => {
     try {
+      setLoading(true);
+      setError(null);
       let url = '/api/products?';
       const params = new URLSearchParams();
       
@@ -319,6 +325,7 @@ export default function ProductsPage() {
         const data = await response.json();
         setProducts(data.products || []);
         setError(null);
+        setLoading(false);
         return;
       }
       if (priceRange.min) params.append('minPrice', priceRange.min.toString());
@@ -532,20 +539,7 @@ export default function ProductsPage() {
     );
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <main className="flex-grow container mx-auto px-4 py-4 sm:py-8">
-          <div className="flex flex-col justify-center items-center h-64 space-y-4">
-            <div className="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-t-2 border-b-2 border-purple-500"></div>
-            <p className="text-sm sm:text-base text-gray-600">Loading products...</p>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
+  // Removed the full-page loading state - we'll show skeleton loaders in the main content instead
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -752,8 +746,34 @@ export default function ProductsPage() {
         )}
 
         {/* Products Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
-          {filteredProducts.map((product) => (
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
+            {Array.from({ length: 8 }).map((_, index) => (
+              <div key={index} className="bg-white rounded-lg shadow-sm overflow-hidden animate-pulse">
+                <div className="aspect-square bg-gray-200"></div>
+                <div className="p-4">
+                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-3 bg-gray-200 rounded w-2/3 mb-3"></div>
+                  <div className="h-3 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-3 bg-gray-200 rounded w-3/4 mb-3"></div>
+                  <div className="flex gap-2 mb-3">
+                    <div className="w-4 h-4 bg-gray-200 rounded-full"></div>
+                    <div className="w-4 h-4 bg-gray-200 rounded-full"></div>
+                    <div className="w-4 h-4 bg-gray-200 rounded-full"></div>
+                  </div>
+                  <div className="flex gap-1 mb-3">
+                    <div className="h-6 w-8 bg-gray-200 rounded"></div>
+                    <div className="h-6 w-8 bg-gray-200 rounded"></div>
+                    <div className="h-6 w-8 bg-gray-200 rounded"></div>
+                  </div>
+                  <div className="h-5 bg-gray-200 rounded w-1/3"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
+            {filteredProducts.map((product) => (
             <div
               key={product._id}
               className={`group bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-all duration-300 ${
@@ -924,9 +944,10 @@ export default function ProductsPage() {
               </div>
             </div>
           ))}
-        </div>
+          </div>
+        )}
 
-        {filteredProducts.length === 0 && (
+        {!loading && filteredProducts.length === 0 && (
           <div className="text-center py-12">
             <p className="text-gray-500 text-lg">
               No products found matching your criteria.
