@@ -9,6 +9,7 @@ import { FaUpload, FaTrash, FaLink, FaPlus } from 'react-icons/fa';
 interface ProductFormData {
   name: string;
   description: string;
+  productDetails: string;
   price: string;
   category: string;
   gender: string;
@@ -48,6 +49,7 @@ export default function NewProduct() {
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
     description: '',
+    productDetails: '',
     price: '',
     category: '',
     gender: '',
@@ -294,6 +296,7 @@ export default function NewProduct() {
       // Add basic product data
       formDataToSend.append('name', formData.name);
       formDataToSend.append('description', formData.description);
+      formDataToSend.append('productDetails', formData.productDetails || '');
       formDataToSend.append('price', formData.price);
       formDataToSend.append('basePrice', formData.basePrice);
       formDataToSend.append('category', formData.category);
@@ -616,6 +619,23 @@ export default function NewProduct() {
                 {fieldErrors.description && (
                   <p className="mt-1 text-sm text-red-600">{fieldErrors.description}</p>
                 )}
+              </div>
+
+              <div>
+                <label htmlFor="productDetails" className="block text-sm font-medium text-gray-700">
+                  Product Details
+                </label>
+                <textarea
+                  name="productDetails"
+                  value={formData.productDetails}
+                  onChange={handleInputChange}
+                  rows={4}
+                  placeholder="Enter product details that will be displayed in the accordion (e.g., material, care instructions, specifications)"
+                  className="mt-1 block w-full rounded-md shadow-sm sm:text-sm border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  This information will be displayed in the collapsible "Product Details" section on the product page.
+                </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

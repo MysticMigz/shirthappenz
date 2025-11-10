@@ -27,8 +27,7 @@ const siteSettingsSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Ensure unique keys
-siteSettingsSchema.index({ key: 1 }, { unique: true });
+// Note: unique: true on the 'key' field already creates the index, so no need for explicit index definition
 
 const SiteSettings = mongoose.models.SiteSettings || mongoose.model('SiteSettings', siteSettingsSchema);
 

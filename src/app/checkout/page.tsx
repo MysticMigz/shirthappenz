@@ -283,9 +283,9 @@ export default function CheckoutPage() {
   const vatIncluded = Number((finalTotal * 0.2).toFixed(2));
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 py-12 px-4">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
       <Header />
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto py-8 px-4">
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           <div className="p-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-8">Complete Your Purchase</h1>

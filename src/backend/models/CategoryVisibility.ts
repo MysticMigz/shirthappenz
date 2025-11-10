@@ -55,8 +55,7 @@ const categoryVisibilitySchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Ensure unique category names
-categoryVisibilitySchema.index({ category: 1 }, { unique: true });
+// Note: unique: true on the 'category' field already creates the index, so no need for explicit index definition
 
 // Method to toggle visibility
 categoryVisibilitySchema.methods.toggleVisibility = function() {

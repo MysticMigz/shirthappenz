@@ -22,6 +22,8 @@ interface Product {
   featured: boolean;
   customizable: boolean;
   rrp?: number;
+  barcode?: string;
+  productDetails?: string;
 }
 
 // Size order mapping for correct sorting
@@ -62,6 +64,7 @@ export default function ProductPage({ params }: { params: { id: string } }) {
   const [cartMessage, setCartMessage] = useState<{ message: string; type: 'success' | 'warning' | 'error' } | null>(null);
   const [productsEnabled, setProductsEnabled] = useState<boolean | null>(null); // null = checking
   const [checkingEnabled, setCheckingEnabled] = useState(true);
+  const [showProductDetails, setShowProductDetails] = useState(false);
   const { addItem } = useCart();
 
   // Check if products are enabled
@@ -96,6 +99,8 @@ export default function ProductPage({ params }: { params: { id: string } }) {
 
     const fetchProduct = async () => {
       try {
+        setLoading(true);
+        setError('');
         const response = await fetch(`/api/products/${params.id}`);
         if (!response.ok) throw new Error('Failed to fetch product');
         const data = await response.json();
@@ -337,32 +342,7 @@ export default function ProductPage({ params }: { params: { id: string } }) {
     );
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <div className="flex-grow flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
-        </div>
-        <Footer />
-      </div>
-    );
-  }
-
-  if (error || !product) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <div className="flex-grow flex flex-col items-center justify-center">
-          <p className="text-red-600 mb-4">{error || 'Product not found'}</p>
-          <Link href="/" className="text-purple-600 hover:text-purple-800">
-            Return to Home
-          </Link>
-        </div>
-        <Footer />
-      </div>
-    );
-  }
+  // Removed full-page loading and error states - we'll show skeleton loaders in the main content instead
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -382,9 +362,70 @@ export default function ProductPage({ params }: { params: { id: string } }) {
         )}
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Product Images */}
-            <div className="relative bg-gray-100 rounded-lg overflow-hidden">
+          {loading ? (
+            // Skeleton loader for product page
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Image skeleton */}
+              <div>
+                <div className="relative bg-gray-100 rounded-lg overflow-hidden animate-pulse">
+                  <div className="w-full aspect-square bg-gray-200"></div>
+                </div>
+                {/* Product Details Accordion Skeleton */}
+                <div className="mt-4 border border-gray-200 rounded-lg overflow-hidden animate-pulse">
+                  <div className="w-full px-4 py-3 bg-gray-100">
+                    <div className="h-4 bg-gray-200 rounded w-32"></div>
+                  </div>
+                </div>
+              </div>
+              {/* Details skeleton */}
+              <div className="flex flex-col space-y-6">
+                <div className="h-8 bg-gray-200 rounded w-3/4 animate-pulse"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/2 animate-pulse"></div>
+                <div className="h-6 bg-gray-200 rounded w-1/4 animate-pulse"></div>
+                <div className="space-y-2">
+                  <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
+                  <div className="h-4 bg-gray-200 rounded w-5/6 animate-pulse"></div>
+                  <div className="h-4 bg-gray-200 rounded w-4/6 animate-pulse"></div>
+                </div>
+                <div>
+                  <div className="h-4 bg-gray-200 rounded w-24 mb-2 animate-pulse"></div>
+                  <div className="flex gap-2">
+                    <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse"></div>
+                    <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse"></div>
+                    <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse"></div>
+                  </div>
+                </div>
+                <div>
+                  <div className="h-4 bg-gray-200 rounded w-32 mb-2 animate-pulse"></div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+                    <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+                    <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+                  </div>
+                </div>
+                <div>
+                  <div className="h-4 bg-gray-200 rounded w-24 mb-2 animate-pulse"></div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-10 h-10 bg-gray-200 rounded animate-pulse"></div>
+                    <div className="w-16 h-10 bg-gray-200 rounded animate-pulse"></div>
+                    <div className="w-10 h-10 bg-gray-200 rounded animate-pulse"></div>
+                  </div>
+                </div>
+                <div className="h-12 bg-gray-200 rounded w-full animate-pulse"></div>
+              </div>
+            </div>
+          ) : error || !product ? (
+            // Error state - only show when loading is complete
+            <div className="flex flex-col items-center justify-center py-12">
+              <p className="text-red-600 mb-4 text-lg">{error || 'Product not found'}</p>
+              <Link href="/products" className="text-purple-600 hover:text-purple-800 underline">
+                Return to Products
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Product Images */}
+              <div className="relative bg-gray-100 rounded-lg overflow-hidden">
               {(() => {
                 const productImage = getProductImage();
                 return productImage ? (
@@ -405,6 +446,40 @@ export default function ProductPage({ params }: { params: { id: string } }) {
                   </div>
                 );
               })()}
+              
+              {/* Product Details Accordion */}
+              <div className="mt-4 border border-gray-200 rounded-lg overflow-hidden">
+                <button
+                  onClick={() => setShowProductDetails(!showProductDetails)}
+                  className="w-full px-4 py-3 flex items-center justify-between bg-white hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+                  aria-expanded={showProductDetails}
+                >
+                  <span className="text-sm font-medium text-gray-900">Product Details</span>
+                  <svg
+                    className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${
+                      showProductDetails ? 'transform rotate-180' : ''
+                    }`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {showProductDetails && (
+                  <div className="px-4 py-4 bg-gray-50 border-t border-gray-200">
+                    {product.productDetails ? (
+                      <div className="text-sm text-gray-700 whitespace-pre-line">
+                        {product.productDetails}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-500 italic">
+                        No product details available.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Product Details */}
@@ -608,7 +683,7 @@ export default function ProductPage({ params }: { params: { id: string } }) {
                   w-full py-3 px-4 rounded-md text-white font-medium transition-colors duration-200
                   ${!selectedSize || !selectedColor || isOutOfStock(selectedSize) || addingToCart
                     ? 'bg-gray-400 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-[var(--brand-red)] to-[var(--brand-blue)] hover:brightness-110'
+                    : 'bg-gradient-to-r from-[var(--brand-red)] to-[var(--brand-blue)] hover:brightness-110 cursor-pointer'
                   }
                 `}
               >
@@ -653,6 +728,7 @@ export default function ProductPage({ params }: { params: { id: string } }) {
               )}
             </div>
           </div>
+          )}
         </div>
       </main>
       <Footer />

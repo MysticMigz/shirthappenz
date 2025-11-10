@@ -286,14 +286,14 @@ export default function CartPage() {
                       className={`w-full py-3 px-4 rounded-md text-black font-medium
                         ${isProcessing
                           ? 'bg-gray-400 cursor-not-allowed'
-                          : 'bg-white hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent'
+                          : 'bg-white hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent cursor-pointer'
                         }`}
                     >
                       {isProcessing ? 'Processing...' : 'Proceed to Checkout'}
                     </button>
                     <button
                       onClick={clearCart}
-                      className="w-full mt-2 py-3 px-4 rounded-md border border-gray-300 text-gray-700 font-medium hover:bg-gray-50"
+                      className="w-full mt-2 py-3 px-4 rounded-md border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 cursor-pointer"
                     >
                       Clear Cart
                     </button>

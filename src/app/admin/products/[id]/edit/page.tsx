@@ -14,6 +14,7 @@ import jsPDF from 'jspdf';
 interface ProductFormData {
   name: string;
   description: string;
+  productDetails?: string;
   price: number;
   category: string;
   gender: string;
@@ -47,6 +48,7 @@ export default function EditProduct({ params }: { params: { id: string } }) {
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
     description: '',
+    productDetails: '',
     price: 0,
     category: '',
     gender: '',
@@ -492,6 +494,23 @@ export default function EditProduct({ params }: { params: { id: string } }) {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   required
                 />
+              </div>
+
+              <div>
+                <label htmlFor="productDetails" className="block text-sm font-medium text-gray-700 mb-1">
+                  Product Details
+                </label>
+                <textarea
+                  name="productDetails"
+                  value={formData.productDetails || ''}
+                  onChange={handleInputChange}
+                  rows={4}
+                  placeholder="Enter product details that will be displayed in the accordion (e.g., material, care instructions, specifications)"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  This information will be displayed in the collapsible "Product Details" section on the product page.
+                </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

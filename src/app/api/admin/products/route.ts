@@ -131,6 +131,7 @@ export async function POST(request: NextRequest) {
       productData = {
         name: formData.get('name') as string,
         description: formData.get('description') as string,
+        productDetails: formData.get('productDetails') as string || '',
         price: Number(formData.get('price')),
         basePrice: Number(formData.get('basePrice')),
         category: formData.get('category') as string,

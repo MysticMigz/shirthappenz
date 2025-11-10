@@ -110,6 +110,10 @@ const productSchema = new mongoose.Schema({
       sizeCode: { type: String, required: true },
     }
   ],
+  productDetails: {
+    type: String,
+    default: ''
+  },
   collections: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Collection'
