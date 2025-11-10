@@ -37,6 +37,8 @@ export default function FrontOfShopPage() {
   const [selectedSlide, setSelectedSlide] = useState<number | null>(null);
   const [showSlideSelector, setShowSlideSelector] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [replacementImage, setReplacementImage] = useState<File | null>(null);
+  const [replacementImagePreview, setReplacementImagePreview] = useState<string | null>(null);
 
   // Load backgrounds on component mount
   useEffect(() => {
@@ -187,6 +189,8 @@ export default function FrontOfShopPage() {
       textColor: background.textColor,
       buttonColor: background.buttonColor || 'bg-white text-gray-900',
     });
+    setReplacementImage(null);
+    setReplacementImagePreview(null);
     console.log('✏️ Edit form set with buttonColor:', background.buttonColor || 'bg-white text-gray-900');
   };
 
@@ -195,15 +199,38 @@ export default function FrontOfShopPage() {
 
     console.log('💾 Saving edit with data:', editForm);
     console.log('💾 Button color being sent:', editForm.buttonColor);
+    console.log('💾 Replacement image:', replacementImage);
 
     try {
-      const response = await fetch(`/api/admin/carousel-backgrounds/${editingId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(editForm),
-      });
+      let response;
+      
+      // If there's a replacement image, use FormData
+      if (replacementImage) {
+        const formData = new FormData();
+        formData.append('image', replacementImage);
+        formData.append('title', editForm.title);
+        formData.append('subtitle', editForm.subtitle);
+        formData.append('description', editForm.description);
+        formData.append('buttonText', editForm.buttonText);
+        formData.append('buttonLink', editForm.buttonLink);
+        formData.append('bgGradient', editForm.bgGradient);
+        formData.append('textColor', editForm.textColor);
+        formData.append('buttonColor', editForm.buttonColor);
+
+        response = await fetch(`/api/admin/carousel-backgrounds/${editingId}`, {
+          method: 'PATCH',
+          body: formData,
+        });
+      } else {
+        // Otherwise, use JSON
+        response = await fetch(`/api/admin/carousel-backgrounds/${editingId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(editForm),
+        });
+      }
 
       if (response.ok) {
         await loadBackgrounds();
@@ -218,9 +245,12 @@ export default function FrontOfShopPage() {
           textColor: '',
           buttonColor: ''
         });
+        setReplacementImage(null);
+        setReplacementImagePreview(null);
         alert('Background updated successfully!');
       } else {
-        alert('Error updating background');
+        const errorData = await response.json();
+        alert(errorData.error || 'Error updating background');
       }
     } catch (error) {
       console.error('Error updating:', error);
@@ -240,6 +270,21 @@ export default function FrontOfShopPage() {
       textColor: '',
       buttonColor: ''
     });
+    setReplacementImage(null);
+    setReplacementImagePreview(null);
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setReplacementImage(file);
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setReplacementImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handlePreview = (imageUrl: string) => {
@@ -419,6 +464,53 @@ export default function FrontOfShopPage() {
                   <div className="p-4">
                     {editingId === background.id ? (
                       <div className="space-y-3">
+                        {/* Image Replacement Section */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Replace Banner Image
+                          </label>
+                          {replacementImagePreview ? (
+                            <div className="mb-2">
+                              <img
+                                src={replacementImagePreview}
+                                alt="Preview"
+                                className="w-full h-32 object-cover rounded-md border border-gray-300"
+                              />
+                              <button
+                                onClick={() => {
+                                  setReplacementImage(null);
+                                  setReplacementImagePreview(null);
+                                }}
+                                className="mt-2 text-sm text-red-600 hover:text-red-800"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="mb-2">
+                              {background.imageUrl && (
+                                <div className="mb-2">
+                                  <p className="text-xs text-gray-500 mb-1">Current image:</p>
+                                  <img
+                                    src={background.imageUrl}
+                                    alt="Current"
+                                    className="w-full h-32 object-cover rounded-md border border-gray-300"
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageChange}
+                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">
+                            Leave empty to keep current image. Recommended size: 1920x1080px
+                          </p>
+                        </div>
+                        
                         <div className="grid grid-cols-2 gap-3">
                           <input
                             type="text"
