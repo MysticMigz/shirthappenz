@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import ProductImageOverlay from './ProductImageOverlay';
 
 interface Product {
   _id: string;
@@ -16,6 +17,8 @@ interface Product {
   colors: Array<{ name: string; hexCode: string }>;
   featured: boolean;
   customizable: boolean;
+  mockupImage?: { url: string; alt: string };
+  designImage?: { url: string; alt: string; position?: { x: number; y: number }; scale?: number; rotation?: number };
 }
 
 const ProductGrid = () => {
@@ -135,7 +138,13 @@ const ProductGrid = () => {
                     </div>
                   )}
                   <div className="relative aspect-square bg-gray-100">
-                    {product.images[0] ? (
+                    {product.mockupImage || product.designImage ? (
+                      <ProductImageOverlay
+                        mockupImage={product.mockupImage}
+                        designImage={product.designImage}
+                        fallbackImage={product.images[0] ? { url: product.images[0].url, alt: product.images[0].alt || product.name } : undefined}
+                      />
+                    ) : product.images[0] ? (
                       <Image
                         src={product.images[0].url}
                         alt={product.images[0].alt || product.name}

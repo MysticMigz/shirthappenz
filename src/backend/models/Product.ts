@@ -20,6 +20,20 @@ const productSchema = new mongoose.Schema({
     alt: String,
     color: String  // Associate image with specific color
   }],
+  mockupImage: {
+    url: String,
+    alt: String
+  },
+  designImage: {
+    url: String,
+    alt: String,
+    position: {
+      x: { type: Number, default: 0 }, // Position in percentage (-50 to 50)
+      y: { type: Number, default: 0 }  // Position in percentage (-50 to 50)
+    },
+    scale: { type: Number, default: 100 }, // Scale in percentage (10 to 200)
+    rotation: { type: Number, default: 0 } // Rotation in degrees (-180 to 180)
+  },
   category: {
     type: String,
     required: [true, 'Product category is required'],

@@ -184,6 +184,80 @@ export async function POST(request: NextRequest) {
       if (urlImagesData) {
         urlImages = JSON.parse(urlImagesData as string);
       }
+
+      // Handle mockup image
+      let mockupImageData: { url: string; alt: string } | undefined;
+      const mockupImageFile = formData.get('mockupImage') as File | null;
+      if (mockupImageFile && mockupImageFile.size > 0) {
+        const uploadFormData = new FormData();
+        uploadFormData.append('file', mockupImageFile);
+        const uploadResponse = await fetch(`${process.env.NEXTAUTH_URL || 'https://mrshirtpersonalisation.co.uk'}/api/upload`, {
+          method: 'POST',
+          body: uploadFormData,
+        });
+        if (uploadResponse.ok) {
+          const uploadData = await uploadResponse.json();
+          mockupImageData = {
+            url: uploadData.url,
+            alt: (formData.get('mockupImageAlt') as string) || 'Product mockup'
+          };
+        }
+      } else {
+        const mockupImageUrl = formData.get('mockupImageUrl') as string;
+        if (mockupImageUrl) {
+          mockupImageData = {
+            url: mockupImageUrl,
+            alt: (formData.get('mockupImageAlt') as string) || 'Product mockup'
+          };
+        }
+      }
+
+      // Handle design image
+      let designImageData: { url: string; alt: string; position?: { x: number; y: number }; scale?: number; rotation?: number } | undefined;
+      const designImageFile = formData.get('designImage') as File | null;
+      if (designImageFile && designImageFile.size > 0) {
+        const uploadFormData = new FormData();
+        uploadFormData.append('file', designImageFile);
+        const uploadResponse = await fetch(`${process.env.NEXTAUTH_URL || 'https://mrshirtpersonalisation.co.uk'}/api/upload`, {
+          method: 'POST',
+          body: uploadFormData,
+        });
+        if (uploadResponse.ok) {
+          const uploadData = await uploadResponse.json();
+          designImageData = {
+            url: uploadData.url,
+            alt: (formData.get('designImageAlt') as string) || 'Product design',
+            position: {
+              x: parseFloat((formData.get('designPositionX') as string) || '0'),
+              y: parseFloat((formData.get('designPositionY') as string) || '0')
+            },
+            scale: parseFloat((formData.get('designScale') as string) || '100'),
+            rotation: parseFloat((formData.get('designRotation') as string) || '0')
+          };
+        }
+      } else {
+        const designImageUrl = formData.get('designImageUrl') as string;
+        if (designImageUrl) {
+          designImageData = {
+            url: designImageUrl,
+            alt: (formData.get('designImageAlt') as string) || 'Product design',
+            position: {
+              x: parseFloat((formData.get('designPositionX') as string) || '0'),
+              y: parseFloat((formData.get('designPositionY') as string) || '0')
+            },
+            scale: parseFloat((formData.get('designScale') as string) || '100'),
+            rotation: parseFloat((formData.get('designRotation') as string) || '0')
+          };
+        }
+      }
+
+      // Add mockup and design images to product data
+      if (mockupImageData) {
+        productData.mockupImage = mockupImageData;
+      }
+      if (designImageData) {
+        productData.designImage = designImageData;
+      }
     } else {
       // Handle JSON data (fallback for existing functionality)
       productData = await request.json();
@@ -223,7 +297,7 @@ export async function POST(request: NextRequest) {
     const allImages = [...uploadedImageUrls, ...urlImages];
 
     // Create product with validated data
-    const finalProductData = {
+    const finalProductData: any = {
       name: validatedData.name.trim(),
       description: validatedData.description.trim(),
       price: validatedData.price,
@@ -237,6 +311,14 @@ export async function POST(request: NextRequest) {
       featured: validatedData.featured,
       customizable: validatedData.customizable
     };
+
+    // Add mockup and design images if they exist
+    if (productData.mockupImage) {
+      finalProductData.mockupImage = productData.mockupImage;
+    }
+    if (productData.designImage) {
+      finalProductData.designImage = productData.designImage;
+    }
 
     console.log('Final product data being saved:', JSON.stringify(finalProductData, null, 2));
     console.log('Colors in final data:', finalProductData.colors);

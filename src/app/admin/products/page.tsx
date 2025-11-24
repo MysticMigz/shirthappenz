@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
+import ProductImageOverlay from '@/app/components/ProductImageOverlay';
 
 // Dynamically import react-barcode to avoid SSR issues
 const Barcode = dynamic(() => import('react-barcode'), { ssr: false });
@@ -26,6 +27,8 @@ interface Product {
   updatedAt: string;
   barcode?: string;
   collections?: Array<{ _id: string; name: string; slug: string }>;
+  mockupImage?: { url: string; alt: string };
+  designImage?: { url: string; alt: string; position?: { x: number; y: number }; scale?: number; rotation?: number };
 }
 
 interface Collection {
@@ -47,6 +50,8 @@ export default function AdminProducts() {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [showCollectionModal, setShowCollectionModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedImageProduct, setSelectedImageProduct] = useState<Product | null>(null);
 
   // Redirect if not admin
   useEffect(() => {
@@ -218,18 +223,38 @@ export default function AdminProducts() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {products.map((product) => (
                   <tr key={product._id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4">
                       <div className="flex items-center">
-                        {product.images[0] && (
-                          <div className="flex-shrink-0 h-10 w-10 relative">
+                        <div 
+                          className="flex-shrink-0 h-24 w-24 relative cursor-pointer hover:opacity-80 transition-opacity border-2 border-gray-200 rounded-lg overflow-hidden"
+                          onClick={() => {
+                            setSelectedImageProduct(product);
+                            setShowImageModal(true);
+                          }}
+                          title="Click to view full size"
+                        >
+                          {(product.mockupImage && product.designImage) ? (
+                            <ProductImageOverlay
+                              mockupImage={product.mockupImage}
+                              designImage={product.designImage}
+                              fallbackImage={product.images[0]}
+                              className="rounded-lg"
+                              width={96}
+                              height={96}
+                            />
+                          ) : product.images[0] ? (
                             <Image
                               src={product.images[0].url}
                               alt={product.images[0].alt}
                               fill
                               className="rounded-lg object-cover"
                             />
-                          </div>
-                        )}
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center rounded-lg">
+                              <span className="text-xs text-gray-400">No Image</span>
+                            </div>
+                          )}
+                        </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">{product.name}</div>
                           <div className="text-sm text-gray-500">{product.description.substring(0, 50)}...</div>
@@ -354,6 +379,78 @@ export default function AdminProducts() {
                 >
                   Close
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Full Scale Image Modal */}
+        {showImageModal && selectedImageProduct && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowImageModal(false)}
+          >
+            <div 
+              className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center z-10">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {selectedImageProduct.name} - Product Image
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowImageModal(false)}
+                  className="text-gray-400 hover:text-gray-600 text-2xl font-bold"
+                  aria-label="Close image preview"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="p-6">
+                <div className="max-w-2xl mx-auto">
+                  <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
+                    <div 
+                      className="relative bg-gray-100"
+                      style={{
+                        aspectRatio: '1/1',
+                        width: '100%',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        isolation: 'isolate'
+                      }}
+                    >
+                      {(selectedImageProduct.mockupImage && selectedImageProduct.designImage) ? (
+                        <ProductImageOverlay
+                          mockupImage={selectedImageProduct.mockupImage}
+                          designImage={selectedImageProduct.designImage}
+                          fallbackImage={selectedImageProduct.images[0]}
+                          className="w-full h-full"
+                        />
+                      ) : selectedImageProduct.images[0] ? (
+                        <Image
+                          src={selectedImageProduct.images[0].url}
+                          alt={selectedImageProduct.images[0].alt || selectedImageProduct.name}
+                          fill
+                          className="object-cover"
+                          priority
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                          <div className="bg-gradient-to-r from-purple-600 via-blue-500 to-orange-400 text-white brand-text text-lg px-4 py-2 rounded-lg">
+                            MR SHIRT PERSONALISATION LTD
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="mt-4 text-center">
+                    <p className="text-sm text-gray-600">{selectedImageProduct.name}</p>
+                    {selectedImageProduct.description && (
+                      <p className="text-xs text-gray-500 mt-1">{selectedImageProduct.description.substring(0, 100)}...</p>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </div>

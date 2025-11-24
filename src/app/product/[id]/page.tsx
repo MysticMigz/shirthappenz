@@ -7,6 +7,7 @@ import Link from 'next/link';
 import Header from '@/app/components/Header';
 import Footer from '@/app/components/Footer';
 import { useCart } from '@/context/CartContext';
+import ProductImageOverlay from '@/app/components/ProductImageOverlay';
 
 interface Product {
   _id: string;
@@ -24,6 +25,8 @@ interface Product {
   rrp?: number;
   barcode?: string;
   productDetails?: string;
+  mockupImage?: { url: string; alt: string };
+  designImage?: { url: string; alt: string; position?: { x: number; y: number }; scale?: number; rotation?: number };
 }
 
 // Size order mapping for correct sorting
@@ -426,26 +429,33 @@ export default function ProductPage({ params }: { params: { id: string } }) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* Product Images */}
               <div className="relative bg-gray-100 rounded-lg overflow-hidden">
-              {(() => {
-                const productImage = getProductImage();
-                return productImage ? (
-                  <Image
-                    key={selectedColor || 'default'} // Force re-render when color changes
-                    src={productImage.url}
-                    alt={productImage.alt || product.name}
-                    width={600}
-                    height={600}
-                    className="w-full h-auto rounded-lg transition-opacity duration-300"
+                {product.mockupImage || product.designImage ? (
+                  <ProductImageOverlay
+                    mockupImage={product.mockupImage}
+                    designImage={product.designImage}
+                    className="w-full h-auto rounded-lg"
                     priority
                   />
-                ) : (
-                  <div className="w-full h-96 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center rounded-lg">
-                    <div className="bg-gradient-to-r from-purple-600 via-blue-500 to-orange-400 text-white brand-text text-lg px-4 py-2 rounded-lg">
-                      MR SHIRT PERSONALISATION LTD
+                ) : (() => {
+                  const productImage = getProductImage();
+                  return productImage ? (
+                    <Image
+                      key={selectedColor || 'default'} // Force re-render when color changes
+                      src={productImage.url}
+                      alt={productImage.alt || product.name}
+                      width={600}
+                      height={600}
+                      className="w-full h-auto rounded-lg transition-opacity duration-300"
+                      priority
+                    />
+                  ) : (
+                    <div className="w-full h-96 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center rounded-lg">
+                      <div className="bg-gradient-to-r from-purple-600 via-blue-500 to-orange-400 text-white brand-text text-lg px-4 py-2 rounded-lg">
+                        MR SHIRT PERSONALISATION LTD
+                      </div>
                     </div>
-                  </div>
-                );
-              })()}
+                  );
+                })()}
               
               {/* Product Details Accordion */}
               <div className="mt-4 border border-gray-200 rounded-lg overflow-hidden">

@@ -7,6 +7,7 @@ import Link from 'next/link';
 import Header from '@/app/components/Header';
 import Footer from '@/app/components/Footer';
 import { FaSearch, FaFilter, FaSortAmountDown } from 'react-icons/fa';
+import ProductImageOverlay from '@/app/components/ProductImageOverlay';
 
 interface Product {
   _id: string;
@@ -22,6 +23,8 @@ interface Product {
   featured: boolean;
   customizable: boolean;
   collections?: Array<{ _id: string; name: string; slug: string }>;
+  mockupImage?: { url: string; alt: string };
+  designImage?: { url: string; alt: string; position?: { x: number; y: number }; scale?: number; rotation?: number };
 }
 
 interface Category {
@@ -787,7 +790,14 @@ export default function ProductsPage() {
             >
               <Link href={`/product/${product._id}`}>
                 <div className="relative aspect-square bg-gray-100">
-                  {(() => {
+                  {product.mockupImage || product.designImage ? (
+                    <ProductImageOverlay
+                      mockupImage={product.mockupImage}
+                      designImage={product.designImage}
+                      fallbackImage={getProductImage(product) ? { url: getProductImage(product)!.url, alt: getProductImage(product)!.alt || product.name } : undefined}
+                      className="transition-all duration-300 ease-in-out"
+                    />
+                  ) : (() => {
                     const productImage = getProductImage(product);
                     return productImage ? (
                       <Image
