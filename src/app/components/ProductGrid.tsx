@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import ProductImageOverlay from './ProductImageOverlay';
+import { formatCategory } from '@/lib/formatCategory';
 
 interface Product {
   _id: string;
@@ -165,7 +166,7 @@ const ProductGrid = () => {
                       {product.name}
                     </h3>
                     <p className="text-sm text-gray-500 mb-2">
-                      {product.category}
+                      {formatCategory(product.category)}
                     </p>
                     <p className="text-sm text-gray-600 mb-3 line-clamp-2">
                       {truncateDescription(product.description)}

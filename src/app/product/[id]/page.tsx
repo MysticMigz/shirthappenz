@@ -8,6 +8,7 @@ import Header from '@/app/components/Header';
 import Footer from '@/app/components/Footer';
 import { useCart } from '@/context/CartContext';
 import ProductImageOverlay from '@/app/components/ProductImageOverlay';
+import { formatCategory } from '@/lib/formatCategory';
 
 interface Product {
   _id: string;
@@ -495,7 +496,7 @@ export default function ProductPage({ params }: { params: { id: string } }) {
             {/* Product Details */}
             <div className="flex flex-col">
               <h1 className="text-3xl font-bold text-gray-900 mb-2">{product.name}</h1>
-              <p className="text-sm text-gray-500 mb-4">{product.category}</p>
+              <p className="text-sm text-gray-500 mb-4">{formatCategory(product.category)}</p>
               {/* RRP and Offer Price */}
               {product.basePrice > product.price ? (
                 <div className="flex items-center gap-2 mb-6">

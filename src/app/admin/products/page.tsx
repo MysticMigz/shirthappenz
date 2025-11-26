@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import ProductImageOverlay from '@/app/components/ProductImageOverlay';
+import { formatCategory } from '@/lib/formatCategory';
 
 // Dynamically import react-barcode to avoid SSR issues
 const Barcode = dynamic(() => import('react-barcode'), { ssr: false });
@@ -269,7 +270,7 @@ export default function AdminProducts() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
-                        {product.category}
+                        {formatCategory(product.category)}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

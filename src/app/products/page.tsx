@@ -8,6 +8,7 @@ import Header from '@/app/components/Header';
 import Footer from '@/app/components/Footer';
 import { FaSearch, FaFilter, FaSortAmountDown } from 'react-icons/fa';
 import ProductImageOverlay from '@/app/components/ProductImageOverlay';
+import { formatCategory } from '@/lib/formatCategory';
 
 interface Product {
   _id: string;
@@ -825,7 +826,7 @@ export default function ProductsPage() {
                   </h3>
                 </Link>
                 <p className="text-xs sm:text-sm text-gray-500 mb-2">
-                  {product.category}
+                  {formatCategory(product.category)}
                 </p>
                 <p className="text-xs sm:text-sm text-gray-600 mb-3 line-clamp-2">
                   {product.description}
