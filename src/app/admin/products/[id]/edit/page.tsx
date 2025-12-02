@@ -1303,6 +1303,137 @@ export default function EditProduct({ params }: { params: { id: string } }) {
               </div>
             </div>
 
+            {/* Live Preview Section */}
+            {(mockupImage.preview || mockupImage.url || mockupImageUrl || designImage.preview || designImage.url || designImageUrl || formData.name) && (
+              <div className="space-y-4 border-t pt-6">
+                <label className="block text-sm font-medium text-gray-700">
+                  Live Preview - Product Card
+                </label>
+                <p className="text-xs text-gray-500 mb-2">
+                  This is how your product will appear on the frontend with the mockup and design images overlapping.
+                </p>
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                  <p className="text-xs text-green-800 font-medium">
+                    💾 <strong>Save Note:</strong> The positioning, size, and rotation settings you adjust below will be automatically saved when you click "Save Changes" at the bottom of the form. This preview shows exactly how it will appear to customers.
+                  </p>
+                </div>
+                <div className="max-w-sm mx-auto">
+                  <p className="text-xs text-gray-500 mb-2 text-center">
+                    👆 Click the preview card to view at full scale
+                  </p>
+                  <div 
+                    className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden cursor-pointer hover:shadow-xl transition-shadow"
+                    onClick={() => setShowFullPreview(true)}
+                  >
+                    <div 
+                      className="relative bg-gray-100"
+                      style={{
+                        aspectRatio: '1/1',
+                        width: '100%',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        isolation: 'isolate' // Isolate this container from transforms
+                      }}
+                    >
+                      {(mockupImage.preview || mockupImage.url || mockupImageUrl || designImage.preview || designImage.url || designImageUrl) ? (
+                        <ProductImageOverlay
+                          key={`preview-${mockupImage.preview || mockupImage.url || mockupImageUrl || 'no-mockup'}-${designImage.preview || designImage.url || designImageUrl || 'no-design'}`}
+                          mockupImage={
+                            mockupImage.preview 
+                              ? { url: mockupImage.preview, alt: mockupImageAlt || 'Mockup preview' }
+                              : mockupImage.url
+                              ? { url: mockupImage.url, alt: mockupImage.alt || mockupImageAlt || 'Mockup' }
+                              : mockupImageUrl 
+                              ? { url: mockupImageUrl, alt: mockupImageAlt || 'Mockup' }
+                              : undefined
+                          }
+                          designImage={
+                            designImage.preview 
+                              ? { 
+                                  url: designImage.preview, 
+                                  alt: designImageAlt || 'Design preview',
+                                  position: designPosition,
+                                  scale: designScale,
+                                  rotation: designRotation
+                                }
+                              : designImage.url
+                              ? { 
+                                  url: designImage.url, 
+                                  alt: designImage.alt || designImageAlt || 'Design',
+                                  position: designPosition,
+                                  scale: designScale,
+                                  rotation: designRotation
+                                }
+                              : designImageUrl 
+                              ? { 
+                                  url: designImageUrl, 
+                                  alt: designImageAlt || 'Design',
+                                  position: designPosition,
+                                  scale: designScale,
+                                  rotation: designRotation
+                                }
+                              : undefined
+                          }
+                          className="w-full h-full"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                          <div className="bg-gradient-to-r from-purple-600 via-blue-500 to-orange-400 text-white brand-text text-sm px-3 py-1 rounded-lg">
+                            MR SHIRT PERSONALISATION LTD
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-4">
+                      <h3 className="font-semibold text-lg text-gray-900 mb-1">
+                        {formData.name || 'Product Name'}
+                      </h3>
+                      <p className="text-sm text-gray-500 mb-2">
+                        {formData.category || 'Category'}
+                      </p>
+                      <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                        {formData.description || 'Product description will appear here...'}
+                      </p>
+                      {formData.colors.length > 0 && (
+                        <div className="flex items-center mb-3">
+                          <span className="text-xs text-gray-500 mr-2">Colors:</span>
+                          <div className="flex space-x-1">
+                            {formData.colors.slice(0, 5).map((color, index) => (
+                              <div
+                                key={index}
+                                className="w-4 h-4 rounded-full border border-gray-300"
+                                style={{ backgroundColor: color.hexCode }}
+                                title={color.name}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between">
+                        {formData.price && formData.basePrice && formData.basePrice > formData.price ? (
+                          <div className="flex flex-col items-start gap-1">
+                            <span className="text-xs text-red-600 line-through tracking-tight">
+                              RRP: £{formData.basePrice.toFixed(2)}
+                            </span>
+                            <span className="text-xl font-bold text-green-700 leading-tight">
+                              £{formData.price.toFixed(2)}
+                            </span>
+                          </div>
+                        ) : formData.price ? (
+                          <span className="text-lg font-bold text-purple-600">
+                            £{formData.price.toFixed(2)}
+                          </span>
+                        ) : (
+                          <span className="text-lg font-bold text-purple-600">£0.00</span>
+                        )}
+                        <span className="text-sm text-purple-600">View Details →</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Design Image Position & Scale Controls */}
             {(designImage.preview || designImage.url || designImageUrl) && (
               <div className="space-y-4 border-t pt-6">
@@ -1641,137 +1772,6 @@ export default function EditProduct({ params }: { params: { id: string } }) {
                             </div>
                           )}
                         </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Live Preview Section */}
-            {(mockupImage.preview || mockupImage.url || mockupImageUrl || designImage.preview || designImage.url || designImageUrl || formData.name) && (
-              <div className="space-y-4 border-t pt-6">
-                <label className="block text-sm font-medium text-gray-700">
-                  Live Preview - Product Card
-                </label>
-                <p className="text-xs text-gray-500 mb-2">
-                  This is how your product will appear on the frontend with the mockup and design images overlapping.
-                </p>
-                <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
-                  <p className="text-xs text-green-800 font-medium">
-                    💾 <strong>Save Note:</strong> The positioning, size, and rotation settings you adjust above will be automatically saved when you click "Save Changes" at the bottom of the form. This preview shows exactly how it will appear to customers.
-                  </p>
-                </div>
-                <div className="max-w-sm mx-auto">
-                  <p className="text-xs text-gray-500 mb-2 text-center">
-                    👆 Click the preview card to view at full scale
-                  </p>
-                  <div 
-                    className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden cursor-pointer hover:shadow-xl transition-shadow"
-                    onClick={() => setShowFullPreview(true)}
-                  >
-                    <div 
-                      className="relative bg-gray-100"
-                      style={{
-                        aspectRatio: '1/1',
-                        width: '100%',
-                        position: 'relative',
-                        overflow: 'hidden',
-                        isolation: 'isolate' // Isolate this container from transforms
-                      }}
-                    >
-                      {(mockupImage.preview || mockupImage.url || mockupImageUrl || designImage.preview || designImage.url || designImageUrl) ? (
-                        <ProductImageOverlay
-                          key={`preview-${mockupImage.preview || mockupImage.url || mockupImageUrl || 'no-mockup'}-${designImage.preview || designImage.url || designImageUrl || 'no-design'}`}
-                          mockupImage={
-                            mockupImage.preview 
-                              ? { url: mockupImage.preview, alt: mockupImageAlt || 'Mockup preview' }
-                              : mockupImage.url
-                              ? { url: mockupImage.url, alt: mockupImage.alt || mockupImageAlt || 'Mockup' }
-                              : mockupImageUrl 
-                              ? { url: mockupImageUrl, alt: mockupImageAlt || 'Mockup' }
-                              : undefined
-                          }
-                          designImage={
-                            designImage.preview 
-                              ? { 
-                                  url: designImage.preview, 
-                                  alt: designImageAlt || 'Design preview',
-                                  position: designPosition,
-                                  scale: designScale,
-                                  rotation: designRotation
-                                }
-                              : designImage.url
-                              ? { 
-                                  url: designImage.url, 
-                                  alt: designImage.alt || designImageAlt || 'Design',
-                                  position: designPosition,
-                                  scale: designScale,
-                                  rotation: designRotation
-                                }
-                              : designImageUrl 
-                              ? { 
-                                  url: designImageUrl, 
-                                  alt: designImageAlt || 'Design',
-                                  position: designPosition,
-                                  scale: designScale,
-                                  rotation: designRotation
-                                }
-                              : undefined
-                          }
-                          className="w-full h-full"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                          <div className="bg-gradient-to-r from-purple-600 via-blue-500 to-orange-400 text-white brand-text text-sm px-3 py-1 rounded-lg">
-                            MR SHIRT PERSONALISATION LTD
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-4">
-                      <h3 className="font-semibold text-lg text-gray-900 mb-1">
-                        {formData.name || 'Product Name'}
-                      </h3>
-                      <p className="text-sm text-gray-500 mb-2">
-                        {formData.category || 'Category'}
-                      </p>
-                      <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                        {formData.description || 'Product description will appear here...'}
-                      </p>
-                      {formData.colors.length > 0 && (
-                        <div className="flex items-center mb-3">
-                          <span className="text-xs text-gray-500 mr-2">Colors:</span>
-                          <div className="flex space-x-1">
-                            {formData.colors.slice(0, 5).map((color, index) => (
-                              <div
-                                key={index}
-                                className="w-4 h-4 rounded-full border border-gray-300"
-                                style={{ backgroundColor: color.hexCode }}
-                                title={color.name}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      <div className="flex items-center justify-between">
-                        {formData.price && formData.basePrice && formData.basePrice > formData.price ? (
-                          <div className="flex flex-col items-start gap-1">
-                            <span className="text-xs text-red-600 line-through tracking-tight">
-                              RRP: £{formData.basePrice.toFixed(2)}
-                            </span>
-                            <span className="text-xl font-bold text-green-700 leading-tight">
-                              £{formData.price.toFixed(2)}
-                            </span>
-                          </div>
-                        ) : formData.price ? (
-                          <span className="text-lg font-bold text-purple-600">
-                            £{formData.price.toFixed(2)}
-                          </span>
-                        ) : (
-                          <span className="text-lg font-bold text-purple-600">£0.00</span>
-                        )}
-                        <span className="text-sm text-purple-600">View Details →</span>
                       </div>
                     </div>
                   </div>
