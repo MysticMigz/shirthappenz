@@ -163,9 +163,7 @@ class ShipEngineAPI {
   constructor() {
     this.config = {
       apiKey: process.env.SHIPENGINE_API_KEY || '',
-      baseUrl: process.env.SHIPENGINE_API_KEY?.startsWith('TEST_') 
-        ? 'https://api.shipengine.com' 
-        : 'https://api.shipengine.com'
+      baseUrl: 'https://api.shipengine.com'
     };
 
     console.log('🚀 ShipEngine API Initialized:', {
@@ -431,6 +429,10 @@ class ShipEngineAPI {
     }>;
   }) {
     return this.makeRequest('/v1/rates', 'POST', request);
+  }
+
+  async voidLabel(labelId: string) {
+    return this.makeRequest(`/v1/labels/${labelId}/void`, 'PUT');
   }
 
   // Helper method to create EVRi shipment

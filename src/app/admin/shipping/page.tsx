@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
+import CustomLabelsSection from './CustomLabelsSection';
 
 interface Order {
   _id: string;
@@ -68,7 +69,7 @@ export default function ShippingPage() {
   });
   const [shippingLoading, setShippingLoading] = useState(false);
   const [scanMode, setScanMode] = useState(false);
-  const [view, setView] = useState<'ready' | 'shipped'>('ready');
+  const [view, setView] = useState<'ready' | 'shipped' | 'custom'>('ready');
   const [shippedOrders, setShippedOrders] = useState<Order[]>([]);
 
   useEffect(() => {
@@ -229,7 +230,7 @@ export default function ShippingPage() {
 
   return (
     <div className="min-h-screen bg-gray-100 p-4">
-      <div className="max-w-2xl mx-auto">
+      <div className={`mx-auto ${view === 'custom' ? 'max-w-6xl' : 'max-w-2xl'}`}>
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
@@ -241,7 +242,7 @@ export default function ShippingPage() {
               Back to Orders
             </Link>
           </div>
-          {/* Tabs for Ready to Ship / Shipped */}
+          {/* Tabs for Ready to Ship / Shipped / Custom Labels */}
           <div className="flex gap-2 mb-4">
             <button
               className={`px-4 py-2 rounded-md text-sm font-medium border ${view === 'ready' ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-700 border-gray-300'}`}
@@ -255,19 +256,29 @@ export default function ShippingPage() {
             >
               Shipped
             </button>
-            <input
-              type="text"
-              placeholder="Search orders by reference or customer name..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 ml-2"
-            />
             <button
-              onClick={() => setScanMode(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+              className={`px-4 py-2 rounded-md text-sm font-medium border ${view === 'custom' ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-gray-700 border-gray-300'}`}
+              onClick={() => setView('custom')}
             >
-              Scan Tracking Barcode
+              Custom Labels
             </button>
+            {view !== 'custom' && (
+              <>
+                <input
+                  type="text"
+                  placeholder="Search orders by reference or customer name..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 ml-2"
+                />
+                <button
+                  onClick={() => setScanMode(true)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+                >
+                  Scan Tracking Barcode
+                </button>
+              </>
+            )}
           </div>
 
           {/* Barcode Scanner Placeholder */}
@@ -396,11 +407,17 @@ export default function ShippingPage() {
           </div>
         )}
 
+        {/* Custom Labels Section */}
+        {view === 'custom' && (
+          <CustomLabelsSection />
+        )}
+
         {/* Orders List */}
-        <div className="space-y-3">
-          <h3 className="text-lg font-medium text-gray-900">
-            {view === 'ready' ? 'Ready to Ship' : 'Shipped'} ({filteredOrders.length})
-          </h3>
+        {view !== 'custom' && (
+          <div className="space-y-3">
+            <h3 className="text-lg font-medium text-gray-900">
+              {view === 'ready' ? 'Ready to Ship' : 'Shipped'} ({filteredOrders.length})
+            </h3>
           
           {filteredOrders.length === 0 ? (
             <div className="bg-white rounded-lg p-6 text-center">
@@ -474,7 +491,8 @@ export default function ShippingPage() {
               </div>
             ))
           )}
-        </div>
+          </div>
+        )}
       </div>
       {/* Barcode Scanner Modal */}
       {scanMode && (

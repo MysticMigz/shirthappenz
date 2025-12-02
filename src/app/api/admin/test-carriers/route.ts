@@ -16,7 +16,21 @@ export async function GET(request: NextRequest) {
     
     // Get all carriers
     console.log('📡 Fetching carriers...');
-    const carriers = await shipengine.getCarriers();
+    const response = await shipengine.getCarriers();
+    
+    // Handle different response structures from ShipEngine API
+    // The API might return an object with a 'carriers' property or an array directly
+    let carriers: Carrier[] = [];
+    if (Array.isArray(response)) {
+      carriers = response;
+    } else if (response && typeof response === 'object' && 'carriers' in response && Array.isArray(response.carriers)) {
+      carriers = response.carriers;
+    } else if (response && typeof response === 'object' && 'data' in response && Array.isArray(response.data)) {
+      carriers = response.data;
+    } else {
+      console.warn('⚠️ Unexpected response structure from ShipEngine:', response);
+      carriers = [];
+    }
     
     console.log('📋 Available carriers:', carriers.map((c: Carrier) => ({
       carrier_id: c.carrier_id,
