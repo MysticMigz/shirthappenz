@@ -336,7 +336,7 @@ class ShipEngineAPI {
     };
   }
 
-  private async makeRequest(endpoint: string, method: 'GET' | 'POST' = 'GET', data?: any) {
+  private async makeRequest(endpoint: string, method: 'GET' | 'POST' | 'PUT' = 'GET', data?: any) {
     const url = `${this.config.baseUrl}${endpoint}`;
 
     console.log(`📡 ShipEngine API Request: ${method} ${endpoint}`, {
@@ -353,7 +353,7 @@ class ShipEngineAPI {
       },
     };
 
-    if (data && method === 'POST') {
+    if (data && (method === 'POST' || method === 'PUT')) {
       options.body = JSON.stringify(data);
       console.log('📦 ShipEngine Request Data:', JSON.stringify(data, null, 2));
     }
