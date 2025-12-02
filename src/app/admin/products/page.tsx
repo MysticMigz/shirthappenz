@@ -75,8 +75,19 @@ export default function AdminProducts() {
 
   // Fetch products
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchProducts = async (retryCount = 0) => {
       try {
+        // Wait for session to be ready
+        if (status === 'loading') {
+          return;
+        }
+
+        // If not authenticated or not admin, don't fetch
+        if (status === 'unauthenticated' || !session?.user?.isAdmin) {
+          setLoading(false);
+          return;
+        }
+
         const params = new URLSearchParams({
           page: page.toString(),
           limit: '10',
@@ -84,24 +95,48 @@ export default function AdminProducts() {
           ...(selectedCategory && { category: selectedCategory })
         });
 
-        const response = await fetch(`/api/admin/products?${params}`);
-        if (!response.ok) throw new Error('Failed to fetch products');
+        const response = await fetch(`/api/admin/products?${params}`, {
+          credentials: 'include',
+          cache: 'no-store'
+        });
+        
+        if (!response.ok) {
+          // If unauthorized, try refreshing the session once
+          if (response.status === 401 && retryCount === 0) {
+            console.log('🔄 [Products] Session expired, refreshing...');
+            // Trigger session refresh
+            const sessionResponse = await fetch('/api/auth/session', {
+              credentials: 'include',
+              cache: 'no-store'
+            });
+            
+            if (sessionResponse.ok) {
+              // Retry the request after session refresh
+              return fetchProducts(1);
+            }
+          }
+          throw new Error(`Failed to fetch products: ${response.statusText}`);
+        }
         
         const data = await response.json();
         setProducts(data.products);
         setTotalPages(data.pagination.pages);
+        setError(''); // Clear any previous errors
       } catch (err) {
+        console.error('Error fetching products:', err);
         setError(err instanceof Error ? err.message : 'An error occurred');
       } finally {
         setLoading(false);
       }
     };
 
-    if (session?.user?.isAdmin) {
+    if (session?.user?.isAdmin && status === 'authenticated') {
       fetchProducts();
       fetchCollections();
+    } else if (status === 'unauthenticated') {
+      setLoading(false);
     }
-  }, [session, page, searchTerm, selectedCategory]);
+  }, [session, status, page, searchTerm, selectedCategory]);
 
   const handleDelete = async (productId: string) => {
     if (!confirm('Are you sure you want to delete this product?')) return;

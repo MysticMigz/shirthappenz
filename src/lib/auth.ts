@@ -65,7 +65,7 @@ export const authOptions: NextAuthOptions = {
     })
   ],
   callbacks: {
-    async jwt({ token, user }: any) {
+    async jwt({ token, user, trigger }: any) {
       // Initial sign in
       if (user) {
         console.log('🔍 [Auth JWT Callback] User signing in:', {
@@ -76,7 +76,37 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         token.isAdmin = user.isAdmin;
         token.email = user.email;
+        token.lastRefreshed = Date.now();
       }
+      
+      // Refresh user data from database periodically (every 5 minutes) or on session update
+      const shouldRefresh = !token.lastRefreshed || 
+                          Date.now() - token.lastRefreshed > 5 * 60 * 1000 || 
+                          trigger === 'update';
+      
+      if (shouldRefresh && token.email) {
+        try {
+          await connectToDatabase();
+          const dbUser = await (User as any).findOne({ email: token.email });
+          if (dbUser) {
+            // Update token with fresh user data
+            token.id = dbUser._id.toString();
+            token.isAdmin = dbUser.isAdmin ?? false;
+            token.lastRefreshed = Date.now();
+            console.log('🔄 [Auth JWT Callback] Token refreshed from database:', {
+              id: token.id,
+              email: token.email,
+              isAdmin: token.isAdmin
+            });
+          } else {
+            console.warn('⚠️ [Auth JWT Callback] User not found in database:', token.email);
+          }
+        } catch (error) {
+          console.error('❌ [Auth JWT Callback] Error refreshing token:', error);
+          // Don't fail the request if refresh fails, use cached token
+        }
+      }
+      
       // Ensure isAdmin is always preserved
       console.log('🔍 [Auth JWT Callback] Token:', {
         id: token.id,
