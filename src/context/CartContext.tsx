@@ -13,6 +13,8 @@ interface CartItem {
   baseProductName?: string;
   baseProductImage?: string;
   orderSource?: string;
+  mockupImage?: { url: string; alt: string };
+  designImage?: { url: string; alt: string; position?: { x: number; y: number }; scale?: number; rotation?: number };
   customization?: {
     name?: string;
     number?: string;

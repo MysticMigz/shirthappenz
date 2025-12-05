@@ -10,6 +10,7 @@ import Header from '../components/Header';
 import Image from 'next/image';
 import { useVisitorId } from '../providers';
 import { useUser } from '@/context/UserContext';
+import ProductImageOverlay from '../components/ProductImageOverlay';
 
 interface CheckoutStep {
   shippingDetails?: ShippingDetails & { shippingCost: number };
@@ -300,7 +301,14 @@ export default function CheckoutPage() {
                       <div key={item.productId + item.size} className="flex items-center py-4 border-b border-gray-200 last:border-0 gap-4">
                         {/* Product Image */}
                         <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border border-gray-200 bg-white">
-                          {item.image ? (
+                          {item.mockupImage || item.designImage ? (
+                            <ProductImageOverlay
+                              mockupImage={item.mockupImage}
+                              designImage={item.designImage}
+                              fallbackImage={item.image ? { url: item.image, alt: item.name } : undefined}
+                              className="w-full h-full"
+                            />
+                          ) : item.image ? (
                             <Image
                               src={item.image}
                               alt={item.name}

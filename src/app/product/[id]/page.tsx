@@ -263,7 +263,9 @@ export default function ProductPage({ params }: { params: { id: string } }) {
         quantity: quantity,
         price: product.price,
         image: productImage?.url || product.images[0]?.url,
-        color: selectedColor
+        color: selectedColor,
+        mockupImage: product.mockupImage,
+        designImage: product.designImage
       };
       
       const result = addItem(cartItem, availableStock);

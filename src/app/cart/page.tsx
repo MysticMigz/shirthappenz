@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import Header from '@/app/components/Header';
 import Footer from '@/app/components/Footer';
+import ProductImageOverlay from '@/app/components/ProductImageOverlay';
 
 export default function CartPage() {
   const router = useRouter();
@@ -86,7 +87,14 @@ export default function CartPage() {
                               </>
                             ) : (
                               <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-md border border-gray-200">
-                                {item.image ? (
+                                {item.mockupImage || item.designImage ? (
+                                  <ProductImageOverlay
+                                    mockupImage={item.mockupImage}
+                                    designImage={item.designImage}
+                                    fallbackImage={item.image ? { url: item.image, alt: item.name } : undefined}
+                                    className="w-full h-full"
+                                  />
+                                ) : item.image ? (
                                   <Image
                                     src={item.image}
                                     alt={item.name}
