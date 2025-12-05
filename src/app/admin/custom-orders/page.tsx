@@ -337,92 +337,190 @@ export default function CustomOrdersPage() {
         </div>
 
         {/* Orders Table */}
-        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+        <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 sticky top-0 z-10">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-20 border-r-2 border-gray-300 min-w-[200px] max-w-[200px]">
                     Customer
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[250px]">
                     Product
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">
                     Quantity
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Printing Type
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[180px]">
+                    Colors & Sizes
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[180px]">
+                    Printing Details
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Notes
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[140px]">
+                    Payment Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
+                    Order Status
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[140px]">
                     Submitted
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[200px]">
+                    Notes
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
                     Actions
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {orders.map((order) => (
-                  <tr key={order._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">
-                          {order.firstName} {order.lastName}
-                        </div>
-                        <div className="text-sm text-gray-500">{order.email}</div>
-                        <div className="text-sm text-gray-500">{order.phone}</div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {order.productDetails ? order.productDetails.name : `Product ID: ${order.selectedProduct}`}
-                      </div>
-                      {order.productDetails && (
-                        <div className="text-sm text-gray-500">
-                          {order.productDetails.category} - {order.productDetails.gender}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {order.quantity}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {order.printingType}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.status)}`}>
-                        {order.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs">
-                      {order.notes ? (
-                        <div className="truncate" title={order.notes}>
-                          {order.notes.length > 50 ? `${order.notes.substring(0, 50)}...` : order.notes}
-                        </div>
-                      ) : (
-                        <span className="text-gray-400 italic">No notes</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDate(order.submittedAt)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
-                        onClick={() => setSelectedOrder(order)}
-                        className="text-purple-600 hover:text-purple-900 mr-3"
-                      >
-                        View Details
-                      </button>
+                {orders.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="px-4 py-8 text-center text-gray-500">
+                      No orders found
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  orders.map((order) => {
+                    const totalQuantity = Object.values(order.sizeQuantities || {}).reduce((colorSum, colorQuantities) => {
+                      return colorSum + Object.values(colorQuantities).reduce((sizeSum, qty) => sizeSum + qty, 0);
+                    }, 0);
+                    
+                    return (
+                      <tr key={order._id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3 sticky left-0 bg-white z-10 border-r-2 border-gray-300 min-w-[200px] max-w-[200px] shadow-[2px_0_4px_rgba(0,0,0,0.05)]">
+                          <div className="pr-2">
+                            <div className="text-sm font-medium text-gray-900 break-words">
+                              {order.firstName} {order.lastName}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1 break-all">{order.email}</div>
+                            <div className="text-xs text-gray-500 break-all">{order.phone}</div>
+                            {order.company && (
+                              <div className="text-xs text-gray-400 mt-1 break-words">{order.company}</div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 min-w-[250px]">
+                          <div className="text-sm font-medium text-gray-900 break-words">
+                            {order.productDetails ? order.productDetails.name : `Product ID: ${order.selectedProduct}`}
+                          </div>
+                          {order.productDetails && (
+                            <div className="text-xs text-gray-500 mt-1 break-words">
+                              {order.productDetails.category} • {order.productDetails.gender}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap min-w-[100px]">
+                          <div className="text-sm font-semibold text-gray-900">{totalQuantity}</div>
+                          <div className="text-xs text-gray-500">Total items</div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700 min-w-[180px]">
+                          <div>
+                            {order.selectedColors && order.selectedColors.length > 0 ? (
+                              <div className="mb-1">
+                                <span className="text-xs font-medium text-gray-600">Colors: </span>
+                                <span className="text-xs break-words">{order.selectedColors.join(', ')}</span>
+                              </div>
+                            ) : null}
+                            {order.sizeQuantities ? (
+                              <div className="text-xs">
+                                {Object.entries(order.sizeQuantities).slice(0, 2).map(([color, colorQuantities]) => (
+                                  <div key={color} className="mb-1 break-words">
+                                    <span className="font-medium">{color}:</span>{' '}
+                                    {Object.entries(colorQuantities).filter(([_, qty]) => qty > 0).map(([size, qty]) => `${size}×${qty}`).join(', ')}
+                                  </div>
+                                ))}
+                                {Object.keys(order.sizeQuantities).length > 2 && (
+                                  <div className="text-gray-400 text-[10px]">+{Object.keys(order.sizeQuantities).length - 2} more</div>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-gray-400 text-xs">N/A</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-700 min-w-[180px]">
+                          <div>
+                            <div className="text-xs mb-1">
+                              <span className="font-medium">Type:</span> {order.printingType?.toUpperCase() || 'N/A'}
+                            </div>
+                            {order.paperSize && (
+                              <div className="text-xs mb-1">
+                                <span className="font-medium">Paper:</span> {order.paperSize}
+                              </div>
+                            )}
+                            {order.printSize && (
+                              <div className="text-xs mb-1 break-words">
+                                <span className="font-medium">Size:</span> {order.printSize}
+                              </div>
+                            )}
+                            {order.printingSurface && order.printingSurface.length > 0 && (
+                              <div className="text-xs break-words">
+                                <span className="font-medium">Surface:</span> {order.printingSurface.join(', ')}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap min-w-[140px]">
+                          <div className="flex flex-col gap-1">
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                              order.paymentStatus === 'completed' 
+                                ? 'bg-green-100 text-green-800' 
+                                : order.paymentStatus === 'pending'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {order.paymentStatus === 'completed' ? 'Paid' : order.paymentStatus || 'Pending'}
+                            </span>
+                            {order.paymentLink && (
+                              <a
+                                href={order.paymentLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-blue-600 hover:underline break-all"
+                              >
+                                View Link
+                              </a>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap min-w-[120px]">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.status)}`}>
+                            {order.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 min-w-[140px]">
+                          <div>{formatDate(order.submittedAt)}</div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-500 min-w-[200px]">
+                          {order.notes ? (
+                            <div className="break-words" title={order.notes}>
+                              {order.notes.length > 60 ? `${order.notes.substring(0, 60)}...` : order.notes}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400 italic text-xs">No notes</span>
+                          )}
+                          {order.needsDesignAssistance && (
+                            <div className="mt-1">
+                              <span className="inline-flex px-1.5 py-0.5 text-[10px] font-semibold rounded bg-purple-100 text-purple-800">
+                                Needs Design Help
+                              </span>
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm min-w-[120px]">
+                          <button
+                            onClick={() => setSelectedOrder(order)}
+                            className="px-3 py-1.5 rounded bg-purple-600 text-white text-xs font-semibold hover:bg-purple-700 transition-colors"
+                          >
+                            View Details
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
               </tbody>
             </table>
           </div>

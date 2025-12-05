@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { FaBoxOpen, FaCheckCircle, FaClipboardList, FaShippingFast, FaCogs, FaChevronLeft, FaChevronRight, FaEye, FaTimes } from "react-icons/fa";
+import { FaBoxOpen, FaCheckCircle, FaClipboardList, FaShippingFast, FaCogs, FaChevronLeft, FaChevronRight, FaEye, FaTimes, FaTable, FaTh } from "react-icons/fa";
 import { getImageUrl } from "@/lib/utils";
 
 interface Order {
@@ -147,6 +147,7 @@ export default function ProductionDashboard() {
   const [selectedDay, setSelectedDay] = useState(0); // 0 = today
   const [processing, setProcessing] = useState<string | null>(null); // order id being updated
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null); // for modal
+  const [viewMode, setViewMode] = useState<"table" | "cards">("table"); // table or cards view
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -335,95 +336,272 @@ export default function ProductionDashboard() {
             ))}
           </div>
         </div>
-        {/* Production Status Columns */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-10">
-          {PRODUCTION_STATUSES.map((status) => (
-            <div key={status} className={`rounded-2xl shadow border p-4 min-h-[260px] flex flex-col gap-2 ${STATUS_COLORS[status]}`}>
-              <h3 className="font-bold text-gray-700 mb-2 uppercase text-xs tracking-wider flex items-center gap-2">
-                {status === "not_started" && <FaBoxOpen className="text-gray-400" />}
-                {status === "in_production" && <FaCogs className="text-blue-400" />}
-                {status === "quality_check" && <FaCheckCircle className="text-yellow-400" />}
-                {status === "ready_to_ship" && <FaShippingFast className="text-green-400" />}
-                {status === "completed" && <FaCheckCircle className="text-purple-400" />}
-                {STATUS_LABELS[status]}
-              </h3>
-              {ordersByStatus[status].length === 0 ? (
-                <div className="text-gray-400 text-sm">No orders</div>
-              ) : (
-                ordersByStatus[status].map(order => (
-                  <div key={order._id} className="border border-gray-200 rounded-lg p-3 mb-2 bg-white shadow-sm hover:shadow-md transition-shadow duration-200 flex flex-col gap-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      {getPriorityBadge(order)}
-                      <span className="text-xs text-gray-400">{order.reference}</span>
-                    </div>
-                    <div className="text-xs text-gray-700 font-semibold mb-1">{order.shippingDetails.firstName} {order.shippingDetails.lastName}</div>
-                    <div className="text-xs text-gray-500 mb-1">{order.shippingDetails.shippingMethod}</div>
-                    <div className="text-xs text-gray-500 mb-1">Placed: {formatPlacedDate(order.createdAt)}</div>
-                    <div className="text-xs text-gray-500 mb-1 flex items-center gap-2">
-                      Due: {getDueDate(order)}
-                      {(() => {
-                        const due = getDueDateObj(order);
-                        const now = new Date();
-                        now.setHours(0,0,0,0);
-                        if (due < now) {
-                          return <span className="ml-2 px-2 py-0.5 rounded bg-red-600 text-white text-[10px] font-bold">Overdue</span>;
-                        }
-                        return null;
-                      })()}
-                    </div>
-                    <div className="text-xs text-gray-500 mb-1">{order.items.length} item(s)</div>
-                    <div className="text-xs text-gray-500 mb-1">Total: £{order.total?.toFixed(2) ?? 'N/A'}</div>
-                    <div className="mt-1">{getStatusBadge(order.productionStatus)}</div>
-                    <div className="mt-2">
-                      <div className="font-semibold text-xs text-gray-700 mb-1">Items:</div>
-                      <ul className="text-xs text-gray-600 list-disc list-inside">
-                        {order.items.map((item, idx) => (
-                          <li key={item.name + item.size + idx}>
-                            {item.name} ({item.size}) × {item.quantity}
-                            {item.customization?.isCustomized && (
-                              <div className="ml-2 text-[11px] text-purple-700 font-medium">
-                                {item.customization.name && <span>Name: {item.customization.name} </span>}
-                                {item.customization.number && <span>Number: {item.customization.number}</span>}
-                              </div>
-                            )}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    {/* Action buttons */}
-                    <div className="flex gap-2 mt-2">
-                      <button
-                        className="px-2 py-1 rounded bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 flex items-center gap-1"
-                        onClick={() => openOrderDetails(order)}
-                      >
-                        <FaEye className="text-xs" />
-                        View Details
-                      </button>
-                      {getPrevStatus(order.productionStatus) && (
-                        <button
-                          className="px-2 py-1 rounded bg-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-300 disabled:opacity-50"
-                          onClick={() => handleStatusChange(order._id, getPrevStatus(order.productionStatus)!)}
-                          disabled={processing === order._id}
-                        >
-                          ← {STATUS_LABELS[getPrevStatus(order.productionStatus)!]}
-                        </button>
-                      )}
-                      {getNextStatus(order.productionStatus) && (
-                        <button
-                          className="px-2 py-1 rounded bg-white text-black text-xs font-semibold hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent disabled:opacity-50"
-                          onClick={() => handleStatusChange(order._id, getNextStatus(order.productionStatus)!)}
-                          disabled={processing === order._id}
-                        >
-                          {STATUS_LABELS[getNextStatus(order.productionStatus)!]} →
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          ))}
+        {/* View Toggle */}
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-xl font-bold text-gray-900">Production Orders</h2>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setViewMode("table")}
+              className={`px-4 py-2 rounded-lg font-semibold text-sm flex items-center gap-2 transition-colors ${
+                viewMode === "table"
+                  ? "bg-blue-600 text-white"
+                  : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+              }`}
+            >
+              <FaTable />
+              Table View
+            </button>
+            <button
+              onClick={() => setViewMode("cards")}
+              className={`px-4 py-2 rounded-lg font-semibold text-sm flex items-center gap-2 transition-colors ${
+                viewMode === "cards"
+                  ? "bg-blue-600 text-white"
+                  : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+              }`}
+            >
+              <FaTh />
+              Card View
+            </button>
+          </div>
         </div>
+
+        {/* Table View */}
+        {viewMode === "table" ? (
+          <div className="bg-white rounded-lg shadow-lg border border-gray-200 mb-10 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50 sticky top-0 z-10">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-20 border-r border-gray-200">
+                      Priority
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Reference
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Customer
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Shipping Method
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Placed Date
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Due Date
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Items
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Total
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {batch.length === 0 ? (
+                    <tr>
+                      <td colSpan={10} className="px-4 py-8 text-center text-gray-500">
+                        No orders for this day
+                      </td>
+                    </tr>
+                  ) : (
+                    batch.map((order) => {
+                      const due = getDueDateObj(order);
+                      const now = new Date();
+                      now.setHours(0, 0, 0, 0);
+                      const isOverdue = due < now;
+                      
+                      return (
+                        <tr
+                          key={order._id}
+                          className={`hover:bg-gray-50 transition-colors ${
+                            isOverdue ? "bg-red-50" : ""
+                          }`}
+                        >
+                          <td className="px-4 py-3 whitespace-nowrap sticky left-0 bg-inherit z-10 border-r border-gray-200">
+                            {getPriorityBadge(order)}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 font-mono">
+                            {order.reference}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                            {order.shippingDetails.firstName} {order.shippingDetails.lastName}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                            {order.shippingDetails.shippingMethod}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                            {formatPlacedDate(order.createdAt)}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm">
+                            <div className="flex items-center gap-2">
+                              <span className={isOverdue ? "text-red-600 font-bold" : "text-gray-900"}>
+                                {getDueDate(order)}
+                              </span>
+                              {isOverdue && (
+                                <span className="px-2 py-0.5 rounded bg-red-600 text-white text-xs font-bold">
+                                  Overdue
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-500">
+                            <div className="max-w-xs">
+                              {order.items.map((item, idx) => (
+                                <div key={idx} className="text-xs">
+                                  {item.name} ({item.size}) × {item.quantity}
+                                  {item.customization?.isCustomized && (
+                                    <span className="ml-1 text-purple-600">• Custom</span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm font-semibold text-gray-900">
+                            £{order.total?.toFixed(2) ?? 'N/A'}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            {getStatusBadge(order.productionStatus)}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm">
+                            <div className="flex flex-col gap-1">
+                              <button
+                                className="px-2 py-1 rounded bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 flex items-center justify-center gap-1"
+                                onClick={() => openOrderDetails(order)}
+                              >
+                                <FaEye className="text-xs" />
+                                View
+                              </button>
+                              <div className="flex gap-1">
+                                {getPrevStatus(order.productionStatus) && (
+                                  <button
+                                    className="px-2 py-1 rounded bg-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-300 disabled:opacity-50"
+                                    onClick={() => handleStatusChange(order._id, getPrevStatus(order.productionStatus)!)}
+                                    disabled={processing === order._id}
+                                    title={`Move to ${STATUS_LABELS[getPrevStatus(order.productionStatus)!]}`}
+                                  >
+                                    ←
+                                  </button>
+                                )}
+                                {getNextStatus(order.productionStatus) && (
+                                  <button
+                                    className="px-2 py-1 rounded bg-purple-600 text-white text-xs font-semibold hover:bg-purple-700 disabled:opacity-50"
+                                    onClick={() => handleStatusChange(order._id, getNextStatus(order.productionStatus)!)}
+                                    disabled={processing === order._id}
+                                    title={`Move to ${STATUS_LABELS[getNextStatus(order.productionStatus)!]}`}
+                                  >
+                                    →
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
+          /* Card View (Original) */
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-10">
+            {PRODUCTION_STATUSES.map((status) => (
+              <div key={status} className={`rounded-2xl shadow border p-4 min-h-[260px] flex flex-col gap-2 ${STATUS_COLORS[status]}`}>
+                <h3 className="font-bold text-gray-700 mb-2 uppercase text-xs tracking-wider flex items-center gap-2">
+                  {status === "not_started" && <FaBoxOpen className="text-gray-400" />}
+                  {status === "in_production" && <FaCogs className="text-blue-400" />}
+                  {status === "quality_check" && <FaCheckCircle className="text-yellow-400" />}
+                  {status === "ready_to_ship" && <FaShippingFast className="text-green-400" />}
+                  {status === "completed" && <FaCheckCircle className="text-purple-400" />}
+                  {STATUS_LABELS[status]}
+                </h3>
+                {ordersByStatus[status].length === 0 ? (
+                  <div className="text-gray-400 text-sm">No orders</div>
+                ) : (
+                  ordersByStatus[status].map(order => (
+                    <div key={order._id} className="border border-gray-200 rounded-lg p-3 mb-2 bg-white shadow-sm hover:shadow-md transition-shadow duration-200 flex flex-col gap-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        {getPriorityBadge(order)}
+                        <span className="text-xs text-gray-400">{order.reference}</span>
+                      </div>
+                      <div className="text-xs text-gray-700 font-semibold mb-1">{order.shippingDetails.firstName} {order.shippingDetails.lastName}</div>
+                      <div className="text-xs text-gray-500 mb-1">{order.shippingDetails.shippingMethod}</div>
+                      <div className="text-xs text-gray-500 mb-1">Placed: {formatPlacedDate(order.createdAt)}</div>
+                      <div className="text-xs text-gray-500 mb-1 flex items-center gap-2">
+                        Due: {getDueDate(order)}
+                        {(() => {
+                          const due = getDueDateObj(order);
+                          const now = new Date();
+                          now.setHours(0,0,0,0);
+                          if (due < now) {
+                            return <span className="ml-2 px-2 py-0.5 rounded bg-red-600 text-white text-[10px] font-bold">Overdue</span>;
+                          }
+                          return null;
+                        })()}
+                      </div>
+                      <div className="text-xs text-gray-500 mb-1">{order.items.length} item(s)</div>
+                      <div className="text-xs text-gray-500 mb-1">Total: £{order.total?.toFixed(2) ?? 'N/A'}</div>
+                      <div className="mt-1">{getStatusBadge(order.productionStatus)}</div>
+                      <div className="mt-2">
+                        <div className="font-semibold text-xs text-gray-700 mb-1">Items:</div>
+                        <ul className="text-xs text-gray-600 list-disc list-inside">
+                          {order.items.map((item, idx) => (
+                            <li key={item.name + item.size + idx}>
+                              {item.name} ({item.size}) × {item.quantity}
+                              {item.customization?.isCustomized && (
+                                <div className="ml-2 text-[11px] text-purple-700 font-medium">
+                                  {item.customization.name && <span>Name: {item.customization.name} </span>}
+                                  {item.customization.number && <span>Number: {item.customization.number}</span>}
+                                </div>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      {/* Action buttons */}
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          className="px-2 py-1 rounded bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 flex items-center gap-1"
+                          onClick={() => openOrderDetails(order)}
+                        >
+                          <FaEye className="text-xs" />
+                          View Details
+                        </button>
+                        {getPrevStatus(order.productionStatus) && (
+                          <button
+                            className="px-2 py-1 rounded bg-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-300 disabled:opacity-50"
+                            onClick={() => handleStatusChange(order._id, getPrevStatus(order.productionStatus)!)}
+                            disabled={processing === order._id}
+                          >
+                            ← {STATUS_LABELS[getPrevStatus(order.productionStatus)!]}
+                          </button>
+                        )}
+                        {getNextStatus(order.productionStatus) && (
+                          <button
+                            className="px-2 py-1 rounded bg-white text-black text-xs font-semibold hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent disabled:opacity-50"
+                            onClick={() => handleStatusChange(order._id, getNextStatus(order.productionStatus)!)}
+                            disabled={processing === order._id}
+                          >
+                            {STATUS_LABELS[getNextStatus(order.productionStatus)!]} →
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            ))}
+          </div>
+        )}
         {/* Completed Orders */}
         <div className="mt-10 p-6 bg-gradient-to-r from-green-100 to-emerald-100 rounded-2xl shadow-lg border border-green-200">
           <h2 className="text-xl font-bold mb-4 text-green-900 flex items-center gap-2">

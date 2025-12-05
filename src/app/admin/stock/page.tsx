@@ -5,6 +5,8 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { FaSearch, FaSort, FaSortUp, FaSortDown, FaMinus, FaPlus, FaSave } from 'react-icons/fa';
+import { getImageUrl } from '@/lib/utils';
+import ProductImageOverlay from '@/app/components/ProductImageOverlay';
 
 interface Product {
   _id: string;
@@ -14,6 +16,8 @@ interface Product {
   sizes: string[];
   colors: Array<{ name: string; hexCode: string; imageUrl?: string; stock?: { [size: string]: number } }>;
   stock: { [size: string]: number };
+  mockupImage?: { url: string; alt: string };
+  designImage?: { url: string; alt: string; position?: { x: number; y: number }; scale?: number; rotation?: number };
 }
 
 type SortField = 'name' | 'category' | 'totalStock';
@@ -217,6 +221,29 @@ export default function StockManagement() {
 
   const sortedProducts = sortProducts(filteredProducts);
 
+  // Helper function to get product image
+  const getProductImage = (product: Product, colorName?: string) => {
+    if (colorName) {
+      // First try to find an image with the specific color
+      const colorImage = product.images.find(img => img.color === colorName);
+      if (colorImage) return getImageUrl(colorImage.url);
+      
+      // Then try to find a color with imageUrl
+      const colorWithImage = product.colors.find(color => 
+        color.name === colorName && color.imageUrl
+      );
+      if (colorWithImage?.imageUrl) {
+        return getImageUrl(colorWithImage.imageUrl);
+      }
+    }
+    
+    // Fallback to first image
+    if (product.images && product.images.length > 0) {
+      return getImageUrl(product.images[0].url);
+    }
+    return '/placeholder.png';
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 p-8">
@@ -259,13 +286,25 @@ export default function StockManagement() {
                 <div key={product._id} className="bg-white border border-gray-200 rounded-lg p-6">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center space-x-4">
-                      <div className="h-16 w-16 relative">
-                        <Image
-                          src={product.images[0]?.url || '/placeholder.png'}
-                          alt={product.images[0]?.alt || product.name}
-                          fill
-                          className="object-cover rounded-lg"
-                        />
+                      <div className="h-16 w-16 relative overflow-hidden rounded-lg border border-gray-200 bg-white">
+                        {product.mockupImage || product.designImage ? (
+                          <ProductImageOverlay
+                            mockupImage={product.mockupImage}
+                            designImage={product.designImage}
+                            fallbackImage={product.images[0] ? { url: getImageUrl(product.images[0].url), alt: product.images[0].alt || product.name } : undefined}
+                            className="w-full h-full"
+                          />
+                        ) : (
+                          <img
+                            src={getProductImage(product)}
+                            alt={product.images[0]?.alt || product.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = getImageUrl('/images/logo.png');
+                            }}
+                          />
+                        )}
                       </div>
                       <div>
                         <h3 className="text-lg font-medium text-gray-900">{product.name}</h3>
@@ -302,64 +341,96 @@ export default function StockManagement() {
 
                   {product.colors && product.colors.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {product.colors.map((color) => (
-                        <div key={color.name} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                          <div className="flex items-center mb-3">
-                            <div 
-                              className="w-4 h-4 rounded-full border border-gray-300 mr-2"
-                              style={{ backgroundColor: color.hexCode }}
-                            ></div>
-                            <h4 className="text-sm font-medium text-gray-900">{color.name}</h4>
-                            <span className="ml-auto text-xs text-gray-500">
-                              Total: {calculateColorTotalStock(product._id, color.name)}
-                            </span>
-                          </div>
-                          <div className="grid grid-cols-2 gap-2">
-                            {sortSizes(product.sizes).map((size) => {
-                              const stockLevel = editingColorStock[product._id]?.[color.name]?.[size] || 0;
-                              const isLowStock = stockLevel <= LOW_STOCK_THRESHOLD;
-                              return (
-                                <div key={size} className="flex flex-col items-center">
-                                  <label className="text-xs font-medium text-gray-700 mb-1">{size}</label>
-                                  <div className="flex items-center">
-                                    <button
-                                      onClick={() => handleColorStockIncrement(product._id, color.name, size, -1)}
-                                      className="p-1 rounded-l border border-r-0 border-gray-300 hover:bg-gray-100 text-gray-600 transition-colors"
-                                    >
-                                      <FaMinus className="w-2 h-2" />
-                                    </button>
-                                    <input
-                                      type="number"
-                                      min="0"
-                                      value={stockLevel}
-                                      onChange={(e) => handleColorStockChange(product._id, color.name, size, e.target.value)}
-                                      className={`
-                                        w-12 h-6 text-center border-y shadow-sm text-xs
-                                        focus:ring-1 focus:ring-purple-500 focus:border-transparent
-                                        ${isLowStock 
-                                          ? 'border-red-300 bg-red-50 text-red-900' 
-                                          : 'border-gray-300 bg-white'
-                                        }
-                                      `}
+                      {product.colors.map((color) => {
+                        const colorImage = product.images.find(img => img.color === color.name);
+                        const colorImageUrl = color.imageUrl || colorImage?.url;
+                        const fallbackImage = colorImageUrl ? { url: getImageUrl(colorImageUrl), alt: `${product.name} - ${color.name}` } : undefined;
+                        
+                        return (
+                          <div key={color.name} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <div className="flex items-center mb-3">
+                              <div className="flex items-center space-x-2 flex-1">
+                                <div 
+                                  className="w-4 h-4 rounded-full border border-gray-300 flex-shrink-0"
+                                  style={{ backgroundColor: color.hexCode }}
+                                ></div>
+                                <h4 className="text-sm font-medium text-gray-900">{color.name}</h4>
+                                <div className="ml-2 h-10 w-10 relative flex-shrink-0 overflow-hidden rounded border border-gray-200 bg-white">
+                                  {product.mockupImage || product.designImage ? (
+                                    <ProductImageOverlay
+                                      mockupImage={product.mockupImage}
+                                      designImage={product.designImage}
+                                      fallbackImage={fallbackImage}
+                                      className="w-full h-full"
                                     />
-                                    <button
-                                      onClick={() => handleColorStockIncrement(product._id, color.name, size, 1)}
-                                      className="p-1 rounded-r border border-l-0 border-gray-300 hover:bg-gray-100 text-gray-600 transition-colors"
-                                    >
-                                      <FaPlus className="w-2 h-2" />
-                                    </button>
-                                  </div>
-                                  {isLowStock && (
-                                    <span className="text-[10px] text-red-600 font-medium mt-1">
-                                      Low
-                                    </span>
+                                  ) : fallbackImage ? (
+                                    <img
+                                      src={fallbackImage.url}
+                                      alt={fallbackImage.alt}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.src = getImageUrl('/images/logo.png');
+                                      }}
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                                      <span className="text-gray-400 text-[8px]">No image</span>
+                                    </div>
                                   )}
                                 </div>
-                              );
-                            })}
+                              </div>
+                              <span className="ml-auto text-xs text-gray-500">
+                                Total: {calculateColorTotalStock(product._id, color.name)}
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              {sortSizes(product.sizes).map((size) => {
+                                const stockLevel = editingColorStock[product._id]?.[color.name]?.[size] || 0;
+                                const isLowStock = stockLevel <= LOW_STOCK_THRESHOLD;
+                                return (
+                                  <div key={size} className="flex flex-col items-center">
+                                    <label className="text-xs font-medium text-gray-700 mb-1">{size}</label>
+                                    <div className="flex items-center">
+                                      <button
+                                        onClick={() => handleColorStockIncrement(product._id, color.name, size, -1)}
+                                        className="p-1 rounded-l border border-r-0 border-gray-300 hover:bg-gray-100 text-gray-600 transition-colors"
+                                      >
+                                        <FaMinus className="w-2 h-2" />
+                                      </button>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        value={stockLevel}
+                                        onChange={(e) => handleColorStockChange(product._id, color.name, size, e.target.value)}
+                                        className={`
+                                          w-12 h-6 text-center border-y shadow-sm text-xs
+                                          focus:ring-1 focus:ring-purple-500 focus:border-transparent
+                                          ${isLowStock 
+                                            ? 'border-red-300 bg-red-50 text-red-900' 
+                                            : 'border-gray-300 bg-white'
+                                          }
+                                        `}
+                                      />
+                                      <button
+                                        onClick={() => handleColorStockIncrement(product._id, color.name, size, 1)}
+                                        className="p-1 rounded-r border border-l-0 border-gray-300 hover:bg-gray-100 text-gray-600 transition-colors"
+                                      >
+                                        <FaPlus className="w-2 h-2" />
+                                      </button>
+                                    </div>
+                                    {isLowStock && (
+                                      <span className="text-[10px] text-red-600 font-medium mt-1">
+                                        Low
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="text-center py-8 text-gray-500">

@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { connectToDatabase } from '@/lib/mongodb';
 import Order from '@/backend/models/Order';
 import User from '@/backend/models/User';
+import Product from '@/backend/models/Product';
 import mongoose from 'mongoose';
 
 interface OrderDocument {
@@ -99,6 +100,96 @@ export async function GET(
       );
     }
 
+    // Fetch product data for each item to get mockupImage and designImage
+    const itemsWithProductData = await Promise.all(
+      order.items.map(async (item: any) => {
+        let mockupImage = undefined;
+        let designImage = undefined;
+        let productImage = item.image; // Use stored image as fallback
+        
+        // Try to fetch product to get mockupImage and designImage
+        if (item.productId && mongoose.Types.ObjectId.isValid(item.productId)) {
+          try {
+            const product = await (Product as any).findById(item.productId).lean();
+            if (product) {
+              if (product.mockupImage) {
+                mockupImage = {
+                  url: product.mockupImage.url,
+                  alt: product.mockupImage.alt || item.name
+                };
+              }
+              if (product.designImage) {
+                designImage = {
+                  url: product.designImage.url,
+                  alt: product.designImage.alt || item.name,
+                  position: product.designImage.position,
+                  scale: product.designImage.scale,
+                  rotation: product.designImage.rotation
+                };
+              }
+              
+              // If no image stored in order, try to get from product
+              if (!productImage && product.images && product.images.length > 0) {
+                // Try to find color-specific image first
+                if (item.color) {
+                  const colorImage = product.images.find((img: any) => img.color === item.color);
+                  if (colorImage) {
+                    productImage = colorImage.url;
+                  }
+                }
+                // Fallback to first image
+                if (!productImage) {
+                  productImage = product.images[0].url;
+                }
+              }
+              
+              // Also check if color has imageUrl
+              if (!productImage && item.color && product.colors) {
+                const colorData = product.colors.find((c: any) => c.name === item.color);
+                if (colorData?.imageUrl) {
+                  productImage = colorData.imageUrl;
+                }
+              }
+            }
+          } catch (error) {
+            console.error(`Error fetching product ${item.productId}:`, error);
+            // Continue without product data
+          }
+        }
+        
+        return {
+          productId: item.productId,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          size: item.size,
+          color: item.color,
+          image: productImage,
+          mockupImage: mockupImage,
+          designImage: designImage,
+          baseProductName: item.baseProductName,
+          baseProductImage: item.baseProductImage,
+          customization: item.customization ? {
+            name: item.customization.name,
+            number: item.customization.number,
+            isCustomized: item.customization.isCustomized,
+            nameCharacters: item.customization.nameCharacters,
+            numberCharacters: item.customization.numberCharacters,
+            customizationCost: item.customization.customizationCost,
+            // Custom design fields
+            frontImage: item.customization.frontImage,
+            backImage: item.customization.backImage,
+            frontPosition: item.customization.frontPosition,
+            backPosition: item.customization.backPosition,
+            frontScale: item.customization.frontScale,
+            backScale: item.customization.backScale,
+            frontRotation: item.customization.frontRotation,
+            backRotation: item.customization.backRotation
+          } : undefined
+        };
+      })
+    );
+
     return NextResponse.json({
       _id: order._id.toString(),
       reference: order.reference,
@@ -111,34 +202,7 @@ export async function GET(
       voucherType: order.voucherType,
       voucherValue: order.voucherValue,
       voucherId: order.voucherId,
-      items: order.items.map((item: any) => ({
-        productId: item.productId,
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity,
-        size: item.size,
-        color: item.color,
-        image: item.image,
-        baseProductName: item.baseProductName,
-        baseProductImage: item.baseProductImage,
-        customization: item.customization ? {
-          name: item.customization.name,
-          number: item.customization.number,
-          isCustomized: item.customization.isCustomized,
-          nameCharacters: item.customization.nameCharacters,
-          numberCharacters: item.customization.numberCharacters,
-          customizationCost: item.customization.customizationCost,
-          // Custom design fields
-          frontImage: item.customization.frontImage,
-          backImage: item.customization.backImage,
-          frontPosition: item.customization.frontPosition,
-          backPosition: item.customization.backPosition,
-          frontScale: item.customization.frontScale,
-          backScale: item.customization.backScale,
-          frontRotation: item.customization.frontRotation,
-          backRotation: item.customization.backRotation
-        } : undefined
-      })),
+      items: itemsWithProductData,
       shippingDetails: {
         firstName: order.shippingDetails.firstName,
         lastName: order.shippingDetails.lastName,

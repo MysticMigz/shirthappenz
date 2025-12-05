@@ -5,7 +5,10 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { saveAs } from 'file-saver';
+import Image from 'next/image';
 import RefundModal from '@/app/components/RefundModal';
+import ProductImageOverlay from '@/app/components/ProductImageOverlay';
+import { getImageUrl } from '@/lib/utils';
 
 const formatVoucherDiscount = (order: Order) => {
   if (!order.voucherCode || !order.voucherDiscount) {
@@ -40,6 +43,9 @@ interface OrderItem {
   quantity: number;
   size: string;
   color?: string;
+  image?: string;
+  mockupImage?: { url: string; alt: string };
+  designImage?: { url: string; alt: string; position?: { x: number; y: number }; scale?: number; rotation?: number };
   customization?: {
     isCustomized?: boolean;
     name?: string;
@@ -1014,6 +1020,9 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
                   <thead className="bg-gray-100">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Image
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Product
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1040,6 +1049,32 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
                     {Array.isArray(order.items) && order.items.length > 0 ? (
                       order.items.map((item, index) => (
                         <tr key={index}>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border border-gray-200 bg-white">
+                              {item.mockupImage || item.designImage ? (
+                                <ProductImageOverlay
+                                  mockupImage={item.mockupImage}
+                                  designImage={item.designImage}
+                                  fallbackImage={item.image ? { url: getImageUrl(item.image), alt: item.name } : undefined}
+                                  className="w-full h-full"
+                                />
+                              ) : item.image ? (
+                                <img
+                                  src={getImageUrl(item.image)}
+                                  alt={item.name}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.src = getImageUrl('/images/logo.png');
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                                  <span className="text-gray-400 text-xs">No image</span>
+                                </div>
+                              )}
+                            </div>
+                          </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {item.name}
                           </td>
@@ -1111,7 +1146,7 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={6} className="text-center text-gray-500 py-4">
+                        <td colSpan={8} className="text-center text-gray-500 py-4">
                           No items found.
                         </td>
                       </tr>
@@ -1122,7 +1157,7 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
                          return (
                            <>
                              <tr className="bg-purple-50">
-                               <td colSpan={6} className="px-6 py-4 text-sm font-medium text-purple-700 text-right">
+                               <td colSpan={7} className="px-6 py-4 text-sm font-medium text-purple-700 text-right">
                                  Discount ({voucherInfo.code})
                                </td>
                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-purple-700">
@@ -1130,7 +1165,7 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
                                </td>
                              </tr>
                              <tr className="bg-blue-50">
-                               <td colSpan={6} className="px-6 py-4 text-sm font-medium text-blue-700 text-right">
+                               <td colSpan={7} className="px-6 py-4 text-sm font-medium text-blue-700 text-right">
                                  Shipping ({order.shippingDetails.shippingMethod})
                                </td>
                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-700">
@@ -1138,7 +1173,7 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
                                </td>
                              </tr>
                              <tr className="bg-gray-50">
-                               <td colSpan={6} className="px-6 py-4 text-sm font-medium text-gray-900 text-right">
+                               <td colSpan={7} className="px-6 py-4 text-sm font-medium text-gray-900 text-right">
                                  Total
                                </td>
                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -1152,7 +1187,7 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
                          return (
                            <>
                              <tr className="bg-blue-50">
-                               <td colSpan={6} className="px-6 py-4 text-sm font-medium text-blue-700 text-right">
+                               <td colSpan={7} className="px-6 py-4 text-sm font-medium text-blue-700 text-right">
                                  Shipping ({order.shippingDetails.shippingMethod})
                                </td>
                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-700">
@@ -1160,7 +1195,7 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
                                </td>
                              </tr>
                              <tr className="bg-gray-50">
-                               <td colSpan={6} className="px-6 py-4 text-sm font-medium text-gray-900 text-right">
+                               <td colSpan={7} className="px-6 py-4 text-sm font-medium text-gray-900 text-right">
                                  Total
                                </td>
                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
