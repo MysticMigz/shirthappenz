@@ -31,20 +31,50 @@ export async function GET(request: NextRequest) {
     // Check authentication and admin status
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
+      console.error('❌ [Products API] No session or email');
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
       );
     }
 
-    await connectToDatabase();
+    console.log('🔍 [Products API] Session found:', { email: session.user.email, isAdmin: session.user.isAdmin });
+
+    try {
+      await connectToDatabase();
+      console.log('✅ [Products API] Database connected');
+    } catch (dbError) {
+      console.error('❌ [Products API] Database connection failed:', dbError);
+      return NextResponse.json(
+        { error: 'Database connection failed', details: dbError instanceof Error ? dbError.message : 'Unknown error' },
+        { status: 500 }
+      );
+    }
     
     // Verify admin status
-    const user = await (User as any).findOne({ email: session.user.email });
-    if (!user?.isAdmin) {
+    let user;
+    try {
+      user = await (User as any).findOne({ email: session.user.email });
+      if (!user) {
+        console.error('❌ [Products API] User not found:', session.user.email);
+        return NextResponse.json(
+          { error: 'User not found' },
+          { status: 404 }
+        );
+      }
+      if (!user.isAdmin) {
+        console.error('❌ [Products API] User is not admin:', session.user.email);
+        return NextResponse.json(
+          { error: 'Admin access required' },
+          { status: 403 }
+        );
+      }
+      console.log('✅ [Products API] Admin verified');
+    } catch (userError) {
+      console.error('❌ [Products API] Error verifying user:', userError);
       return NextResponse.json(
-        { error: 'Admin access required' },
-        { status: 403 }
+        { error: 'Failed to verify user', details: userError instanceof Error ? userError.message : 'Unknown error' },
+        { status: 500 }
       );
     }
     
@@ -55,10 +85,16 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search') || '';
     const category = searchParams.get('category') || '';
     
-    // Build query
+    console.log('🔍 [Products API] Query params:', { page, limit, search, category });
+    
+    // Build query - use regex search by default (more reliable, doesn't require text index)
     const query: any = {};
     if (search) {
-      query.$text = { $search: search };
+      // Use regex search which works without requiring a text index
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
     }
     if (category) {
       query.category = category;
@@ -66,26 +102,58 @@ export async function GET(request: NextRequest) {
     
     // Execute query with pagination
     const skip = (page - 1) * limit;
-    const products = await (Product as any).find(query)
-      .populate('collections', 'name slug')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
+    let products;
+    let total;
     
-    const total = await (Product as any).countDocuments(query);
-    
-    return NextResponse.json({
-      products,
-      pagination: {
-        total,
-        page,
-        pages: Math.ceil(total / limit)
+    try {
+      // Try with populate first
+      try {
+        products = await (Product as any).find(query)
+          .populate('collections', 'name slug')
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit);
+        total = await (Product as any).countDocuments(query);
+      } catch (populateError) {
+        // If populate fails, try without it
+        console.warn('⚠️ [Products API] Populate failed, fetching without collections:', populateError);
+        products = await (Product as any).find(query)
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit);
+        total = await (Product as any).countDocuments(query);
       }
-    });
+      
+      console.log('✅ [Products API] Products fetched:', { count: products.length, total });
+      
+      return NextResponse.json({
+        products,
+        pagination: {
+          total,
+          page,
+          pages: Math.ceil(total / limit)
+        }
+      });
+    } catch (queryError) {
+      console.error('❌ [Products API] Query execution failed:', queryError);
+      throw queryError;
+    }
   } catch (error) {
-    console.error('Error fetching products:', error);
+    console.error('❌ [Products API] Error fetching products:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    
+    console.error('❌ [Products API] Error details:', {
+      message: errorMessage,
+      stack: errorStack,
+      name: error instanceof Error ? error.name : 'Unknown'
+    });
+    
     return NextResponse.json(
-      { error: 'Failed to fetch products' },
+      { 
+        error: 'Failed to fetch products',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+      },
       { status: 500 }
     );
   }

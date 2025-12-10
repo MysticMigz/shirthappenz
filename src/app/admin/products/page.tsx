@@ -101,6 +101,21 @@ export default function AdminProducts() {
         });
         
         if (!response.ok) {
+          // Try to get error details from response
+          let errorMessage = `Failed to fetch products: ${response.status} ${response.statusText || 'Unknown error'}`;
+          try {
+            const errorData = await response.json();
+            if (errorData.error) {
+              errorMessage = errorData.error;
+              if (errorData.details) {
+                errorMessage += ` - ${errorData.details}`;
+              }
+            }
+          } catch (parseError) {
+            // If response is not JSON, use status text
+            console.warn('Could not parse error response:', parseError);
+          }
+          
           // If unauthorized, try refreshing the session once
           if (response.status === 401 && retryCount === 0) {
             console.log('🔄 [Products] Session expired, refreshing...');
@@ -115,16 +130,29 @@ export default function AdminProducts() {
               return fetchProducts(1);
             }
           }
-          throw new Error(`Failed to fetch products: ${response.statusText}`);
+          
+          console.error('❌ [Products] API error:', {
+            status: response.status,
+            statusText: response.statusText,
+            errorMessage
+          });
+          
+          throw new Error(errorMessage);
         }
         
         const data = await response.json();
+        
+        if (!data.products) {
+          throw new Error('Invalid response format: products array missing');
+        }
+        
         setProducts(data.products);
-        setTotalPages(data.pagination.pages);
+        setTotalPages(data.pagination?.pages || 1);
         setError(''); // Clear any previous errors
       } catch (err) {
-        console.error('Error fetching products:', err);
-        setError(err instanceof Error ? err.message : 'An error occurred');
+        console.error('❌ [Products] Error fetching products:', err);
+        const errorMessage = err instanceof Error ? err.message : 'An error occurred while fetching products';
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }
