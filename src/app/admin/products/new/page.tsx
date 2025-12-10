@@ -65,6 +65,9 @@ export default function NewProduct() {
   const [presetDescription, setPresetDescription] = useState('');
   const [presetLoading, setPresetLoading] = useState(false);
   const [showFullPreview, setShowFullPreview] = useState(false);
+  const [previousMockups, setPreviousMockups] = useState<Array<{ url: string; alt: string; productName: string; category: string }>>([]);
+  const [showMockupSelector, setShowMockupSelector] = useState(false);
+  const [loadingMockups, setLoadingMockups] = useState(false);
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
     description: '',
@@ -92,6 +95,7 @@ export default function NewProduct() {
   useEffect(() => {
     if (status === 'authenticated' && session?.user?.isAdmin) {
       fetchPresets();
+      fetchPreviousMockups();
     }
   }, [status, session]);
 
@@ -105,6 +109,36 @@ export default function NewProduct() {
     } catch (error) {
       console.error('Error fetching presets:', error);
     }
+  };
+
+  const fetchPreviousMockups = async () => {
+    setLoadingMockups(true);
+    try {
+      const response = await fetch('/api/admin/mockups');
+      if (response.ok) {
+        const data = await response.json();
+        console.log('🔍 [Mockups] Fetched mockups:', data.mockups?.length || 0);
+        if (data.mockups && data.mockups.length > 0) {
+          console.log('🔍 [Mockups] First mockup URL:', data.mockups[0].url);
+          console.log('🔍 [Mockups] All mockups:', JSON.stringify(data.mockups, null, 2));
+        }
+        setPreviousMockups(data.mockups || []);
+      } else {
+        const errorText = await response.text();
+        console.error('❌ [Mockups] Failed to fetch:', response.status, response.statusText, errorText);
+      }
+    } catch (error) {
+      console.error('❌ [Mockups] Error fetching previous mockups:', error);
+    } finally {
+      setLoadingMockups(false);
+    }
+  };
+
+  const handleSelectMockup = (mockup: { url: string; alt: string }) => {
+    setMockupImageUrl(mockup.url);
+    setMockupImageAlt(mockup.alt);
+    setMockupImage({ file: null, preview: null, url: mockup.url, alt: mockup.alt });
+    setShowMockupSelector(false);
   };
 
   const handleLoadPreset = () => {
@@ -663,6 +697,23 @@ export default function NewProduct() {
                       accept="image/*"
                       className="hidden"
                     />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowMockupSelector(true);
+                        if (previousMockups.length === 0) {
+                          fetchPreviousMockups();
+                        }
+                      }}
+                      className="w-full flex items-center justify-center border-2 border-dashed border-blue-300 rounded-lg p-3 hover:border-blue-500 transition-colors bg-blue-50"
+                    >
+                      <div className="text-center">
+                        <FaLink className="mx-auto h-5 w-5 text-blue-400 mb-1" />
+                        <span className="block text-xs font-medium text-blue-600">
+                          Select from Previous Mockups
+                        </span>
+                      </div>
+                    </button>
                     <div className="text-xs text-gray-500">Or enter URL:</div>
                     <input
                       type="url"
@@ -1142,6 +1193,90 @@ export default function NewProduct() {
                       className="flex-1 px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {presetLoading ? 'Saving...' : 'Save Preset'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Mockup Selector Modal */}
+            {showMockupSelector && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-auto">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900">Select Previous Mockup</h3>
+                    <button
+                      type="button"
+                      onClick={() => setShowMockupSelector(false)}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {loadingMockups ? (
+                    <div className="flex justify-center items-center py-12">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                    </div>
+                  ) : previousMockups.length === 0 ? (
+                    <div className="text-center py-12 text-gray-500">
+                      <p>No previous mockups found.</p>
+                      <p className="text-sm mt-2">Upload a mockup to see it here in the future.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {previousMockups.map((mockup, index) => {
+                        console.log('🖼️ [Mockup] Rendering mockup:', index, mockup.url, mockup.productName);
+                        return (
+                          <button
+                            key={`${mockup.url}-${index}`}
+                            type="button"
+                            onClick={() => handleSelectMockup(mockup)}
+                            className="group relative aspect-square rounded-lg overflow-hidden border-2 border-gray-200 hover:border-purple-500 transition-all hover:shadow-lg bg-white"
+                          >
+                            <img
+                              src={mockup.url}
+                              alt={mockup.alt || mockup.productName}
+                              className="w-full h-full object-cover relative z-0"
+                              style={{ display: 'block' }}
+                              loading="lazy"
+                              onLoad={() => {
+                                console.log('✅ [Mockup] Image loaded successfully:', mockup.url);
+                              }}
+                              onError={(e) => {
+                                console.error('❌ [Mockup] Image failed to load:', {
+                                  url: mockup.url,
+                                  productName: mockup.productName,
+                                  error: e
+                                });
+                                const target = e.target as HTMLImageElement;
+                                target.src = '/images/logo.png';
+                              }}
+                            />
+                            <div className="absolute inset-0 bg-black opacity-0 group-hover:opacity-40 transition-opacity flex items-center justify-center z-10 pointer-events-none">
+                              <span className="text-white opacity-0 group-hover:opacity-100 text-sm font-medium transition-opacity">
+                                Select
+                              </span>
+                            </div>
+                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent p-2 z-10 pointer-events-none">
+                              <p className="text-white text-xs truncate font-medium">{mockup.productName}</p>
+                              <p className="text-white/80 text-xs truncate">{mockup.category}</p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <div className="mt-6 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setShowMockupSelector(false)}
+                      className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+                    >
+                      Close
                     </button>
                   </div>
                 </div>
