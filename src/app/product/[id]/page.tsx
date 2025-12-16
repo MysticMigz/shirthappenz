@@ -69,6 +69,7 @@ export default function ProductPage({ params }: { params: { id: string } }) {
   const [productsEnabled, setProductsEnabled] = useState<boolean | null>(null); // null = checking
   const [checkingEnabled, setCheckingEnabled] = useState(true);
   const [showProductDetails, setShowProductDetails] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const { addItem } = useCart();
 
   // Check if products are enabled
@@ -143,6 +144,11 @@ export default function ProductPage({ params }: { params: { id: string } }) {
     }
   }, [cartMessage]);
 
+  // Reset selected image index when color changes or product changes
+  useEffect(() => {
+    setSelectedImageIndex(0);
+  }, [selectedColor, params.id]);
+
   const handleQuantityChange = (value: number) => {
     let maxQuantity = 10; // Default maximum
     
@@ -165,25 +171,95 @@ export default function ProductPage({ params }: { params: { id: string } }) {
     return 0;
   };
 
-  const getProductImage = () => {
-    if (!product) return null;
+  // Get all available images for the product
+  const getAllImages = () => {
+    if (!product) return [];
     
-    if (selectedColor) {
-      // First try to find an image with the specific color
-      const colorImage = product.images.find(img => img.color === selectedColor);
-      if (colorImage) return colorImage;
+    const allImages: Array<{ 
+      url: string; 
+      alt: string; 
+      type: 'mockup-design' | 'mockup' | 'design' | 'legacy' | 'color';
+      isCombined?: boolean;
+    }> = [];
+    
+    // If both mockup and design exist, add as combined option first
+    if (product.mockupImage?.url && product.designImage?.url) {
+      allImages.push({
+        url: product.mockupImage.url, // Use mockup URL for thumbnail
+        alt: `${product.name} - Mockup with Design`,
+        type: 'mockup-design',
+        isCombined: true
+      });
+    } else {
+      // Add mockup image separately if available
+      if (product.mockupImage?.url) {
+        allImages.push({
+          url: product.mockupImage.url,
+          alt: product.mockupImage.alt || `${product.name} - Mockup`,
+          type: 'mockup'
+        });
+      }
       
-      // Then try to find a color with imageUrl
+      // Add design image separately if available
+      if (product.designImage?.url) {
+        allImages.push({
+          url: product.designImage.url,
+          alt: product.designImage.alt || `${product.name} - Design`,
+          type: 'design'
+        });
+      }
+    }
+    
+    // Add legacy images - prioritize color-specific ones if a color is selected
+    if (product.images && product.images.length > 0) {
+      const colorSpecificImages: Array<{ url: string; alt: string; type: 'mockup-design' | 'mockup' | 'design' | 'legacy' | 'color'; isCombined?: boolean }> = [];
+      const otherImages: Array<{ url: string; alt: string; type: 'mockup-design' | 'mockup' | 'design' | 'legacy' | 'color'; isCombined?: boolean }> = [];
+      
+      product.images.forEach(img => {
+        const imageObj = {
+          url: img.url,
+          alt: img.alt || product.name,
+          type: 'legacy' as const
+        };
+        
+        // If a color is selected, prioritize images with matching color
+        if (selectedColor && img.color === selectedColor) {
+          colorSpecificImages.push(imageObj);
+        } else {
+          otherImages.push(imageObj);
+        }
+      });
+      
+      // Add color-specific images first, then others
+      allImages.push(...colorSpecificImages, ...otherImages);
+    }
+    
+    // Add color-specific images from colors array if a color is selected
+    if (selectedColor) {
       const colorWithImage = product.colors.find(color => 
         color.name === selectedColor && color.imageUrl
       );
       if (colorWithImage?.imageUrl) {
-        return { url: colorWithImage.imageUrl, alt: `${product.name} - ${selectedColor}` };
+        allImages.push({
+          url: colorWithImage.imageUrl,
+          alt: `${product.name} - ${selectedColor}`,
+          type: 'color'
+        });
       }
     }
     
-    // Fallback to first image
-    return product.images[0];
+    return allImages;
+  };
+
+  const getProductImage = () => {
+    if (!product) return null;
+    
+    const allImages = getAllImages();
+    if (allImages.length === 0) return null;
+    
+    // Return the selected image, or first image if index is out of bounds
+    const index = Math.min(selectedImageIndex, allImages.length - 1);
+    return allImages[index];
   };
 
   const isOutOfStock = (size: string) => {
@@ -431,72 +507,127 @@ export default function ProductPage({ params }: { params: { id: string } }) {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* Product Images */}
-              <div className="relative bg-gray-100 rounded-lg overflow-hidden">
-                {product.mockupImage || product.designImage ? (
-                  <ProductImageOverlay
-                    mockupImage={product.mockupImage}
-                    designImage={product.designImage}
-                    className="w-full h-auto rounded-lg"
-                    priority
-                  />
-                ) : (() => {
-                  const productImage = getProductImage();
-                  return productImage ? (
-                    <Image
-                      key={selectedColor || 'default'} // Force re-render when color changes
-                      src={productImage.url}
-                      alt={productImage.alt || product.name}
-                      width={600}
-                      height={600}
-                      className="w-full h-auto rounded-lg transition-opacity duration-300"
-                      priority
-                    />
-                  ) : (
-                    <div className="w-full h-96 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center rounded-lg">
-                      <div className="bg-gradient-to-r from-purple-600 via-blue-500 to-orange-400 text-white brand-text text-lg px-4 py-2 rounded-lg">
-                        MR SHIRT PERSONALISATION LTD
-                      </div>
+              <div>
+                <div className="relative bg-gray-100 rounded-lg overflow-hidden mb-4">
+                  {(() => {
+                    const allImages = getAllImages();
+                    const productImage = getProductImage();
+                    
+                    if (allImages.length === 0) {
+                      return (
+                        <div className="w-full h-96 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center rounded-lg">
+                          <div className="bg-gradient-to-r from-purple-600 via-blue-500 to-orange-400 text-white brand-text text-lg px-4 py-2 rounded-lg">
+                            MR SHIRT PERSONALISATION LTD
+                          </div>
+                        </div>
+                      );
+                    }
+                    
+                    // Check if selected image is mockup/design combo
+                    const selectedImage = allImages[selectedImageIndex];
+                    const isMockupDesign = selectedImage?.type === 'mockup-design';
+                    
+                    // Show overlay only if this specific image is the mockup-design combo
+                    if (isMockupDesign && product.mockupImage && product.designImage) {
+                      return (
+                        <ProductImageOverlay
+                          mockupImage={product.mockupImage}
+                          designImage={product.designImage}
+                          className="w-full h-auto rounded-lg"
+                          priority={selectedImageIndex === 0}
+                        />
+                      );
+                    }
+                    
+                    // Show regular image
+                    return productImage ? (
+                      <Image
+                        key={`${selectedImageIndex}-${selectedColor || 'default'}`}
+                        src={productImage.url}
+                        alt={productImage.alt || product.name}
+                        width={600}
+                        height={600}
+                        className="w-full h-auto rounded-lg transition-opacity duration-300"
+                        priority={selectedImageIndex === 0}
+                      />
+                    ) : null;
+                  })()}
+                </div>
+                
+                {/* Image Thumbnails Gallery */}
+                {(() => {
+                  const allImages = getAllImages();
+                  if (allImages.length <= 1) return null;
+                  
+                  return (
+                    <div className="flex gap-2 overflow-x-auto pb-2">
+                      {allImages.map((img, index) => {
+                        const isSelected = selectedImageIndex === index;
+                        return (
+                          <button
+                            key={index}
+                            onClick={() => setSelectedImageIndex(index)}
+                            className={`flex-shrink-0 relative w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${
+                              isSelected 
+                                ? 'border-purple-600 ring-2 ring-purple-300' 
+                                : 'border-gray-200 hover:border-gray-400'
+                            }`}
+                            aria-label={`View image ${index + 1}`}
+                          >
+                            <Image
+                              src={img.url}
+                              alt={img.alt || `${product.name} - Image ${index + 1}`}
+                              fill
+                              className="object-cover"
+                              sizes="80px"
+                            />
+                            {isSelected && (
+                              <div className="absolute inset-0 bg-purple-600 bg-opacity-20" />
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
                   );
                 })()}
               
-              {/* Product Details Accordion */}
-              <div className="mt-4 border border-gray-200 rounded-lg overflow-hidden">
-                <button
-                  onClick={() => setShowProductDetails(!showProductDetails)}
-                  className="w-full px-4 py-3 flex items-center justify-between bg-white hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
-                  aria-expanded={showProductDetails}
-                >
-                  <span className="text-sm font-medium text-gray-900">Product Details</span>
-                  <svg
-                    className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${
-                      showProductDetails ? 'transform rotate-180' : ''
-                    }`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+                {/* Product Details Accordion */}
+                <div className="mt-4 border border-gray-200 rounded-lg overflow-hidden">
+                  <button
+                    onClick={() => setShowProductDetails(!showProductDetails)}
+                    className="w-full px-4 py-3 flex items-center justify-between bg-white hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+                    aria-expanded={showProductDetails}
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-                {showProductDetails && (
-                  <div className="px-4 py-4 bg-gray-50 border-t border-gray-200">
-                    {product.productDetails ? (
-                      <div className="text-sm text-gray-700 whitespace-pre-line">
-                        {product.productDetails}
-                      </div>
-                    ) : (
-                      <div className="text-sm text-gray-500 italic">
-                        No product details available.
-                      </div>
-                    )}
-                  </div>
-                )}
+                    <span className="text-sm font-medium text-gray-900">Product Details</span>
+                    <svg
+                      className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${
+                        showProductDetails ? 'transform rotate-180' : ''
+                      }`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  {showProductDetails && (
+                    <div className="px-4 py-4 bg-gray-50 border-t border-gray-200">
+                      {product.productDetails ? (
+                        <div className="text-sm text-gray-700 whitespace-pre-line">
+                          {product.productDetails}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-gray-500 italic">
+                          No product details available.
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
 
-            {/* Product Details */}
-            <div className="flex flex-col">
+              {/* Product Details */}
+              <div className="flex flex-col">
               <h1 className="text-3xl font-bold text-gray-900 mb-2">{product.name}</h1>
               <p className="text-sm text-gray-500 mb-4">{formatCategory(product.category)}</p>
               {/* RRP and Offer Price */}
