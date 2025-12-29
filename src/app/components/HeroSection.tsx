@@ -69,7 +69,13 @@ const HeroSection = () => {
     const loadCustomBackgrounds = async () => {
       try {
         console.log('🎨 Fetching carousel backgrounds...');
-        const response = await fetch('/api/carousel-backgrounds');
+        // Add cache-busting timestamp and prevent caching
+        const response = await fetch(`/api/carousel-backgrounds?t=${Date.now()}`, {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        });
         console.log('🎨 API response status:', response.status);
         if (response.ok) {
           const backgrounds = await response.json();

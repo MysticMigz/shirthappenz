@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import CarouselBackground from '@/backend/models/CarouselBackground';
 
+// Force dynamic rendering to prevent caching
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET() {
   try {
     await connectToDatabase();
@@ -29,7 +33,14 @@ export async function GET() {
       });
     });
 
-    return NextResponse.json(transformedBackgrounds);
+    // Prevent caching to ensure fresh data
+    return NextResponse.json(transformedBackgrounds, {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
+    });
   } catch (error) {
     console.error('Error fetching active carousel backgrounds:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
