@@ -167,79 +167,6 @@ export default function ProductPage({ params }: { params: { id: string } }) {
     setSelectedImageIndex(0);
   }, [selectedColor, params.id, product?._id]);
 
-  // Preload first few images in carousel for faster rendering
-  useEffect(() => {
-    if (!product) return;
-
-    const allImages = getAllImages;
-    if (allImages.length === 0) return;
-
-    // Preload first 3 images (or all if less than 3)
-    const imagesToPreload = allImages.slice(0, Math.min(3, allImages.length));
-    const createdLinks: HTMLLinkElement[] = [];
-    
-    imagesToPreload.forEach((img, index) => {
-      if (img.type === 'mockup-design') {
-        // Preload both mockup and design images for combinations
-        let mockupUrl = null;
-        let designUrl = null;
-        
-        if (img.combinationIndex !== undefined && product.mockupDesignCombinations) {
-          const combination = product.mockupDesignCombinations[img.combinationIndex];
-          if (combination) {
-            mockupUrl = combination.mockupImage?.url;
-            designUrl = combination.designImage?.url;
-          }
-        } else if (product.mockupImage?.url && product.designImage?.url) {
-          mockupUrl = product.mockupImage.url;
-          designUrl = product.designImage.url;
-        }
-
-        // Preload mockup
-        if (mockupUrl && !mockupUrl.startsWith('blob:') && !mockupUrl.startsWith('data:')) {
-          const link = document.createElement('link');
-          link.rel = 'preload';
-          link.as = 'image';
-          link.href = mockupUrl;
-          link.fetchPriority = index === 0 ? 'high' : 'auto';
-          document.head.appendChild(link);
-          createdLinks.push(link);
-        }
-
-        // Preload design
-        if (designUrl && !designUrl.startsWith('blob:') && !designUrl.startsWith('data:')) {
-          const link = document.createElement('link');
-          link.rel = 'preload';
-          link.as = 'image';
-          link.href = designUrl;
-          link.fetchPriority = index === 0 ? 'high' : 'auto';
-          document.head.appendChild(link);
-          createdLinks.push(link);
-        }
-      } else {
-        // Preload regular images
-        if (img.url && !img.url.startsWith('blob:') && !img.url.startsWith('data:')) {
-          const link = document.createElement('link');
-          link.rel = 'preload';
-          link.as = 'image';
-          link.href = img.url;
-          link.fetchPriority = index === 0 ? 'high' : 'auto';
-          document.head.appendChild(link);
-          createdLinks.push(link);
-        }
-      }
-    });
-
-    // Cleanup function to remove preload links when component unmounts or product changes
-    return () => {
-      createdLinks.forEach(link => {
-        if (document.head.contains(link)) {
-          document.head.removeChild(link);
-        }
-      });
-    };
-  }, [product, getAllImages]);
-
   // Carousel navigation functions
   const goToNextImage = () => {
     if (getAllImages.length === 0) return;
@@ -419,6 +346,79 @@ export default function ProductPage({ params }: { params: { id: string } }) {
     
     return allImages;
   }, [product, selectedColor]);
+
+  // Preload first few images in carousel for faster rendering
+  useEffect(() => {
+    if (!product) return;
+
+    const allImages = getAllImages;
+    if (allImages.length === 0) return;
+
+    // Preload first 3 images (or all if less than 3)
+    const imagesToPreload = allImages.slice(0, Math.min(3, allImages.length));
+    const createdLinks: HTMLLinkElement[] = [];
+    
+    imagesToPreload.forEach((img, index) => {
+      if (img.type === 'mockup-design') {
+        // Preload both mockup and design images for combinations
+        let mockupUrl = null;
+        let designUrl = null;
+        
+        if (img.combinationIndex !== undefined && product.mockupDesignCombinations) {
+          const combination = product.mockupDesignCombinations[img.combinationIndex];
+          if (combination) {
+            mockupUrl = combination.mockupImage?.url;
+            designUrl = combination.designImage?.url;
+          }
+        } else if (product.mockupImage?.url && product.designImage?.url) {
+          mockupUrl = product.mockupImage.url;
+          designUrl = product.designImage.url;
+        }
+
+        // Preload mockup
+        if (mockupUrl && !mockupUrl.startsWith('blob:') && !mockupUrl.startsWith('data:')) {
+          const link = document.createElement('link');
+          link.rel = 'preload';
+          link.as = 'image';
+          link.href = mockupUrl;
+          link.fetchPriority = index === 0 ? 'high' : 'auto';
+          document.head.appendChild(link);
+          createdLinks.push(link);
+        }
+
+        // Preload design
+        if (designUrl && !designUrl.startsWith('blob:') && !designUrl.startsWith('data:')) {
+          const link = document.createElement('link');
+          link.rel = 'preload';
+          link.as = 'image';
+          link.href = designUrl;
+          link.fetchPriority = index === 0 ? 'high' : 'auto';
+          document.head.appendChild(link);
+          createdLinks.push(link);
+        }
+      } else {
+        // Preload regular images
+        if (img.url && !img.url.startsWith('blob:') && !img.url.startsWith('data:')) {
+          const link = document.createElement('link');
+          link.rel = 'preload';
+          link.as = 'image';
+          link.href = img.url;
+          link.fetchPriority = index === 0 ? 'high' : 'auto';
+          document.head.appendChild(link);
+          createdLinks.push(link);
+        }
+      }
+    });
+
+    // Cleanup function to remove preload links when component unmounts or product changes
+    return () => {
+      createdLinks.forEach(link => {
+        if (document.head.contains(link)) {
+          document.head.removeChild(link);
+        }
+      });
+    };
+  }, [product, getAllImages]);
 
   const getProductImage = () => {
     if (!product || getAllImages.length === 0) return null;
