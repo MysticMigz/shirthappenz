@@ -1598,54 +1598,114 @@ export default function EditProduct({ params }: { params: { id: string } }) {
                         isolation: 'isolate' // Isolate this container from transforms
                       }}
                     >
-                      {(mockupImage.preview || mockupImage.url || mockupImageUrl || designImage.preview || designImage.url || designImageUrl) ? (
-                        <ProductImageOverlay
-                          key={`preview-${mockupImage.preview || mockupImage.url || mockupImageUrl || 'no-mockup'}-${designImage.preview || designImage.url || designImageUrl || 'no-design'}`}
-                          mockupImage={
-                            mockupImage.preview 
-                              ? { url: mockupImage.preview, alt: mockupImageAlt || 'Mockup preview' }
-                              : mockupImage.url
-                              ? { url: mockupImage.url, alt: mockupImage.alt || mockupImageAlt || 'Mockup' }
-                              : mockupImageUrl 
-                              ? { url: mockupImageUrl, alt: mockupImageAlt || 'Mockup' }
-                              : undefined
-                          }
-                          designImage={
-                            designImage.preview 
-                              ? { 
-                                  url: designImage.preview, 
-                                  alt: designImageAlt || 'Design preview',
-                                  position: designPosition,
-                                  scale: designScale,
-                                  rotation: designRotation
-                                }
-                              : designImage.url
-                              ? { 
-                                  url: designImage.url, 
-                                  alt: designImage.alt || designImageAlt || 'Design',
-                                  position: designPosition,
-                                  scale: designScale,
-                                  rotation: designRotation
-                                }
-                              : designImageUrl 
-                              ? { 
-                                  url: designImageUrl, 
-                                  alt: designImageAlt || 'Design',
-                                  position: designPosition,
-                                  scale: designScale,
-                                  rotation: designRotation
-                                }
-                              : undefined
-                          }
-                          className="w-full h-full"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                          <div className="bg-gradient-to-r from-purple-600 via-blue-500 to-orange-400 text-white brand-text text-sm px-3 py-1 rounded-lg">
-                            MR SHIRT PERSONALISATION LTD
+                      {(() => {
+                        // Priority 1: Check if there are combinations - show first one
+                        const sortedCombinations = [...combinations].sort((a, b) => (a.order || 0) - (b.order || 0));
+                        const firstCombo = sortedCombinations.find(combo => 
+                          (combo.mockupImage.preview || combo.mockupImage.url || combo.mockupImageUrl) && 
+                          (combo.designImage.preview || combo.designImage.url || combo.designImageUrl)
+                        );
+
+                        if (firstCombo) {
+                          return (
+                            <ProductImageOverlay
+                              key={`preview-combo-${firstCombo.id}`}
+                              mockupImage={
+                                firstCombo.mockupImage.preview 
+                                  ? { url: firstCombo.mockupImage.preview, alt: firstCombo.mockupImageAlt || 'Mockup preview' }
+                                  : firstCombo.mockupImage.url
+                                  ? { url: firstCombo.mockupImage.url, alt: firstCombo.mockupImage.alt || firstCombo.mockupImageAlt || 'Mockup' }
+                                  : firstCombo.mockupImageUrl 
+                                  ? { url: firstCombo.mockupImageUrl, alt: firstCombo.mockupImageAlt || 'Mockup' }
+                                  : undefined
+                              }
+                              designImage={
+                                firstCombo.designImage.preview 
+                                  ? { 
+                                      url: firstCombo.designImage.preview, 
+                                      alt: firstCombo.designImageAlt || 'Design preview',
+                                      position: firstCombo.designPosition,
+                                      scale: firstCombo.designScale,
+                                      rotation: firstCombo.designRotation
+                                    }
+                                  : firstCombo.designImage.url
+                                  ? { 
+                                      url: firstCombo.designImage.url, 
+                                      alt: firstCombo.designImage.alt || firstCombo.designImageAlt || 'Design',
+                                      position: firstCombo.designPosition,
+                                      scale: firstCombo.designScale,
+                                      rotation: firstCombo.designRotation
+                                    }
+                                  : firstCombo.designImageUrl 
+                                  ? { 
+                                      url: firstCombo.designImageUrl, 
+                                      alt: firstCombo.designImageAlt || 'Design',
+                                      position: firstCombo.designPosition,
+                                      scale: firstCombo.designScale,
+                                      rotation: firstCombo.designRotation
+                                    }
+                                  : undefined
+                              }
+                              className="w-full h-full"
+                            />
+                          );
+                        }
+
+                        // Priority 2: Fall back to single mockup/design
+                        if (mockupImage.preview || mockupImage.url || mockupImageUrl || designImage.preview || designImage.url || designImageUrl) {
+                          return (
+                            <ProductImageOverlay
+                              key={`preview-${mockupImage.preview || mockupImage.url || mockupImageUrl || 'no-mockup'}-${designImage.preview || designImage.url || designImageUrl || 'no-design'}`}
+                              mockupImage={
+                                mockupImage.preview 
+                                  ? { url: mockupImage.preview, alt: mockupImageAlt || 'Mockup preview' }
+                                  : mockupImage.url
+                                  ? { url: mockupImage.url, alt: mockupImage.alt || mockupImageAlt || 'Mockup' }
+                                  : mockupImageUrl 
+                                  ? { url: mockupImageUrl, alt: mockupImageAlt || 'Mockup' }
+                                  : undefined
+                              }
+                              designImage={
+                                designImage.preview 
+                                  ? { 
+                                      url: designImage.preview, 
+                                      alt: designImageAlt || 'Design preview',
+                                      position: designPosition,
+                                      scale: designScale,
+                                      rotation: designRotation
+                                    }
+                                  : designImage.url
+                                  ? { 
+                                      url: designImage.url, 
+                                      alt: designImage.alt || designImageAlt || 'Design',
+                                      position: designPosition,
+                                      scale: designScale,
+                                      rotation: designRotation
+                                    }
+                                  : designImageUrl 
+                                  ? { 
+                                      url: designImageUrl, 
+                                      alt: designImageAlt || 'Design',
+                                      position: designPosition,
+                                      scale: designScale,
+                                      rotation: designRotation
+                                    }
+                                  : undefined
+                              }
+                              className="w-full h-full"
+                            />
+                          );
+                        }
+
+                        // Fallback placeholder
+                        return (
+                          <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                            <div className="bg-gradient-to-r from-purple-600 via-blue-500 to-orange-400 text-white brand-text text-sm px-3 py-1 rounded-lg">
+                              MR SHIRT PERSONALISATION LTD
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        );
+                      })()}
                     </div>
                     <div className="p-4">
                       <h3 className="font-semibold text-lg text-gray-900 mb-1">
@@ -2070,54 +2130,114 @@ export default function EditProduct({ params }: { params: { id: string } }) {
                             isolation: 'isolate'
                           }}
                         >
-                          {(mockupImage.preview || mockupImage.url || mockupImageUrl || designImage.preview || designImage.url || designImageUrl) ? (
-                            <ProductImageOverlay
-                              key={`full-preview-${mockupImage.preview || mockupImage.url || mockupImageUrl || 'no-mockup'}-${designImage.preview || designImage.url || designImageUrl || 'no-design'}`}
-                              mockupImage={
-                                mockupImage.preview 
-                                  ? { url: mockupImage.preview, alt: mockupImageAlt || 'Mockup preview' }
-                                  : mockupImage.url
-                                  ? { url: mockupImage.url, alt: mockupImage.alt || mockupImageAlt || 'Mockup' }
-                                  : mockupImageUrl 
-                                  ? { url: mockupImageUrl, alt: mockupImageAlt || 'Mockup' }
-                                  : undefined
-                              }
-                              designImage={
-                                designImage.preview 
-                                  ? { 
-                                      url: designImage.preview, 
-                                      alt: designImageAlt || 'Design preview',
-                                      position: designPosition,
-                                      scale: designScale,
-                                      rotation: designRotation
-                                    }
-                                  : designImage.url
-                                  ? { 
-                                      url: designImage.url, 
-                                      alt: designImage.alt || designImageAlt || 'Design',
-                                      position: designPosition,
-                                      scale: designScale,
-                                      rotation: designRotation
-                                    }
-                                  : designImageUrl 
-                                  ? { 
-                                      url: designImageUrl, 
-                                      alt: designImageAlt || 'Design',
-                                      position: designPosition,
-                                      scale: designScale,
-                                      rotation: designRotation
-                                    }
-                                  : undefined
-                              }
-                              className="w-full h-full"
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                              <div className="bg-gradient-to-r from-purple-600 via-blue-500 to-orange-400 text-white brand-text text-sm px-3 py-1 rounded-lg">
-                                MR SHIRT PERSONALISATION LTD
+                          {(() => {
+                            // Priority 1: Check if there are combinations - show first one
+                            const sortedCombinations = [...combinations].sort((a, b) => (a.order || 0) - (b.order || 0));
+                            const firstCombo = sortedCombinations.find(combo => 
+                              (combo.mockupImage.preview || combo.mockupImage.url || combo.mockupImageUrl) && 
+                              (combo.designImage.preview || combo.designImage.url || combo.designImageUrl)
+                            );
+
+                            if (firstCombo) {
+                              return (
+                                <ProductImageOverlay
+                                  key={`full-preview-combo-${firstCombo.id}`}
+                                  mockupImage={
+                                    firstCombo.mockupImage.preview 
+                                      ? { url: firstCombo.mockupImage.preview, alt: firstCombo.mockupImageAlt || 'Mockup preview' }
+                                      : firstCombo.mockupImage.url
+                                      ? { url: firstCombo.mockupImage.url, alt: firstCombo.mockupImage.alt || firstCombo.mockupImageAlt || 'Mockup' }
+                                      : firstCombo.mockupImageUrl 
+                                      ? { url: firstCombo.mockupImageUrl, alt: firstCombo.mockupImageAlt || 'Mockup' }
+                                      : undefined
+                                  }
+                                  designImage={
+                                    firstCombo.designImage.preview 
+                                      ? { 
+                                          url: firstCombo.designImage.preview, 
+                                          alt: firstCombo.designImageAlt || 'Design preview',
+                                          position: firstCombo.designPosition,
+                                          scale: firstCombo.designScale,
+                                          rotation: firstCombo.designRotation
+                                        }
+                                      : firstCombo.designImage.url
+                                      ? { 
+                                          url: firstCombo.designImage.url, 
+                                          alt: firstCombo.designImage.alt || firstCombo.designImageAlt || 'Design',
+                                          position: firstCombo.designPosition,
+                                          scale: firstCombo.designScale,
+                                          rotation: firstCombo.designRotation
+                                        }
+                                      : firstCombo.designImageUrl 
+                                      ? { 
+                                          url: firstCombo.designImageUrl, 
+                                          alt: firstCombo.designImageAlt || 'Design',
+                                          position: firstCombo.designPosition,
+                                          scale: firstCombo.designScale,
+                                          rotation: firstCombo.designRotation
+                                        }
+                                      : undefined
+                                  }
+                                  className="w-full h-full"
+                                />
+                              );
+                            }
+
+                            // Priority 2: Fall back to single mockup/design
+                            if (mockupImage.preview || mockupImage.url || mockupImageUrl || designImage.preview || designImage.url || designImageUrl) {
+                              return (
+                                <ProductImageOverlay
+                                  key={`full-preview-${mockupImage.preview || mockupImage.url || mockupImageUrl || 'no-mockup'}-${designImage.preview || designImage.url || designImageUrl || 'no-design'}`}
+                                  mockupImage={
+                                    mockupImage.preview 
+                                      ? { url: mockupImage.preview, alt: mockupImageAlt || 'Mockup preview' }
+                                      : mockupImage.url
+                                      ? { url: mockupImage.url, alt: mockupImage.alt || mockupImageAlt || 'Mockup' }
+                                      : mockupImageUrl 
+                                      ? { url: mockupImageUrl, alt: mockupImageAlt || 'Mockup' }
+                                      : undefined
+                                  }
+                                  designImage={
+                                    designImage.preview 
+                                      ? { 
+                                          url: designImage.preview, 
+                                          alt: designImageAlt || 'Design preview',
+                                          position: designPosition,
+                                          scale: designScale,
+                                          rotation: designRotation
+                                        }
+                                      : designImage.url
+                                      ? { 
+                                          url: designImage.url, 
+                                          alt: designImage.alt || designImageAlt || 'Design',
+                                          position: designPosition,
+                                          scale: designScale,
+                                          rotation: designRotation
+                                        }
+                                      : designImageUrl 
+                                      ? { 
+                                          url: designImageUrl, 
+                                          alt: designImageAlt || 'Design',
+                                          position: designPosition,
+                                          scale: designScale,
+                                          rotation: designRotation
+                                        }
+                                      : undefined
+                                  }
+                                  className="w-full h-full"
+                                />
+                              );
+                            }
+
+                            // Fallback placeholder
+                            return (
+                              <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                                <div className="bg-gradient-to-r from-purple-600 via-blue-500 to-orange-400 text-white brand-text text-sm px-3 py-1 rounded-lg">
+                                  MR SHIRT PERSONALISATION LTD
+                                </div>
                               </div>
-                            </div>
-                          )}
+                            );
+                          })()}
                         </div>
                       </div>
                     </div>
