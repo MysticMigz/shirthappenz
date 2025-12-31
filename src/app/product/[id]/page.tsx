@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -28,6 +28,12 @@ interface Product {
   productDetails?: string;
   mockupImage?: { url: string; alt: string };
   designImage?: { url: string; alt: string; position?: { x: number; y: number }; scale?: number; rotation?: number };
+  mockupDesignCombinations?: Array<{
+    mockupImage: { url: string; alt: string };
+    designImage: { url: string; alt: string; position?: { x: number; y: number }; scale?: number; rotation?: number };
+    name?: string;
+    order?: number;
+  }>;
 }
 
 // Size order mapping for correct sorting
@@ -70,6 +76,8 @@ export default function ProductPage({ params }: { params: { id: string } }) {
   const [checkingEnabled, setCheckingEnabled] = useState(true);
   const [showProductDetails, setShowProductDetails] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const touchEnd = useRef<{ x: number; y: number } | null>(null);
   const { addItem } = useCart();
 
   // Check if products are enabled
@@ -109,7 +117,16 @@ export default function ProductPage({ params }: { params: { id: string } }) {
         const response = await fetch(`/api/products/${params.id}`);
         if (!response.ok) throw new Error('Failed to fetch product');
         const data = await response.json();
+        console.log('🛍️ Product loaded:', {
+          id: data.product._id,
+          name: data.product.name,
+          hasCombinations: !!data.product.mockupDesignCombinations,
+          combinationsCount: data.product.mockupDesignCombinations?.length || 0,
+          combinations: data.product.mockupDesignCombinations
+        });
         setProduct(data.product);
+        // Always reset to first image (preview card image) when product loads
+        setSelectedImageIndex(0);
         // Set first available size as default (using sorted sizes)
         if (data.product.sizes.length > 0) {
           const sortedSizes = sortSizes(data.product.sizes);
@@ -145,9 +162,129 @@ export default function ProductPage({ params }: { params: { id: string } }) {
   }, [cartMessage]);
 
   // Reset selected image index when color changes or product changes
+  // Always start with the first image (preview card image)
   useEffect(() => {
     setSelectedImageIndex(0);
-  }, [selectedColor, params.id]);
+  }, [selectedColor, params.id, product?._id]);
+
+  // Preload first few images in carousel for faster rendering
+  useEffect(() => {
+    if (!product) return;
+
+    const allImages = getAllImages;
+    if (allImages.length === 0) return;
+
+    // Preload first 3 images (or all if less than 3)
+    const imagesToPreload = allImages.slice(0, Math.min(3, allImages.length));
+    const createdLinks: HTMLLinkElement[] = [];
+    
+    imagesToPreload.forEach((img, index) => {
+      if (img.type === 'mockup-design') {
+        // Preload both mockup and design images for combinations
+        let mockupUrl = null;
+        let designUrl = null;
+        
+        if (img.combinationIndex !== undefined && product.mockupDesignCombinations) {
+          const combination = product.mockupDesignCombinations[img.combinationIndex];
+          if (combination) {
+            mockupUrl = combination.mockupImage?.url;
+            designUrl = combination.designImage?.url;
+          }
+        } else if (product.mockupImage?.url && product.designImage?.url) {
+          mockupUrl = product.mockupImage.url;
+          designUrl = product.designImage.url;
+        }
+
+        // Preload mockup
+        if (mockupUrl && !mockupUrl.startsWith('blob:') && !mockupUrl.startsWith('data:')) {
+          const link = document.createElement('link');
+          link.rel = 'preload';
+          link.as = 'image';
+          link.href = mockupUrl;
+          link.fetchPriority = index === 0 ? 'high' : 'auto';
+          document.head.appendChild(link);
+          createdLinks.push(link);
+        }
+
+        // Preload design
+        if (designUrl && !designUrl.startsWith('blob:') && !designUrl.startsWith('data:')) {
+          const link = document.createElement('link');
+          link.rel = 'preload';
+          link.as = 'image';
+          link.href = designUrl;
+          link.fetchPriority = index === 0 ? 'high' : 'auto';
+          document.head.appendChild(link);
+          createdLinks.push(link);
+        }
+      } else {
+        // Preload regular images
+        if (img.url && !img.url.startsWith('blob:') && !img.url.startsWith('data:')) {
+          const link = document.createElement('link');
+          link.rel = 'preload';
+          link.as = 'image';
+          link.href = img.url;
+          link.fetchPriority = index === 0 ? 'high' : 'auto';
+          document.head.appendChild(link);
+          createdLinks.push(link);
+        }
+      }
+    });
+
+    // Cleanup function to remove preload links when component unmounts or product changes
+    return () => {
+      createdLinks.forEach(link => {
+        if (document.head.contains(link)) {
+          document.head.removeChild(link);
+        }
+      });
+    };
+  }, [product, getAllImages]);
+
+  // Carousel navigation functions
+  const goToNextImage = () => {
+    if (getAllImages.length === 0) return;
+    setSelectedImageIndex((prev) => (prev + 1) % getAllImages.length);
+  };
+
+  const goToPreviousImage = () => {
+    if (getAllImages.length === 0) return;
+    setSelectedImageIndex((prev) => (prev - 1 + getAllImages.length) % getAllImages.length);
+  };
+
+  // Touch handlers for swipe gestures
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchEnd.current = null;
+    touchStart.current = {
+      x: e.targetTouches[0].clientX,
+      y: e.targetTouches[0].clientY,
+    };
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEnd.current = {
+      x: e.targetTouches[0].clientX,
+      y: e.targetTouches[0].clientY,
+    };
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart.current || !touchEnd.current) return;
+    
+    const distanceX = touchStart.current.x - touchEnd.current.x;
+    const distanceY = touchStart.current.y - touchEnd.current.y;
+    const isLeftSwipe = distanceX > 50;
+    const isRightSwipe = distanceX < -50;
+    const isVerticalSwipe = Math.abs(distanceY) > Math.abs(distanceX);
+
+    // Only handle horizontal swipes
+    if (!isVerticalSwipe) {
+      if (isLeftSwipe) {
+        goToNextImage();
+      } else if (isRightSwipe) {
+        goToPreviousImage();
+      }
+    }
+  };
 
   const handleQuantityChange = (value: number) => {
     let maxQuantity = 10; // Default maximum
@@ -172,7 +309,8 @@ export default function ProductPage({ params }: { params: { id: string } }) {
   };
 
   // Get all available images for the product
-  const getAllImages = () => {
+  // IMPORTANT: Legacy images (preview card images) MUST always be first
+  const getAllImages = useMemo(() => {
     if (!product) return [];
     
     const allImages: Array<{ 
@@ -180,16 +318,79 @@ export default function ProductPage({ params }: { params: { id: string } }) {
       alt: string; 
       type: 'mockup-design' | 'mockup' | 'design' | 'legacy' | 'color';
       isCombined?: boolean;
+      combinationIndex?: number; // Index in mockupDesignCombinations array
     }> = [];
     
-    // If both mockup and design exist, add as combined option first
-    if (product.mockupImage?.url && product.designImage?.url) {
-      allImages.push({
-        url: product.mockupImage.url, // Use mockup URL for thumbnail
-        alt: `${product.name} - Mockup with Design`,
-        type: 'mockup-design',
-        isCombined: true
+    // STEP 1: Add ALL legacy images FIRST (for preview cards)
+    // These are the preview card images and MUST be the first images
+    if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+      // Add them in their original order - first image is the preview
+      product.images.forEach((img, idx) => {
+        allImages.push({
+          url: img.url,
+          alt: img.alt || product.name,
+          type: 'legacy' as const
+        });
       });
+    }
+    
+    // STEP 2: Add color-specific images from colors array if a color is selected
+    // These come after legacy images but before combinations
+    if (selectedColor) {
+      const colorWithImage = product.colors?.find(color => 
+        color.name === selectedColor && color.imageUrl
+      );
+      if (colorWithImage?.imageUrl) {
+        allImages.push({
+          url: colorWithImage.imageUrl,
+          alt: `${product.name} - ${selectedColor}`,
+          type: 'color'
+        });
+      }
+    }
+    
+    // STEP 3: Add all mockup/design combinations from the array (new way)
+    if (product.mockupDesignCombinations && Array.isArray(product.mockupDesignCombinations) && product.mockupDesignCombinations.length > 0) {
+      // Sort by order if available
+      const sortedCombinations = [...product.mockupDesignCombinations].sort((a, b) => 
+        (a.order || 0) - (b.order || 0)
+      );
+      
+      sortedCombinations.forEach((combination, sortedIndex) => {
+        if (combination.mockupImage?.url && combination.designImage?.url) {
+          // Find the original index in the unsorted array to maintain reference
+          const originalIndex = product.mockupDesignCombinations.findIndex((c: any) => 
+            c.mockupImage?.url === combination.mockupImage?.url && 
+            c.designImage?.url === combination.designImage?.url
+          );
+          
+          allImages.push({
+            url: combination.mockupImage.url, // Use mockup URL for thumbnail
+            alt: combination.name || `${product.name} - Design ${sortedIndex + 1}`,
+            type: 'mockup-design',
+            isCombined: true,
+            combinationIndex: originalIndex >= 0 ? originalIndex : sortedIndex
+          });
+        }
+      });
+    }
+    
+    // STEP 4: Legacy single mockup/design (old way) - only if not in combinations
+    if (product.mockupImage?.url && product.designImage?.url) {
+      // Only add if not already in combinations array
+      const alreadyExists = product.mockupDesignCombinations?.some(combo => 
+        combo.mockupImage?.url === product.mockupImage?.url && 
+        combo.designImage?.url === product.designImage?.url
+      );
+      
+      if (!alreadyExists) {
+        allImages.push({
+          url: product.mockupImage.url, // Use mockup URL for thumbnail
+          alt: `${product.name} - Mockup with Design`,
+          type: 'mockup-design',
+          isCombined: true
+        });
+      }
     } else {
       // Add mockup image separately if available
       if (product.mockupImage?.url) {
@@ -210,56 +411,21 @@ export default function ProductPage({ params }: { params: { id: string } }) {
       }
     }
     
-    // Add legacy images - prioritize color-specific ones if a color is selected
-    if (product.images && product.images.length > 0) {
-      const colorSpecificImages: Array<{ url: string; alt: string; type: 'mockup-design' | 'mockup' | 'design' | 'legacy' | 'color'; isCombined?: boolean }> = [];
-      const otherImages: Array<{ url: string; alt: string; type: 'mockup-design' | 'mockup' | 'design' | 'legacy' | 'color'; isCombined?: boolean }> = [];
-      
-      product.images.forEach(img => {
-        const imageObj = {
-          url: img.url,
-          alt: img.alt || product.name,
-          type: 'legacy' as const
-        };
-        
-        // If a color is selected, prioritize images with matching color
-        if (selectedColor && img.color === selectedColor) {
-          colorSpecificImages.push(imageObj);
-        } else {
-          otherImages.push(imageObj);
-        }
-      });
-      
-      // Add color-specific images first, then others
-      allImages.push(...colorSpecificImages, ...otherImages);
-    }
-    
-    // Add color-specific images from colors array if a color is selected
-    if (selectedColor) {
-      const colorWithImage = product.colors.find(color => 
-        color.name === selectedColor && color.imageUrl
-      );
-      if (colorWithImage?.imageUrl) {
-        allImages.push({
-          url: colorWithImage.imageUrl,
-          alt: `${product.name} - ${selectedColor}`,
-          type: 'color'
-        });
-      }
-    }
+    console.log('🖼️ getAllImages order:', allImages.map((img, idx) => ({
+      index: idx,
+      type: img.type,
+      url: img.url.substring(0, 50) + '...'
+    })));
     
     return allImages;
-  };
+  }, [product, selectedColor]);
 
   const getProductImage = () => {
-    if (!product) return null;
-    
-    const allImages = getAllImages();
-    if (allImages.length === 0) return null;
+    if (!product || getAllImages.length === 0) return null;
     
     // Return the selected image, or first image if index is out of bounds
-    const index = Math.min(selectedImageIndex, allImages.length - 1);
-    return allImages[index];
+    const index = Math.min(selectedImageIndex, getAllImages.length - 1);
+    return getAllImages[index];
   };
 
   const isOutOfStock = (size: string) => {
@@ -508,12 +674,15 @@ export default function ProductPage({ params }: { params: { id: string } }) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* Product Images */}
               <div>
-                <div className="relative bg-gray-100 rounded-lg overflow-hidden mb-4">
+                {/* Image Carousel */}
+                <div 
+                  className="relative bg-gray-100 rounded-lg overflow-hidden mb-4"
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                >
                   {(() => {
-                    const allImages = getAllImages();
-                    const productImage = getProductImage();
-                    
-                    if (allImages.length === 0) {
+                    if (getAllImages.length === 0) {
                       return (
                         <div className="w-full h-96 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center rounded-lg">
                           <div className="bg-gradient-to-r from-purple-600 via-blue-500 to-orange-400 text-white brand-text text-lg px-4 py-2 rounded-lg">
@@ -523,54 +692,134 @@ export default function ProductPage({ params }: { params: { id: string } }) {
                       );
                     }
                     
-                    // Check if selected image is mockup/design combo
-                    const selectedImage = allImages[selectedImageIndex];
-                    const isMockupDesign = selectedImage?.type === 'mockup-design';
-                    
-                    // Show overlay only if this specific image is the mockup-design combo
-                    if (isMockupDesign && product.mockupImage && product.designImage) {
-                      return (
-                        <ProductImageOverlay
-                          mockupImage={product.mockupImage}
-                          designImage={product.designImage}
-                          className="w-full h-auto rounded-lg"
-                          priority={selectedImageIndex === 0}
-                        />
-                      );
-                    }
-                    
-                    // Show regular image
-                    return productImage ? (
-                      <Image
-                        key={`${selectedImageIndex}-${selectedColor || 'default'}`}
-                        src={productImage.url}
-                        alt={productImage.alt || product.name}
-                        width={600}
-                        height={600}
-                        className="w-full h-auto rounded-lg transition-opacity duration-300"
-                        priority={selectedImageIndex === 0}
-                      />
-                    ) : null;
+                    return (
+                      <div className="relative w-full aspect-square overflow-hidden rounded-lg">
+                        {/* Carousel Images */}
+                        {getAllImages.map((img, index) => {
+                          const isActive = index === selectedImageIndex;
+                          const isMockupDesign = img.type === 'mockup-design';
+                          
+                          // Get the correct mockup/design combination
+                          let mockupImg = null;
+                          let designImg = null;
+                          
+                          if (isMockupDesign) {
+                            // Check if it's from the combinations array
+                            if (img.combinationIndex !== undefined && product.mockupDesignCombinations) {
+                              const combination = product.mockupDesignCombinations[img.combinationIndex];
+                              if (combination) {
+                                mockupImg = combination.mockupImage;
+                                designImg = combination.designImage;
+                              }
+                            } else {
+                              // Fallback to legacy single mockup/design
+                              mockupImg = product.mockupImage;
+                              designImg = product.designImage;
+                            }
+                          }
+                          
+                          return (
+                            <div
+                              key={index}
+                              className={`absolute inset-0 transition-opacity duration-500 ease-in-out ${
+                                isActive ? 'opacity-100 z-10' : 'opacity-0 z-0'
+                              }`}
+                            >
+                              {isMockupDesign && mockupImg && designImg ? (
+                                <ProductImageOverlay
+                                  mockupImage={mockupImg}
+                                  designImage={designImg}
+                                  className="w-full h-full object-contain rounded-lg"
+                                  priority={index === 0}
+                                />
+                              ) : (
+                                <Image
+                                  src={img.url}
+                                  alt={img.alt || `${product.name} - Image ${index + 1}`}
+                                  fill
+                                  className="object-contain rounded-lg"
+                                  priority={index === 0}
+                                  loading={index === 0 ? 'eager' : 'lazy'}
+                                  fetchPriority={index === 0 ? 'high' : 'auto'}
+                                  sizes="(max-width: 768px) 100vw, 50vw"
+                                />
+                              )}
+                            </div>
+                          );
+                        })}
+                        
+                        {/* Navigation Arrows */}
+                        {getAllImages.length > 1 && (
+                          <>
+                            <button
+                              onClick={goToPreviousImage}
+                              className="absolute left-2 top-1/2 -translate-y-1/2 z-20 bg-white/80 hover:bg-white rounded-full p-2 shadow-lg transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                              aria-label="Previous image"
+                            >
+                              <svg
+                                className="w-6 h-6 text-gray-800"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={goToNextImage}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 z-20 bg-white/80 hover:bg-white rounded-full p-2 shadow-lg transition-all duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                              aria-label="Next image"
+                            >
+                              <svg
+                                className="w-6 h-6 text-gray-800"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              </svg>
+                            </button>
+                          </>
+                        )}
+                        
+                        {/* Image Indicators (Dots) */}
+                        {getAllImages.length > 1 && (
+                          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex space-x-2">
+                            {getAllImages.map((_, index) => (
+                              <button
+                                key={index}
+                                onClick={() => setSelectedImageIndex(index)}
+                                className={`w-2 h-2 rounded-full transition-all duration-300 hover:scale-125 ${
+                                  index === selectedImageIndex
+                                    ? 'bg-purple-600 w-6'
+                                    : 'bg-white/60 hover:bg-white/80'
+                                }`}
+                                aria-label={`Go to image ${index + 1}`}
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
                   })()}
                 </div>
                 
                 {/* Image Thumbnails Gallery */}
                 {(() => {
-                  const allImages = getAllImages();
-                  if (allImages.length <= 1) return null;
+                  if (getAllImages.length <= 1) return null;
                   
                   return (
                     <div className="flex gap-2 overflow-x-auto pb-2">
-                      {allImages.map((img, index) => {
+                      {getAllImages.map((img, index) => {
                         const isSelected = selectedImageIndex === index;
                         return (
                           <button
                             key={index}
                             onClick={() => setSelectedImageIndex(index)}
-                            className={`flex-shrink-0 relative w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${
+                            className={`flex-shrink-0 relative w-20 h-20 rounded-lg overflow-hidden transition-all ${
                               isSelected 
-                                ? 'border-purple-600 ring-2 ring-purple-300' 
-                                : 'border-gray-200 hover:border-gray-400'
+                                ? 'border-4 border-purple-600 shadow-lg' 
+                                : 'border-2 border-gray-200 hover:border-gray-400'
                             }`}
                             aria-label={`View image ${index + 1}`}
                           >
@@ -581,9 +830,6 @@ export default function ProductPage({ params }: { params: { id: string } }) {
                               className="object-cover"
                               sizes="80px"
                             />
-                            {isSelected && (
-                              <div className="absolute inset-0 bg-purple-600 bg-opacity-20" />
-                            )}
                           </button>
                         );
                       })}

@@ -20,6 +20,7 @@ const productSchema = new mongoose.Schema({
     alt: String,
     color: String  // Associate image with specific color
   }],
+  // Legacy single mockup/design (kept for backward compatibility)
   mockupImage: {
     url: String,
     alt: String
@@ -34,6 +35,25 @@ const productSchema = new mongoose.Schema({
     scale: { type: Number, default: 100 }, // Scale in percentage (10 to 200)
     rotation: { type: Number, default: 0 } // Rotation in degrees (-180 to 180)
   },
+  // Multiple mockup/design combinations for carousel
+  mockupDesignCombinations: [{
+    mockupImage: {
+      url: String,
+      alt: String
+    },
+    designImage: {
+      url: String,
+      alt: String,
+      position: {
+        x: { type: Number, default: 0 },
+        y: { type: Number, default: 0 }
+      },
+      scale: { type: Number, default: 100 },
+      rotation: { type: Number, default: 0 }
+    },
+    name: String, // Optional name for this combination
+    order: { type: Number, default: 0 } // Order in carousel
+  }],
   category: {
     type: String,
     required: [true, 'Product category is required'],

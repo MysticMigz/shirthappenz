@@ -22,13 +22,20 @@ export async function GET(
 
     await connectToDatabase();
     
-    const product = await (Product as any).findById(params.id);
+    const product = await (Product as any).findById(params.id).lean();
     
     if (!product) {
       return NextResponse.json(
         { error: 'Product not found' },
         { status: 404 }
       );
+    }
+    
+    // Log combinations for debugging
+    if (product.mockupDesignCombinations) {
+      console.log('🔍 Admin API - Product has combinations:', {
+        count: Array.isArray(product.mockupDesignCombinations) ? product.mockupDesignCombinations.length : 0
+      });
     }
     
     return NextResponse.json(product);
@@ -229,6 +236,14 @@ export async function PUT(
       }
     }
     
+    // Log combination data if present
+    if (data.mockupDesignCombinations) {
+      console.log('🔄 Updating product with combinations:', {
+        count: Array.isArray(data.mockupDesignCombinations) ? data.mockupDesignCombinations.length : 0,
+        combinations: data.mockupDesignCombinations
+      });
+    }
+    
     const product = await (Product as any).findByIdAndUpdate(
       params.id,
       { ...data, updatedAt: new Date() },
@@ -242,7 +257,15 @@ export async function PUT(
       );
     }
     
-    return NextResponse.json(product);
+    // Convert to plain object to ensure proper serialization
+    const productObj = product.toObject ? product.toObject() : product;
+    
+    console.log('✅ Product updated. Combinations saved:', {
+      count: productObj.mockupDesignCombinations?.length || 0,
+      combinations: productObj.mockupDesignCombinations
+    });
+    
+    return NextResponse.json(productObj);
   } catch (error) {
     console.error('Error updating product:', error);
     return NextResponse.json(

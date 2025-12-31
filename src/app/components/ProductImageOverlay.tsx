@@ -30,17 +30,55 @@ export default function ProductImageOverlay({
 }: ProductImageOverlayProps) {
   const [mockupError, setMockupError] = useState(false);
   const [designError, setDesignError] = useState(false);
+  const [mockupLoaded, setMockupLoaded] = useState(false);
+  const [designLoaded, setDesignLoaded] = useState(false);
+
+  // Preload both images simultaneously when component mounts or URLs change
+  useEffect(() => {
+    if (mockupImage?.url && designImage?.url && 
+        !mockupImage.url.startsWith('blob:') && 
+        !mockupImage.url.startsWith('data:') &&
+        !designImage.url.startsWith('blob:') && 
+        !designImage.url.startsWith('data:')) {
+      // Preload both images in parallel
+      const mockupLink = document.createElement('link');
+      mockupLink.rel = 'preload';
+      mockupLink.as = 'image';
+      mockupLink.href = mockupImage.url;
+      mockupLink.fetchPriority = priority ? 'high' : 'auto';
+      document.head.appendChild(mockupLink);
+
+      const designLink = document.createElement('link');
+      designLink.rel = 'preload';
+      designLink.as = 'image';
+      designLink.href = designImage.url;
+      designLink.fetchPriority = priority ? 'high' : 'auto';
+      document.head.appendChild(designLink);
+
+      return () => {
+        // Safely remove preload links if they still exist
+        if (document.head.contains(mockupLink)) {
+          document.head.removeChild(mockupLink);
+        }
+        if (document.head.contains(designLink)) {
+          document.head.removeChild(designLink);
+        }
+      };
+    }
+  }, [mockupImage?.url, designImage?.url, priority]);
 
   // Reset error states when image URLs change
   useEffect(() => {
     if (mockupImage?.url) {
       setMockupError(false);
+      setMockupLoaded(false);
     }
   }, [mockupImage?.url]);
 
   useEffect(() => {
     if (designImage?.url) {
       setDesignError(false);
+      setDesignLoaded(false);
     }
   }, [designImage?.url]);
 
@@ -106,8 +144,13 @@ export default function ProductImageOverlay({
                 fill
                 className="object-cover"
                 priority={priority}
+                loading={priority ? 'eager' : 'lazy'}
+                fetchPriority={priority ? 'high' : 'auto'}
                 onError={() => setMockupError(true)}
-                onLoad={() => setMockupError(false)}
+                onLoad={() => {
+                  setMockupError(false);
+                  setMockupLoaded(true);
+                }}
                 unoptimized={false}
                 style={{
                   objectFit: 'cover',
@@ -181,8 +224,13 @@ export default function ProductImageOverlay({
                   fill
                   className="object-contain"
                   priority={priority}
+                  loading={priority ? 'eager' : 'lazy'}
+                  fetchPriority={priority ? 'high' : 'auto'}
                   onError={() => setDesignError(true)}
-                  onLoad={() => setDesignError(false)}
+                  onLoad={() => {
+                    setDesignError(false);
+                    setDesignLoaded(true);
+                  }}
                   unoptimized={false}
                   style={{
                     objectFit: 'contain'

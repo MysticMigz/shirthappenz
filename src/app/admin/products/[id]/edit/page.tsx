@@ -30,6 +30,12 @@ interface ProductFormData {
   barcodes?: Array<{ colorName: string; colorHex: string; value: string; size: string; sizeCode: string }>;
   mockupImage?: { url: string; alt: string };
   designImage?: { url: string; alt: string; position?: { x: number; y: number }; scale?: number; rotation?: number };
+  mockupDesignCombinations?: Array<{
+    mockupImage: { url: string; alt: string };
+    designImage: { url: string; alt: string; position?: { x: number; y: number }; scale?: number; rotation?: number };
+    name?: string;
+    order?: number;
+  }>;
 }
 
 // Dynamically import react-barcode to avoid SSR issues
@@ -59,6 +65,21 @@ export default function EditProduct({ params }: { params: { id: string } }) {
   const [designPosition, setDesignPosition] = useState({ x: 0, y: 0 });
   const [designScale, setDesignScale] = useState(100);
   const [designRotation, setDesignRotation] = useState(0);
+  // Multiple mockup/design combinations
+  const [combinations, setCombinations] = useState<Array<{
+    id: string;
+    mockupImage: { file: File | null; preview: string | null; url?: string; alt?: string };
+    designImage: { file: File | null; preview: string | null; url?: string; alt?: string };
+    mockupImageUrl: string;
+    mockupImageAlt: string;
+    designImageUrl: string;
+    designImageAlt: string;
+    designPosition: { x: number; y: number };
+    designScale: number;
+    designRotation: number;
+    name: string;
+    order: number;
+  }>>([]);
   const [presets, setPresets] = useState<Array<{ _id: string; name: string; description?: string; position: { x: number; y: number }; scale: number; rotation: number }>>([]);
   const [selectedPreset, setSelectedPreset] = useState<string>('');
   const [showSavePresetModal, setShowSavePresetModal] = useState(false);
@@ -94,8 +115,12 @@ export default function EditProduct({ params }: { params: { id: string } }) {
       });
       if (mockupImage.preview) URL.revokeObjectURL(mockupImage.preview);
       if (designImage.preview) URL.revokeObjectURL(designImage.preview);
+      combinations.forEach(combo => {
+        if (combo.mockupImage.preview) URL.revokeObjectURL(combo.mockupImage.preview);
+        if (combo.designImage.preview) URL.revokeObjectURL(combo.designImage.preview);
+      });
     };
-  }, [uploadedImages, colorImageUploads, mockupImage.preview, designImage.preview]);
+  }, [uploadedImages, colorImageUploads, mockupImage.preview, designImage.preview, combinations]);
 
   // Redirect if not admin
   useEffect(() => {
@@ -255,6 +280,44 @@ export default function EditProduct({ params }: { params: { id: string } }) {
           if (product.designImage.rotation !== undefined) {
             setDesignRotation(product.designImage.rotation);
           }
+        }
+        
+        // Load mockup/design combinations if they exist
+        if (product.mockupDesignCombinations && Array.isArray(product.mockupDesignCombinations) && product.mockupDesignCombinations.length > 0) {
+          console.log('Loading combinations:', product.mockupDesignCombinations);
+          const loadedCombinations = product.mockupDesignCombinations.map((combo: any, index: number) => {
+            const mockupUrl = combo.mockupImage?.url || '';
+            const designUrl = combo.designImage?.url || '';
+            
+            return {
+              id: `combo-${Date.now()}-${index}`, // Use timestamp to ensure unique IDs
+              mockupImage: { 
+                file: null, 
+                preview: null, 
+                url: mockupUrl, 
+                alt: combo.mockupImage?.alt 
+              },
+              designImage: { 
+                file: null, 
+                preview: null, 
+                url: designUrl, 
+                alt: combo.designImage?.alt 
+              },
+              mockupImageUrl: mockupUrl,
+              mockupImageAlt: combo.mockupImage?.alt || '',
+              designImageUrl: designUrl,
+              designImageAlt: combo.designImage?.alt || '',
+              designPosition: combo.designImage?.position || { x: 0, y: 0 },
+              designScale: combo.designImage?.scale !== undefined ? combo.designImage.scale : 100,
+              designRotation: combo.designImage?.rotation !== undefined ? combo.designImage.rotation : 0,
+              name: combo.name || `Design ${index + 1}`,
+              order: combo.order !== undefined ? combo.order : index
+            };
+          });
+          console.log('Loaded combinations:', loadedCombinations);
+          setCombinations(loadedCombinations);
+        } else {
+          console.log('No combinations found or invalid format:', product.mockupDesignCombinations);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch product');
@@ -497,6 +560,38 @@ export default function EditProduct({ params }: { params: { id: string } }) {
     }
   };
 
+  // Combination management handlers
+  const addCombination = () => {
+    const newCombo = {
+      id: `combo-${Date.now()}`,
+      mockupImage: { file: null, preview: null },
+      designImage: { file: null, preview: null },
+      mockupImageUrl: '',
+      mockupImageAlt: '',
+      designImageUrl: '',
+      designImageAlt: '',
+      designPosition: { x: 0, y: 0 },
+      designScale: 100,
+      designRotation: 0,
+      name: `Design ${combinations.length + 1}`,
+      order: combinations.length
+    };
+    setCombinations([...combinations, newCombo]);
+  };
+
+  const removeCombination = (id: string) => {
+    const combo = combinations.find(c => c.id === id);
+    if (combo) {
+      if (combo.mockupImage.preview) URL.revokeObjectURL(combo.mockupImage.preview);
+      if (combo.designImage.preview) URL.revokeObjectURL(combo.designImage.preview);
+    }
+    setCombinations(combinations.filter(c => c.id !== id).map((c, idx) => ({ ...c, order: idx })));
+  };
+
+  const updateCombination = (id: string, updates: Partial<typeof combinations[0]>) => {
+    setCombinations(combinations.map(c => c.id === id ? { ...c, ...updates } : c));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -619,6 +714,118 @@ export default function EditProduct({ params }: { params: { id: string } }) {
         };
       }
 
+      // Upload all combination images
+      const uploadedCombinations = await Promise.all(
+        combinations.map(async (combo) => {
+          let comboMockupImage = null;
+          let comboDesignImage = null;
+
+          // Handle mockup image - prioritize file upload, then URL, then existing URL
+          if (combo.mockupImage.file) {
+            // Upload new file
+            const mockupFormData = new FormData();
+            mockupFormData.append('file', combo.mockupImage.file);
+            const response = await fetch('/api/upload', { method: 'POST', body: mockupFormData });
+            if (response.ok) {
+              const data = await response.json();
+              comboMockupImage = { 
+                url: data.url, 
+                alt: combo.mockupImageAlt || combo.mockupImage.alt || 'Mockup' 
+              };
+            } else {
+              console.error('Failed to upload mockup image for combination:', combo.name);
+            }
+          } else if (combo.mockupImageUrl) {
+            // Use URL from input field
+            comboMockupImage = { 
+              url: combo.mockupImageUrl, 
+              alt: combo.mockupImageAlt || combo.mockupImage.alt || 'Mockup' 
+            };
+          } else if (combo.mockupImage.url) {
+            // Use existing URL (from loaded product)
+            comboMockupImage = { 
+              url: combo.mockupImage.url, 
+              alt: combo.mockupImageAlt || combo.mockupImage.alt || 'Mockup' 
+            };
+          }
+
+          // Handle design image - prioritize file upload, then URL, then existing URL
+          if (combo.designImage.file) {
+            // Upload new file
+            const designFormData = new FormData();
+            designFormData.append('file', combo.designImage.file);
+            const response = await fetch('/api/upload', { method: 'POST', body: designFormData });
+            if (response.ok) {
+              const data = await response.json();
+              comboDesignImage = {
+                url: data.url,
+                alt: combo.designImageAlt || combo.designImage.alt || 'Design',
+                position: combo.designPosition,
+                scale: combo.designScale,
+                rotation: combo.designRotation
+              };
+            } else {
+              console.error('Failed to upload design image for combination:', combo.name);
+            }
+          } else if (combo.designImageUrl) {
+            // Use URL from input field
+            comboDesignImage = {
+              url: combo.designImageUrl,
+              alt: combo.designImageAlt || combo.designImage.alt || 'Design',
+              position: combo.designPosition,
+              scale: combo.designScale,
+              rotation: combo.designRotation
+            };
+          } else if (combo.designImage.url) {
+            // Use existing URL (from loaded product)
+            comboDesignImage = {
+              url: combo.designImage.url,
+              alt: combo.designImageAlt || combo.designImage.alt || 'Design',
+              position: combo.designPosition,
+              scale: combo.designScale,
+              rotation: combo.designRotation
+            };
+          }
+
+          // Only include if both images exist
+          if (comboMockupImage && comboDesignImage) {
+            const combination = {
+              mockupImage: comboMockupImage,
+              designImage: comboDesignImage,
+              name: combo.name || `Design ${combo.order + 1}`,
+              order: combo.order !== undefined ? combo.order : 0
+            };
+            console.log('✅ Valid combination:', combination);
+            return combination;
+          }
+          console.warn('⚠️ Skipping combination - missing images:', {
+            name: combo.name,
+            hasMockup: !!comboMockupImage,
+            hasDesign: !!comboDesignImage,
+            mockupFile: !!combo.mockupImage.file,
+            mockupUrl: combo.mockupImageUrl,
+            mockupExistingUrl: combo.mockupImage.url,
+            designFile: !!combo.designImage.file,
+            designUrl: combo.designImageUrl,
+            designExistingUrl: combo.designImage.url
+          });
+          return null;
+        })
+      );
+
+      // Filter out null combinations
+      const validCombinations = uploadedCombinations.filter(Boolean);
+      
+      console.log('📦 Saving combinations:', validCombinations);
+      console.log('📊 Total combinations to save:', validCombinations.length);
+      console.log('🔍 Combination details:', validCombinations.map(c => ({
+        name: c.name,
+        hasMockup: !!c.mockupImage?.url,
+        hasDesign: !!c.designImage?.url,
+        mockupUrl: c.mockupImage?.url,
+        designUrl: c.designImage?.url
+      })));
+
       // Combine existing, uploaded, URL, and color-specific images
       const productData = {
         ...formData,
@@ -630,7 +837,14 @@ export default function EditProduct({ params }: { params: { id: string } }) {
         gender: formData.gender ? formData.gender.toLowerCase() : '',
         mockupImage: mockupImageData,
         designImage: designImageData,
+        mockupDesignCombinations: validCombinations, // Always include, even if empty array
       };
+      
+      console.log('💾 Product data being sent to API:', {
+        hasCombinations: productData.mockupDesignCombinations?.length > 0,
+        combinationsCount: productData.mockupDesignCombinations?.length || 0,
+        firstCombination: productData.mockupDesignCombinations?.[0]
+      });
 
       const response = await fetch(`/api/admin/products/${params.id}`, {
         method: 'PUT',
@@ -1911,6 +2125,315 @@ export default function EditProduct({ params }: { params: { id: string } }) {
                 </div>
               </div>
             )}
+
+            {/* Multiple Mockup/Design Combinations Section */}
+            <div className="space-y-4 border-t pt-6 mt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Multiple Design Combinations (Carousel Slides)
+                  </label>
+                  <p className="text-xs text-gray-500">
+                    Create multiple mockup/design combinations that will appear as slides in the product carousel.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={addCombination}
+                  className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                >
+                  <FaPlus className="h-4 w-4" />
+                  Add Combination
+                </button>
+              </div>
+
+              {combinations.length === 0 ? (
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
+                  <p className="text-sm text-gray-500 mb-2">No combinations added yet.</p>
+                  <p className="text-xs text-gray-400">Click "Add Combination" to create your first design slide.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {combinations.map((combo, index) => (
+                    <div key={combo.id} className="border border-gray-200 rounded-lg p-4 bg-white">
+                      <div className="flex items-center justify-between mb-4">
+                        <input
+                          type="text"
+                          value={combo.name}
+                          onChange={(e) => updateCombination(combo.id, { name: e.target.value })}
+                          placeholder="Combination name (e.g., Front Design, Back Design)"
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeCombination(combo.id)}
+                          className="ml-2 text-red-600 hover:text-red-700 px-3 py-2"
+                          title="Remove combination"
+                        >
+                          <FaTrash className="h-4 w-4" />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Mockup Image */}
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-2">Mockup Image</label>
+                          {combo.mockupImage.preview || combo.mockupImage.url || combo.mockupImageUrl ? (
+                            <div className="relative mb-2">
+                              <div className="aspect-square relative rounded-lg overflow-hidden border border-gray-200">
+                                <Image
+                                  src={combo.mockupImage.preview || combo.mockupImage.url || combo.mockupImageUrl}
+                                  alt={combo.mockupImageAlt || 'Mockup'}
+                                  fill
+                                  className="object-cover"
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (combo.mockupImage.preview) URL.revokeObjectURL(combo.mockupImage.preview);
+                                  updateCombination(combo.id, {
+                                    mockupImage: { file: null, preview: null, url: undefined, alt: undefined },
+                                    mockupImageUrl: '',
+                                    mockupImageAlt: ''
+                                  });
+                                }}
+                                className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"
+                              >
+                                <FaTrash size={10} />
+                              </button>
+                            </div>
+                          ) : null}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              if (e.target.files?.[0]) {
+                                const file = e.target.files[0];
+                                if (combo.mockupImage.preview) URL.revokeObjectURL(combo.mockupImage.preview);
+                                updateCombination(combo.id, {
+                                  mockupImage: { file, preview: URL.createObjectURL(file) },
+                                  mockupImageUrl: ''
+                                });
+                              }
+                            }}
+                            className="hidden"
+                            id={`mockup-${combo.id}`}
+                          />
+                          <label
+                            htmlFor={`mockup-${combo.id}`}
+                            className="block w-full text-center border-2 border-dashed border-gray-300 rounded-lg p-3 hover:border-purple-500 cursor-pointer text-sm"
+                          >
+                            <FaUpload className="mx-auto h-4 w-4 text-gray-400 mb-1" />
+                            {combo.mockupImage.preview || combo.mockupImage.url || combo.mockupImageUrl ? 'Replace' : 'Upload'} Mockup
+                          </label>
+                          <input
+                            type="url"
+                            value={combo.mockupImageUrl}
+                            onChange={(e) => updateCombination(combo.id, { mockupImageUrl: e.target.value })}
+                            placeholder="Or enter mockup URL"
+                            className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
+                          />
+                          <input
+                            type="text"
+                            value={combo.mockupImageAlt}
+                            onChange={(e) => updateCombination(combo.id, { mockupImageAlt: e.target.value })}
+                            placeholder="Mockup alt text"
+                            className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
+                          />
+                        </div>
+
+                        {/* Design Image */}
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-2">Design Image</label>
+                          {combo.designImage.preview || combo.designImage.url || combo.designImageUrl ? (
+                            <div className="relative mb-2">
+                              <div className="aspect-square relative rounded-lg overflow-hidden border border-gray-200">
+                                <Image
+                                  src={combo.designImage.preview || combo.designImage.url || combo.designImageUrl}
+                                  alt={combo.designImageAlt || 'Design'}
+                                  fill
+                                  className="object-cover"
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (combo.designImage.preview) URL.revokeObjectURL(combo.designImage.preview);
+                                  updateCombination(combo.id, {
+                                    designImage: { file: null, preview: null, url: undefined, alt: undefined },
+                                    designImageUrl: '',
+                                    designImageAlt: ''
+                                  });
+                                }}
+                                className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"
+                              >
+                                <FaTrash size={10} />
+                              </button>
+                            </div>
+                          ) : null}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              if (e.target.files?.[0]) {
+                                const file = e.target.files[0];
+                                if (combo.designImage.preview) URL.revokeObjectURL(combo.designImage.preview);
+                                updateCombination(combo.id, {
+                                  designImage: { file, preview: URL.createObjectURL(file) },
+                                  designImageUrl: ''
+                                });
+                              }
+                            }}
+                            className="hidden"
+                            id={`design-${combo.id}`}
+                          />
+                          <label
+                            htmlFor={`design-${combo.id}`}
+                            className="block w-full text-center border-2 border-dashed border-gray-300 rounded-lg p-3 hover:border-purple-500 cursor-pointer text-sm"
+                          >
+                            <FaUpload className="mx-auto h-4 w-4 text-gray-400 mb-1" />
+                            {combo.designImage.preview || combo.designImage.url || combo.designImageUrl ? 'Replace' : 'Upload'} Design
+                          </label>
+                          <input
+                            type="url"
+                            value={combo.designImageUrl}
+                            onChange={(e) => updateCombination(combo.id, { designImageUrl: e.target.value })}
+                            placeholder="Or enter design URL"
+                            className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
+                          />
+                          <input
+                            type="text"
+                            value={combo.designImageAlt}
+                            onChange={(e) => updateCombination(combo.id, { designImageAlt: e.target.value })}
+                            placeholder="Design alt text"
+                            className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
+                          />
+                          {/* Quick position controls */}
+                          <div className="mt-2 space-y-2">
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="text-xs text-gray-600">X: {combo.designPosition.x}</label>
+                                <input
+                                  type="range"
+                                  min="-50"
+                                  max="50"
+                                  value={combo.designPosition.x}
+                                  onChange={(e) => updateCombination(combo.id, {
+                                    designPosition: { ...combo.designPosition, x: parseInt(e.target.value) }
+                                  })}
+                                  className="w-full"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-xs text-gray-600">Y: {combo.designPosition.y}</label>
+                                <input
+                                  type="range"
+                                  min="-50"
+                                  max="50"
+                                  value={combo.designPosition.y}
+                                  onChange={(e) => updateCombination(combo.id, {
+                                    designPosition: { ...combo.designPosition, y: parseInt(e.target.value) }
+                                  })}
+                                  className="w-full"
+                                />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="text-xs text-gray-600">Scale: {combo.designScale}%</label>
+                              <input
+                                type="range"
+                                min="10"
+                                max="200"
+                                value={combo.designScale}
+                                onChange={(e) => updateCombination(combo.id, { designScale: parseInt(e.target.value) })}
+                                className="w-full"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-gray-600">Rotation: {combo.designRotation}°</label>
+                              <input
+                                type="range"
+                                min="-180"
+                                max="180"
+                                value={combo.designRotation}
+                                onChange={(e) => updateCombination(combo.id, { designRotation: parseInt(e.target.value) })}
+                                className="w-full"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Live Preview */}
+                      {(combo.mockupImage.preview || combo.mockupImage.url || combo.mockupImageUrl) && 
+                       (combo.designImage.preview || combo.designImage.url || combo.designImageUrl) && (
+                        <div className="mt-4 border-t pt-4">
+                          <label className="block text-xs font-medium text-gray-700 mb-2">
+                            Live Preview
+                          </label>
+                          <div className="relative bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+                            <div className="aspect-square relative">
+                              <ProductImageOverlay
+                                mockupImage={
+                                  combo.mockupImage.preview 
+                                    ? { 
+                                        url: combo.mockupImage.preview, 
+                                        alt: combo.mockupImageAlt || combo.mockupImage.alt || 'Mockup preview'
+                                      }
+                                    : combo.mockupImage.url
+                                    ? { 
+                                        url: combo.mockupImage.url, 
+                                        alt: combo.mockupImageAlt || combo.mockupImage.alt || 'Mockup'
+                                      }
+                                    : combo.mockupImageUrl
+                                    ? { 
+                                        url: combo.mockupImageUrl, 
+                                        alt: combo.mockupImageAlt || 'Mockup'
+                                      }
+                                    : undefined
+                                }
+                                designImage={
+                                  combo.designImage.preview 
+                                    ? { 
+                                        url: combo.designImage.preview, 
+                                        alt: combo.designImageAlt || combo.designImage.alt || 'Design preview',
+                                        position: combo.designPosition,
+                                        scale: combo.designScale,
+                                        rotation: combo.designRotation
+                                      }
+                                    : combo.designImage.url
+                                    ? { 
+                                        url: combo.designImage.url, 
+                                        alt: combo.designImageAlt || combo.designImage.alt || 'Design',
+                                        position: combo.designPosition,
+                                        scale: combo.designScale,
+                                        rotation: combo.designRotation
+                                      }
+                                    : combo.designImageUrl
+                                    ? { 
+                                        url: combo.designImageUrl, 
+                                        alt: combo.designImageAlt || 'Design',
+                                        position: combo.designPosition,
+                                        scale: combo.designScale,
+                                        rotation: combo.designRotation
+                                      }
+                                    : undefined
+                                }
+                                className="w-full h-full"
+                              />
+                            </div>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-2">
+                            This is how the combination will appear in the carousel. Adjust position, scale, and rotation above to see changes in real-time.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* Image Upload Section */}
             <div className="space-y-2">

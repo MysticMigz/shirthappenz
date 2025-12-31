@@ -21,13 +21,23 @@ export async function GET(
       );
     }
     
-    const product = await (Product as any).findById(params.id);
+    const product = await (Product as any).findById(params.id).lean();
     
     if (!product) {
       return NextResponse.json(
         { error: 'Product not found' },
         { status: 404 }
       );
+    }
+    
+    // Log combinations for debugging
+    if (product.mockupDesignCombinations) {
+      console.log('📸 Product has combinations:', {
+        count: Array.isArray(product.mockupDesignCombinations) ? product.mockupDesignCombinations.length : 0,
+        combinations: product.mockupDesignCombinations
+      });
+    } else {
+      console.log('📸 Product has no combinations');
     }
     
     return NextResponse.json({ product });
