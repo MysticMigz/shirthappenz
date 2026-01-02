@@ -76,8 +76,13 @@ export default function ProductPage({ params }: { params: { id: string } }) {
   const [checkingEnabled, setCheckingEnabled] = useState(true);
   const [showProductDetails, setShowProductDetails] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [showFullScreen, setShowFullScreen] = useState(false);
+  const [fullScreenImageIndex, setFullScreenImageIndex] = useState(0);
+  const [magnifierPosition, setMagnifierPosition] = useState<{ x: number; y: number } | null>(null);
+  const [magnifierZoom, setMagnifierZoom] = useState(4);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const touchEnd = useRef<{ x: number; y: number } | null>(null);
+  const fullScreenImageRef = useRef<HTMLDivElement>(null);
   const { addItem } = useCart();
 
   // Check if products are enabled
@@ -177,6 +182,60 @@ export default function ProductPage({ params }: { params: { id: string } }) {
     if (getAllImages.length === 0) return;
     setSelectedImageIndex((prev) => (prev - 1 + getAllImages.length) % getAllImages.length);
   };
+
+  // Full-screen viewer navigation
+  const goToNextFullScreen = () => {
+    if (getAllImages.length === 0) return;
+    setFullScreenImageIndex((prev) => (prev + 1) % getAllImages.length);
+  };
+
+  const goToPreviousFullScreen = () => {
+    if (getAllImages.length === 0) return;
+    setFullScreenImageIndex((prev) => (prev - 1 + getAllImages.length) % getAllImages.length);
+  };
+
+  const openFullScreen = (index: number) => {
+    setFullScreenImageIndex(index);
+    setShowFullScreen(true);
+  };
+
+  const closeFullScreen = () => {
+    setShowFullScreen(false);
+    setMagnifierPosition(null);
+  };
+
+  const handleMagnifierMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!fullScreenImageRef.current) return;
+    const rect = fullScreenImageRef.current.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    // Clamp values to stay within bounds
+    const clampedX = Math.max(0, Math.min(100, x));
+    const clampedY = Math.max(0, Math.min(100, y));
+    setMagnifierPosition({ x: clampedX, y: clampedY });
+  };
+
+  // Get the actual image element position for accurate zoom
+  const getImageRect = () => {
+    if (!fullScreenImageRef.current) return null;
+    const imageElement = fullScreenImageRef.current.querySelector('[class*="ProductImageOverlay"], img');
+    if (!imageElement) return null;
+    const containerRect = fullScreenImageRef.current.getBoundingClientRect();
+    const imageRect = imageElement.getBoundingClientRect();
+    return {
+      left: imageRect.left - containerRect.left,
+      top: imageRect.top - containerRect.top,
+      width: imageRect.width,
+      height: imageRect.height,
+      containerWidth: containerRect.width,
+      containerHeight: containerRect.height,
+    };
+  };
+
+  const handleMagnifierLeave = () => {
+    setMagnifierPosition(null);
+  };
+
 
   // Touch handlers for swipe gestures
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -346,6 +405,24 @@ export default function ProductPage({ params }: { params: { id: string } }) {
     
     return allImages;
   }, [product, selectedColor]);
+
+  // Keyboard navigation for full-screen viewer
+  useEffect(() => {
+    if (!showFullScreen || getAllImages.length === 0) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowFullScreen(false);
+      } else if (e.key === 'ArrowLeft') {
+        setFullScreenImageIndex((prev) => (prev - 1 + getAllImages.length) % getAllImages.length);
+      } else if (e.key === 'ArrowRight') {
+        setFullScreenImageIndex((prev) => (prev + 1) % getAllImages.length);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showFullScreen, getAllImages.length]);
 
   // Preload first few images in carousel for faster rendering
   useEffect(() => {
@@ -693,7 +770,11 @@ export default function ProductPage({ params }: { params: { id: string } }) {
                     }
                     
                     return (
-                      <div className="relative w-full aspect-square overflow-hidden rounded-lg">
+                      <div className="relative w-full aspect-square overflow-hidden rounded-lg group">
+                        {/* Click to expand hint */}
+                        <div className="absolute top-2 right-2 z-30 bg-black/50 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                          Click to expand
+                        </div>
                         {/* Carousel Images */}
                         {getAllImages.map((img, index) => {
                           const isActive = index === selectedImageIndex;
@@ -721,9 +802,11 @@ export default function ProductPage({ params }: { params: { id: string } }) {
                           return (
                             <div
                               key={index}
-                              className={`absolute inset-0 transition-opacity duration-500 ease-in-out ${
+                              className={`absolute inset-0 transition-opacity duration-500 ease-in-out cursor-pointer hover:opacity-90 ${
                                 isActive ? 'opacity-100 z-10' : 'opacity-0 z-0'
                               }`}
+                              onClick={() => openFullScreen(index)}
+                              title="Click to view full screen"
                             >
                               {isMockupDesign && mockupImg && designImg ? (
                                 <ProductImageOverlay
@@ -842,7 +925,7 @@ export default function ProductPage({ params }: { params: { id: string } }) {
                                 ? 'border-4 border-purple-600 shadow-lg' 
                                 : 'border-2 border-gray-200 hover:border-gray-400'
                             }`}
-                            aria-label={`View image ${index + 1}`}
+                            aria-label={`Select image ${index + 1}`}
                           >
                             {isMockupDesign && mockupImg && designImg ? (
                               <ProductImageOverlay
@@ -1153,6 +1236,216 @@ export default function ProductPage({ params }: { params: { id: string } }) {
         </div>
       </main>
       <Footer />
+
+      {/* Full-Screen Image Viewer Modal */}
+      {showFullScreen && product && getAllImages.length > 0 && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-95 z-50 flex items-center justify-center p-4"
+          onClick={closeFullScreen}
+        >
+          {/* Close Button */}
+          <button
+            onClick={closeFullScreen}
+            className="absolute top-4 right-4 z-60 text-white hover:text-gray-300 transition-colors p-2 rounded-full hover:bg-white/10"
+            aria-label="Close full screen"
+          >
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+
+          {/* Navigation Arrows */}
+          {getAllImages.length > 1 && (
+            <>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goToPreviousFullScreen();
+                }}
+                className="absolute left-4 top-1/2 -translate-y-1/2 z-60 text-white hover:text-gray-300 transition-colors p-3 rounded-full hover:bg-white/10"
+                aria-label="Previous image"
+              >
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goToNextFullScreen();
+                }}
+                className="absolute right-4 top-1/2 -translate-y-1/2 z-60 text-white hover:text-gray-300 transition-colors p-3 rounded-full hover:bg-white/10"
+                aria-label="Next image"
+              >
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </>
+          )}
+
+          {/* Image Container */}
+          <div 
+            ref={fullScreenImageRef}
+            className="relative w-full h-full max-w-7xl mx-auto flex items-center justify-center cursor-zoom-in"
+            onClick={(e) => e.stopPropagation()}
+            onMouseMove={handleMagnifierMove}
+            onMouseLeave={handleMagnifierLeave}
+          >
+            {getAllImages.map((img, index) => {
+              const isActive = index === fullScreenImageIndex;
+              const isMockupDesign = img.type === 'mockup-design';
+              
+              // Get the correct mockup/design combination
+              let mockupImg = null;
+              let designImg = null;
+              
+              if (isMockupDesign) {
+                // Check if it's from the combinations array
+                if (img.combinationIndex !== undefined && product.mockupDesignCombinations) {
+                  const combination = product.mockupDesignCombinations[img.combinationIndex];
+                  if (combination) {
+                    mockupImg = combination.mockupImage;
+                    designImg = combination.designImage;
+                  }
+                } else {
+                  // Fallback to legacy single mockup/design
+                  mockupImg = product.mockupImage;
+                  designImg = product.designImage;
+                }
+              }
+              
+              return (
+                <div
+                  key={index}
+                  className={`absolute inset-0 flex items-center justify-center transition-opacity duration-300 ${
+                    isActive ? 'opacity-100 z-10' : 'opacity-0 z-0'
+                  }`}
+                >
+                  {isMockupDesign && mockupImg && designImg ? (
+                    <div className="relative w-full h-full max-w-5xl max-h-[90vh]">
+                      <ProductImageOverlay
+                        mockupImage={mockupImg}
+                        designImage={designImg}
+                        className="w-full h-full"
+                        width={1200}
+                        height={1200}
+                      />
+                    </div>
+                  ) : (
+                    <div className="relative w-full h-full max-w-5xl max-h-[90vh]">
+                      <Image
+                        src={img.url}
+                        alt={img.alt || `${product.name} - Image ${index + 1}`}
+                        fill
+                        className="object-contain"
+                        sizes="100vw"
+                        priority={index === 0}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* Magnifying Glass */}
+            {magnifierPosition && getAllImages[fullScreenImageIndex] && fullScreenImageRef.current && (
+              <div
+                className="absolute pointer-events-none z-50"
+                style={{
+                  left: `${magnifierPosition.x}%`,
+                  top: `${magnifierPosition.y}%`,
+                  transform: 'translate(-50%, -50%)',
+                  width: '300px',
+                  height: '300px',
+                  borderRadius: '50%',
+                  border: '4px solid white',
+                  boxShadow: '0 0 30px rgba(0, 0, 0, 0.7), inset 0 0 20px rgba(0, 0, 0, 0.1)',
+                  overflow: 'hidden',
+                  background: 'white',
+                }}
+              >
+                {(() => {
+                  const img = getAllImages[fullScreenImageIndex];
+                  const isMockupDesign = img.type === 'mockup-design';
+                  
+                  let mockupImg = null;
+                  let designImg = null;
+                  
+                  if (isMockupDesign) {
+                    if (img.combinationIndex !== undefined && product.mockupDesignCombinations) {
+                      const combination = product.mockupDesignCombinations[img.combinationIndex];
+                      if (combination) {
+                        mockupImg = combination.mockupImage;
+                        designImg = combination.designImage;
+                      }
+                    } else {
+                      mockupImg = product.mockupImage;
+                      designImg = product.designImage;
+                    }
+                  }
+                  
+                  // Get the actual image dimensions to calculate proper zoom
+                  const imageRect = getImageRect();
+                  if (!imageRect) return null;
+                  
+                  // Calculate the position relative to the actual image, not the container
+                  const mouseX = (magnifierPosition.x / 100) * imageRect.containerWidth;
+                  const mouseY = (magnifierPosition.y / 100) * imageRect.containerHeight;
+                  const relativeX = mouseX - imageRect.left;
+                  const relativeY = mouseY - imageRect.top;
+                  
+                  // Calculate the transform origin as a percentage of the image
+                  const originX = (relativeX / imageRect.width) * 100;
+                  const originY = (relativeY / imageRect.height) * 100;
+                  
+                  return (
+                    <div 
+                      className="relative w-full h-full"
+                      style={{
+                        transform: `scale(${magnifierZoom})`,
+                        transformOrigin: `${originX}% ${originY}%`,
+                      }}
+                    >
+                      {isMockupDesign && mockupImg && designImg ? (
+                        <ProductImageOverlay
+                          mockupImage={mockupImg}
+                          designImage={designImg}
+                          className="w-full h-full"
+                          width={300}
+                          height={300}
+                        />
+                      ) : (
+                        <div className="relative w-full h-full">
+                          <Image
+                            src={img.url}
+                            alt={img.alt || `${product.name} - Image ${fullScreenImageIndex + 1}`}
+                            fill
+                            className="object-contain"
+                            sizes="300px"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+          </div>
+
+          {/* Image Counter */}
+          {getAllImages.length > 1 && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-60 text-white text-sm bg-black/50 px-4 py-2 rounded-full">
+              {fullScreenImageIndex + 1} / {getAllImages.length}
+            </div>
+          )}
+
+          {/* Keyboard Hint */}
+          <div className="absolute bottom-4 right-4 z-60 text-white/60 text-xs hidden md:block">
+            Use arrow keys to navigate • ESC to close
+          </div>
+        </div>
+      )}
     </div>
   );
 } 
