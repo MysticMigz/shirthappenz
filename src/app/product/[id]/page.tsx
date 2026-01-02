@@ -812,6 +812,27 @@ export default function ProductPage({ params }: { params: { id: string } }) {
                     <div className="flex gap-2 overflow-x-auto pb-2">
                       {getAllImages.map((img, index) => {
                         const isSelected = selectedImageIndex === index;
+                        const isMockupDesign = img.type === 'mockup-design';
+                        
+                        // Get the correct mockup/design combination for thumbnails
+                        let mockupImg = null;
+                        let designImg = null;
+                        
+                        if (isMockupDesign) {
+                          // Check if it's from the combinations array
+                          if (img.combinationIndex !== undefined && product.mockupDesignCombinations) {
+                            const combination = product.mockupDesignCombinations[img.combinationIndex];
+                            if (combination) {
+                              mockupImg = combination.mockupImage;
+                              designImg = combination.designImage;
+                            }
+                          } else {
+                            // Fallback to legacy single mockup/design
+                            mockupImg = product.mockupImage;
+                            designImg = product.designImage;
+                          }
+                        }
+                        
                         return (
                           <button
                             key={index}
@@ -823,13 +844,23 @@ export default function ProductPage({ params }: { params: { id: string } }) {
                             }`}
                             aria-label={`View image ${index + 1}`}
                           >
-                            <Image
-                              src={img.url}
-                              alt={img.alt || `${product.name} - Image ${index + 1}`}
-                              fill
-                              className="object-cover"
-                              sizes="80px"
-                            />
+                            {isMockupDesign && mockupImg && designImg ? (
+                              <ProductImageOverlay
+                                mockupImage={mockupImg}
+                                designImage={designImg}
+                                className="w-full h-full"
+                                width={80}
+                                height={80}
+                              />
+                            ) : (
+                              <Image
+                                src={img.url}
+                                alt={img.alt || `${product.name} - Image ${index + 1}`}
+                                fill
+                                className="object-cover"
+                                sizes="80px"
+                              />
+                            )}
                           </button>
                         );
                       })}
