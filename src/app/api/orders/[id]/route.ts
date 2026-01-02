@@ -105,6 +105,7 @@ export async function GET(
       order.items.map(async (item: any) => {
         let mockupImage = undefined;
         let designImage = undefined;
+        let mockupDesignCombinations = undefined;
         let productImage = item.image; // Use stored image as fallback
         
         // Try to fetch product to get mockupImage and designImage
@@ -112,6 +113,17 @@ export async function GET(
           try {
             const product = await (Product as any).findById(item.productId).lean();
             if (product) {
+              // Priority 1: Use mockupDesignCombinations if available
+              if (product.mockupDesignCombinations && product.mockupDesignCombinations.length > 0) {
+                mockupDesignCombinations = product.mockupDesignCombinations.map((combo: any) => ({
+                  mockupImage: combo.mockupImage,
+                  designImage: combo.designImage,
+                  name: combo.name,
+                  order: combo.order
+                }));
+              }
+              
+              // Priority 2: Use legacy single mockup/design
               if (product.mockupImage) {
                 mockupImage = {
                   url: product.mockupImage.url,
@@ -167,6 +179,7 @@ export async function GET(
           image: productImage,
           mockupImage: mockupImage,
           designImage: designImage,
+          mockupDesignCombinations: mockupDesignCombinations,
           baseProductName: item.baseProductName,
           baseProductImage: item.baseProductImage,
           customization: item.customization ? {

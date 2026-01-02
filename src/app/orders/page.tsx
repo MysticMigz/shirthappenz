@@ -10,6 +10,7 @@ import { useVisitorId } from '../providers';
 import Header from '@/app/components/Header';
 import Footer from '@/app/components/Footer';
 import CancellationModal from '@/app/components/CancellationModal';
+import ProductImageOverlay from '@/app/components/ProductImageOverlay';
 import { getImageUrl } from '@/lib/utils';
 
 interface OrderItem {
@@ -20,6 +21,14 @@ interface OrderItem {
   size: string;
   color?: string;
   image?: string;
+  mockupImage?: { url: string; alt: string };
+  designImage?: { url: string; alt: string; position?: { x: number; y: number }; scale?: number; rotation?: number };
+  mockupDesignCombinations?: Array<{
+    mockupImage: { url: string; alt: string };
+    designImage: { url: string; alt: string; position?: { x: number; y: number }; scale?: number; rotation?: number };
+    name?: string;
+    order?: number;
+  }>;
   customization?: {
     name: string;
     number: string;
@@ -435,22 +444,58 @@ function OrdersPageContent() {
                   <div className="space-y-4">
                     {order.items.map((item, index) => (
                       <div key={`${order._id}-${index}`} className="flex items-center space-x-4">
-                        <div className="relative h-20 w-20 flex-shrink-0">
-                          {item.image ? (
-                            <img
-                              src={getImageUrl(item.image)}
-                              alt={item.name}
-                              className="object-cover rounded-md w-full h-full"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                target.src = getImageUrl('/images/logo.jpg');
-                              }}
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-gray-100 rounded-md flex items-center justify-center">
-                              <span className="text-gray-400">No image</span>
-                            </div>
-                          )}
+                        <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-md border border-gray-200 bg-white">
+                          {(() => {
+                            // Priority 1: Use first combination from mockupDesignCombinations (sorted by order)
+                            if (item.mockupDesignCombinations && item.mockupDesignCombinations.length > 0) {
+                              const sortedCombinations = [...item.mockupDesignCombinations].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+                              const firstCombination = sortedCombinations[0];
+                              if (firstCombination?.mockupImage && firstCombination?.designImage) {
+                                return (
+                                  <ProductImageOverlay
+                                    mockupImage={firstCombination.mockupImage}
+                                    designImage={firstCombination.designImage}
+                                    fallbackImage={item.image ? { url: getImageUrl(item.image), alt: item.name } : undefined}
+                                    className="w-full h-full"
+                                    width={80}
+                                    height={80}
+                                  />
+                                );
+                              }
+                            }
+                            // Priority 2: Use legacy single mockup/design
+                            if (item.mockupImage && item.designImage) {
+                              return (
+                                <ProductImageOverlay
+                                  mockupImage={item.mockupImage}
+                                  designImage={item.designImage}
+                                  fallbackImage={item.image ? { url: getImageUrl(item.image), alt: item.name } : undefined}
+                                  className="w-full h-full"
+                                  width={80}
+                                  height={80}
+                                />
+                              );
+                            }
+                            // Priority 3: Use regular images
+                            if (item.image) {
+                              return (
+                                <img
+                                  src={getImageUrl(item.image)}
+                                  alt={item.name}
+                                  className="object-cover rounded-md w-full h-full"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.src = getImageUrl('/images/logo.jpg');
+                                  }}
+                                />
+                              );
+                            }
+                            return (
+                              <div className="w-full h-full bg-gray-100 rounded-md flex items-center justify-center">
+                                <span className="text-gray-400">No image</span>
+                              </div>
+                            );
+                          })()}
                         </div>
                         <div className="flex-1">
                           <h4 className="text-sm font-medium text-gray-900">{item.name}</h4>

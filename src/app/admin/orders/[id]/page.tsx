@@ -46,6 +46,12 @@ interface OrderItem {
   image?: string;
   mockupImage?: { url: string; alt: string };
   designImage?: { url: string; alt: string; position?: { x: number; y: number }; scale?: number; rotation?: number };
+  mockupDesignCombinations?: Array<{
+    mockupImage: { url: string; alt: string };
+    designImage: { url: string; alt: string; position?: { x: number; y: number }; scale?: number; rotation?: number };
+    name?: string;
+    order?: number;
+  }>;
   customization?: {
     isCustomized?: boolean;
     name?: string;
@@ -1051,28 +1057,57 @@ export default function AdminOrderDetailsPage({ params }: { params: { id: string
                         <tr key={index}>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md border border-gray-200 bg-white">
-                              {item.mockupImage || item.designImage ? (
-                                <ProductImageOverlay
-                                  mockupImage={item.mockupImage}
-                                  designImage={item.designImage}
-                                  fallbackImage={item.image ? { url: getImageUrl(item.image), alt: item.name } : undefined}
-                                  className="w-full h-full"
-                                />
-                              ) : item.image ? (
-                                <img
-                                  src={getImageUrl(item.image)}
-                                  alt={item.name}
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    target.src = getImageUrl('/images/logo.png');
-                                  }}
-                                />
-                              ) : (
-                                <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-                                  <span className="text-gray-400 text-xs">No image</span>
-                                </div>
-                              )}
+                              {(() => {
+                                // Priority 1: Use first combination from mockupDesignCombinations (sorted by order)
+                                if (item.mockupDesignCombinations && item.mockupDesignCombinations.length > 0) {
+                                  const sortedCombinations = [...item.mockupDesignCombinations].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+                                  const firstCombination = sortedCombinations[0];
+                                  if (firstCombination?.mockupImage && firstCombination?.designImage) {
+                                    return (
+                                      <ProductImageOverlay
+                                        mockupImage={firstCombination.mockupImage}
+                                        designImage={firstCombination.designImage}
+                                        fallbackImage={item.image ? { url: getImageUrl(item.image), alt: item.name } : undefined}
+                                        className="w-full h-full"
+                                        width={64}
+                                        height={64}
+                                      />
+                                    );
+                                  }
+                                }
+                                // Priority 2: Use legacy single mockup/design
+                                if (item.mockupImage && item.designImage) {
+                                  return (
+                                    <ProductImageOverlay
+                                      mockupImage={item.mockupImage}
+                                      designImage={item.designImage}
+                                      fallbackImage={item.image ? { url: getImageUrl(item.image), alt: item.name } : undefined}
+                                      className="w-full h-full"
+                                      width={64}
+                                      height={64}
+                                    />
+                                  );
+                                }
+                                // Priority 3: Use regular images
+                                if (item.image) {
+                                  return (
+                                    <img
+                                      src={getImageUrl(item.image)}
+                                      alt={item.name}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.src = getImageUrl('/images/logo.png');
+                                      }}
+                                    />
+                                  );
+                                }
+                                return (
+                                  <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                                    <span className="text-gray-400 text-xs">No image</span>
+                                  </div>
+                                );
+                              })()}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">

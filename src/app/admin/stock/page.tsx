@@ -18,6 +18,12 @@ interface Product {
   stock: { [size: string]: number };
   mockupImage?: { url: string; alt: string };
   designImage?: { url: string; alt: string; position?: { x: number; y: number }; scale?: number; rotation?: number };
+  mockupDesignCombinations?: Array<{
+    mockupImage: { url: string; alt: string };
+    designImage: { url: string; alt: string; position?: { x: number; y: number }; scale?: number; rotation?: number };
+    name?: string;
+    order?: number;
+  }>;
 }
 
 type SortField = 'name' | 'category' | 'totalStock';
@@ -287,24 +293,50 @@ export default function StockManagement() {
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center space-x-4">
                       <div className="h-16 w-16 relative overflow-hidden rounded-lg border border-gray-200 bg-white">
-                        {product.mockupImage || product.designImage ? (
-                          <ProductImageOverlay
-                            mockupImage={product.mockupImage}
-                            designImage={product.designImage}
-                            fallbackImage={product.images[0] ? { url: getImageUrl(product.images[0].url), alt: product.images[0].alt || product.name } : undefined}
-                            className="w-full h-full"
-                          />
-                        ) : (
-                          <img
-                            src={getProductImage(product)}
-                            alt={product.images[0]?.alt || product.name}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement;
-                              target.src = getImageUrl('/images/logo.png');
-                            }}
-                          />
-                        )}
+                        {(() => {
+                          // Priority 1: Use first combination from mockupDesignCombinations (sorted by order)
+                          if (product.mockupDesignCombinations && product.mockupDesignCombinations.length > 0) {
+                            const sortedCombinations = [...product.mockupDesignCombinations].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+                            const firstCombination = sortedCombinations[0];
+                            if (firstCombination?.mockupImage && firstCombination?.designImage) {
+                              return (
+                                <ProductImageOverlay
+                                  mockupImage={firstCombination.mockupImage}
+                                  designImage={firstCombination.designImage}
+                                  fallbackImage={product.images[0] ? { url: getImageUrl(product.images[0].url), alt: product.images[0].alt || product.name } : undefined}
+                                  className="w-full h-full"
+                                  width={64}
+                                  height={64}
+                                />
+                              );
+                            }
+                          }
+                          // Priority 2: Use legacy single mockup/design
+                          if (product.mockupImage && product.designImage) {
+                            return (
+                              <ProductImageOverlay
+                                mockupImage={product.mockupImage}
+                                designImage={product.designImage}
+                                fallbackImage={product.images[0] ? { url: getImageUrl(product.images[0].url), alt: product.images[0].alt || product.name } : undefined}
+                                className="w-full h-full"
+                                width={64}
+                                height={64}
+                              />
+                            );
+                          }
+                          // Priority 3: Use regular images
+                          return (
+                            <img
+                              src={getProductImage(product)}
+                              alt={product.images[0]?.alt || product.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.src = getImageUrl('/images/logo.png');
+                              }}
+                            />
+                          );
+                        })()}
                       </div>
                       <div>
                         <h3 className="text-lg font-medium text-gray-900">{product.name}</h3>
@@ -356,28 +388,57 @@ export default function StockManagement() {
                                 ></div>
                                 <h4 className="text-sm font-medium text-gray-900">{color.name}</h4>
                                 <div className="ml-2 h-10 w-10 relative flex-shrink-0 overflow-hidden rounded border border-gray-200 bg-white">
-                                  {product.mockupImage || product.designImage ? (
-                                    <ProductImageOverlay
-                                      mockupImage={product.mockupImage}
-                                      designImage={product.designImage}
-                                      fallbackImage={fallbackImage}
-                                      className="w-full h-full"
-                                    />
-                                  ) : fallbackImage ? (
-                                    <img
-                                      src={fallbackImage.url}
-                                      alt={fallbackImage.alt}
-                                      className="w-full h-full object-cover"
-                                      onError={(e) => {
-                                        const target = e.target as HTMLImageElement;
-                                        target.src = getImageUrl('/images/logo.png');
-                                      }}
-                                    />
-                                  ) : (
-                                    <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-                                      <span className="text-gray-400 text-[8px]">No image</span>
-                                    </div>
-                                  )}
+                                  {(() => {
+                                    // Priority 1: Use first combination from mockupDesignCombinations (sorted by order)
+                                    if (product.mockupDesignCombinations && product.mockupDesignCombinations.length > 0) {
+                                      const sortedCombinations = [...product.mockupDesignCombinations].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+                                      const firstCombination = sortedCombinations[0];
+                                      if (firstCombination?.mockupImage && firstCombination?.designImage) {
+                                        return (
+                                          <ProductImageOverlay
+                                            mockupImage={firstCombination.mockupImage}
+                                            designImage={firstCombination.designImage}
+                                            fallbackImage={fallbackImage}
+                                            className="w-full h-full"
+                                            width={40}
+                                            height={40}
+                                          />
+                                        );
+                                      }
+                                    }
+                                    // Priority 2: Use legacy single mockup/design
+                                    if (product.mockupImage && product.designImage) {
+                                      return (
+                                        <ProductImageOverlay
+                                          mockupImage={product.mockupImage}
+                                          designImage={product.designImage}
+                                          fallbackImage={fallbackImage}
+                                          className="w-full h-full"
+                                          width={40}
+                                          height={40}
+                                        />
+                                      );
+                                    }
+                                    // Priority 3: Use color-specific or fallback image
+                                    if (fallbackImage) {
+                                      return (
+                                        <img
+                                          src={fallbackImage.url}
+                                          alt={fallbackImage.alt}
+                                          className="w-full h-full object-cover"
+                                          onError={(e) => {
+                                            const target = e.target as HTMLImageElement;
+                                            target.src = getImageUrl('/images/logo.png');
+                                          }}
+                                        />
+                                      );
+                                    }
+                                    return (
+                                      <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                                        <span className="text-gray-400 text-[8px]">No image</span>
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                               </div>
                               <span className="ml-auto text-xs text-gray-500">
