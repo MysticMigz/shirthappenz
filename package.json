@@ -22,6 +22,7 @@
     "@types/three": "^0.160.0",
     "@zxing/browser": "^0.1.5",
     "bcryptjs": "^3.0.2",
+    "browser-image-compression": "^2.0.2",
     "canvas": "^3.2.0",
     "chart.js": "^4.5.0",
     "cloudinary": "^2.7.0",

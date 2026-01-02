@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { FaUpload, FaTrash, FaLink, FaPlus } from 'react-icons/fa';
 import ProductImageOverlay from '@/app/components/ProductImageOverlay';
+import { compressImage } from '@/lib/image-compression';
 
 interface ProductFormData {
   name: string;
@@ -49,6 +50,7 @@ export default function NewProduct() {
   const [imageAlt, setImageAlt] = useState('');
   const [imageColor, setImageColor] = useState('');
   const [showUrlInput, setShowUrlInput] = useState(false);
+  // Legacy single mockup/design (for backward compatibility)
   const [mockupImage, setMockupImage] = useState<{ file: File | null; preview: string | null; url?: string; alt?: string }>({ file: null, preview: null });
   const [designImage, setDesignImage] = useState<{ file: File | null; preview: string | null; url?: string; alt?: string }>({ file: null, preview: null });
   const [mockupImageUrl, setMockupImageUrl] = useState('');
@@ -58,6 +60,23 @@ export default function NewProduct() {
   const [designPosition, setDesignPosition] = useState({ x: 0, y: 0 });
   const [designScale, setDesignScale] = useState(100);
   const [designRotation, setDesignRotation] = useState(0);
+  
+  // Multiple combinations state
+  interface Combination {
+    id: string;
+    mockupImage: { file: File | null; preview: string | null; url?: string; alt?: string };
+    designImage: { file: File | null; preview: string | null; url?: string; alt?: string };
+    mockupImageUrl: string;
+    mockupImageAlt: string;
+    designImageUrl: string;
+    designImageAlt: string;
+    designPosition: { x: number; y: number };
+    designScale: number;
+    designRotation: number;
+    name?: string;
+    order: number;
+  }
+  const [combinations, setCombinations] = useState<Combination[]>([]);
   const [presets, setPresets] = useState<Array<{ _id: string; name: string; description?: string; position: { x: number; y: number }; scale: number; rotation: number }>>([]);
   const [selectedPreset, setSelectedPreset] = useState<string>('');
   const [showSavePresetModal, setShowSavePresetModal] = useState(false);
@@ -67,7 +86,9 @@ export default function NewProduct() {
   const [showFullPreview, setShowFullPreview] = useState(false);
   const [previousMockups, setPreviousMockups] = useState<Array<{ url: string; alt: string; productName: string; category: string }>>([]);
   const [showMockupSelector, setShowMockupSelector] = useState(false);
+  const [selectedCombinationForMockup, setSelectedCombinationForMockup] = useState<string | null>(null);
   const [loadingMockups, setLoadingMockups] = useState(false);
+  const [compressingImages, setCompressingImages] = useState<{ [key: string]: boolean }>({});
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
     description: '',
@@ -139,6 +160,16 @@ export default function NewProduct() {
     setMockupImageAlt(mockup.alt);
     setMockupImage({ file: null, preview: null, url: mockup.url, alt: mockup.alt });
     setShowMockupSelector(false);
+  };
+
+  const handleCombinationSelectMockup = (combinationId: string, mockup: { url: string; alt: string }) => {
+    updateCombination(combinationId, {
+      mockupImageUrl: mockup.url,
+      mockupImageAlt: mockup.alt,
+      mockupImage: { file: null, preview: null, url: mockup.url, alt: mockup.alt }
+    });
+    setShowMockupSelector(false);
+    setSelectedCombinationForMockup(null);
   };
 
   const handleLoadPreset = () => {
@@ -220,8 +251,12 @@ export default function NewProduct() {
       uploadedImages.forEach(image => URL.revokeObjectURL(image.preview));
       if (mockupImage.preview) URL.revokeObjectURL(mockupImage.preview);
       if (designImage.preview) URL.revokeObjectURL(designImage.preview);
+      combinations.forEach(combo => {
+        if (combo.mockupImage.preview) URL.revokeObjectURL(combo.mockupImage.preview);
+        if (combo.designImage.preview) URL.revokeObjectURL(combo.designImage.preview);
+      });
     };
-  }, [uploadedImages, mockupImage.preview, designImage.preview]);
+  }, [uploadedImages, mockupImage.preview, designImage.preview, combinations]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -331,14 +366,62 @@ export default function NewProduct() {
     }));
   };
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const newImages = Array.from(e.target.files).map(file => ({
-        file,
-        preview: URL.createObjectURL(file),
-        color: '' // Default to no specific color
-      }));
+      const files = Array.from(e.target.files);
+      const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+      
+      // Check for files that are too large even after compression
+      const oversizedFiles = files.filter(file => file.size > MAX_FILE_SIZE * 2);
+      if (oversizedFiles.length > 0) {
+        const fileSizeMB = (oversizedFiles[0].size / (1024 * 1024)).toFixed(2);
+        alert(`File "${oversizedFiles[0].name}" is extremely large (${fileSizeMB}MB). Please compress or resize your image before uploading.`);
+        e.target.value = '';
+        return;
+      }
+      
+      // Compress images that are larger than 1MB
+      const compressionPromises = files.map(async (file, index) => {
+        const fileKey = `legacy-${index}-${Date.now()}`;
+        setCompressingImages(prev => ({ ...prev, [fileKey]: true }));
+        
+        try {
+          let processedFile = file;
+          // Only compress if file is larger than 1MB
+          if (file.size > 1024 * 1024) {
+            processedFile = await compressImage(file);
+          }
+          
+          setCompressingImages(prev => {
+            const newState = { ...prev };
+            delete newState[fileKey];
+            return newState;
+          });
+          
+          return {
+            file: processedFile,
+            preview: URL.createObjectURL(processedFile),
+            color: '' // Default to no specific color
+          };
+        } catch (error) {
+          console.error('Error compressing image:', error);
+          setCompressingImages(prev => {
+            const newState = { ...prev };
+            delete newState[fileKey];
+            return newState;
+          });
+          // Return original file if compression fails
+          return {
+            file,
+            preview: URL.createObjectURL(file),
+            color: ''
+          };
+        }
+      });
+      
+      const newImages = await Promise.all(compressionPromises);
       setUploadedImages(prev => [...prev, ...newImages]);
+      e.target.value = ''; // Reset input
     }
   };
 
@@ -379,33 +462,109 @@ export default function NewProduct() {
     setUrlImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleMockupImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMockupImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      // Clear existing preview/URL when selecting new file
-      if (mockupImage.preview) URL.revokeObjectURL(mockupImage.preview);
-      setMockupImage({
-        file,
-        preview: URL.createObjectURL(file),
-        alt: ''
-      });
-      // Clear URL input when uploading new file
-      setMockupImageUrl('');
+      const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+      const fileKey = 'legacy-mockup';
+      
+      // Check for extremely large files
+      if (file.size > MAX_FILE_SIZE * 2) {
+        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+        alert(`File "${file.name}" is extremely large (${fileSizeMB}MB). Please compress or resize your image before uploading.`);
+        e.target.value = '';
+        return;
+      }
+      
+      setCompressingImages(prev => ({ ...prev, [fileKey]: true }));
+      
+      try {
+        let processedFile = file;
+        // Only compress if file is larger than 1MB
+        if (file.size > 1024 * 1024) {
+          processedFile = await compressImage(file);
+        }
+        
+        // Clear existing preview/URL when selecting new file
+        if (mockupImage.preview) URL.revokeObjectURL(mockupImage.preview);
+        setMockupImage({
+          file: processedFile,
+          preview: URL.createObjectURL(processedFile),
+          alt: ''
+        });
+        // Clear URL input when uploading new file
+        setMockupImageUrl('');
+      } catch (error) {
+        console.error('Error compressing image:', error);
+        // Use original file if compression fails
+        if (mockupImage.preview) URL.revokeObjectURL(mockupImage.preview);
+        setMockupImage({
+          file,
+          preview: URL.createObjectURL(file),
+          alt: ''
+        });
+        setMockupImageUrl('');
+      } finally {
+        setCompressingImages(prev => {
+          const newState = { ...prev };
+          delete newState[fileKey];
+          return newState;
+        });
+        e.target.value = ''; // Reset input
+      }
     }
   };
 
-  const handleDesignImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDesignImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      // Clear existing preview/URL when selecting new file
-      if (designImage.preview) URL.revokeObjectURL(designImage.preview);
-      setDesignImage({
-        file,
-        preview: URL.createObjectURL(file),
-        alt: ''
-      });
-      // Clear URL input when uploading new file
-      setDesignImageUrl('');
+      const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+      const fileKey = 'legacy-design';
+      
+      // Check for extremely large files
+      if (file.size > MAX_FILE_SIZE * 2) {
+        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+        alert(`File "${file.name}" is extremely large (${fileSizeMB}MB). Please compress or resize your image before uploading.`);
+        e.target.value = '';
+        return;
+      }
+      
+      setCompressingImages(prev => ({ ...prev, [fileKey]: true }));
+      
+      try {
+        let processedFile = file;
+        // Only compress if file is larger than 1MB
+        if (file.size > 1024 * 1024) {
+          processedFile = await compressImage(file);
+        }
+        
+        // Clear existing preview/URL when selecting new file
+        if (designImage.preview) URL.revokeObjectURL(designImage.preview);
+        setDesignImage({
+          file: processedFile,
+          preview: URL.createObjectURL(processedFile),
+          alt: ''
+        });
+        // Clear URL input when uploading new file
+        setDesignImageUrl('');
+      } catch (error) {
+        console.error('Error compressing image:', error);
+        // Use original file if compression fails
+        if (designImage.preview) URL.revokeObjectURL(designImage.preview);
+        setDesignImage({
+          file,
+          preview: URL.createObjectURL(file),
+          alt: ''
+        });
+        setDesignImageUrl('');
+      } finally {
+        setCompressingImages(prev => {
+          const newState = { ...prev };
+          delete newState[fileKey];
+          return newState;
+        });
+        e.target.value = ''; // Reset input
+      }
     }
   };
 
@@ -428,6 +587,136 @@ export default function NewProduct() {
     // Reset file input to allow re-uploading
     if (designFileInputRef.current) {
       designFileInputRef.current.value = '';
+    }
+  };
+
+  // Combination management functions
+  const addCombination = () => {
+    const newCombination: Combination = {
+      id: Date.now().toString(),
+      mockupImage: { file: null, preview: null },
+      designImage: { file: null, preview: null },
+      mockupImageUrl: '',
+      mockupImageAlt: '',
+      designImageUrl: '',
+      designImageAlt: '',
+      designPosition: { x: 0, y: 0 },
+      designScale: 100,
+      designRotation: 0,
+      name: '',
+      order: combinations.length
+    };
+    setCombinations([...combinations, newCombination]);
+  };
+
+  const removeCombination = (id: string) => {
+    const combo = combinations.find(c => c.id === id);
+    if (combo) {
+      if (combo.mockupImage.preview) URL.revokeObjectURL(combo.mockupImage.preview);
+      if (combo.designImage.preview) URL.revokeObjectURL(combo.designImage.preview);
+    }
+    setCombinations(combinations.filter(c => c.id !== id).map((c, idx) => ({ ...c, order: idx })));
+  };
+
+  const updateCombination = (id: string, updates: Partial<Combination>) => {
+    setCombinations(combinations.map(c => c.id === id ? { ...c, ...updates } : c));
+  };
+
+  const handleCombinationMockupSelect = async (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+      const fileKey = `combo-${id}-mockup`;
+      
+      // Check for extremely large files
+      if (file.size > MAX_FILE_SIZE * 2) {
+        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+        alert(`File "${file.name}" is extremely large (${fileSizeMB}MB). Please compress or resize your image before uploading.`);
+        e.target.value = '';
+        return;
+      }
+      
+      setCompressingImages(prev => ({ ...prev, [fileKey]: true }));
+      
+      try {
+        let processedFile = file;
+        // Only compress if file is larger than 1MB
+        if (file.size > 1024 * 1024) {
+          processedFile = await compressImage(file);
+        }
+        
+        const combo = combinations.find(c => c.id === id);
+        if (combo?.mockupImage.preview) URL.revokeObjectURL(combo.mockupImage.preview);
+        updateCombination(id, {
+          mockupImage: { file: processedFile, preview: URL.createObjectURL(processedFile), alt: '' },
+          mockupImageUrl: ''
+        });
+      } catch (error) {
+        console.error('Error compressing image:', error);
+        // Use original file if compression fails
+        const combo = combinations.find(c => c.id === id);
+        if (combo?.mockupImage.preview) URL.revokeObjectURL(combo.mockupImage.preview);
+        updateCombination(id, {
+          mockupImage: { file, preview: URL.createObjectURL(file), alt: '' },
+          mockupImageUrl: ''
+        });
+      } finally {
+        setCompressingImages(prev => {
+          const newState = { ...prev };
+          delete newState[fileKey];
+          return newState;
+        });
+        e.target.value = ''; // Reset input
+      }
+    }
+  };
+
+  const handleCombinationDesignSelect = async (id: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+      const fileKey = `combo-${id}-design`;
+      
+      // Check for extremely large files
+      if (file.size > MAX_FILE_SIZE * 2) {
+        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+        alert(`File "${file.name}" is extremely large (${fileSizeMB}MB). Please compress or resize your image before uploading.`);
+        e.target.value = '';
+        return;
+      }
+      
+      setCompressingImages(prev => ({ ...prev, [fileKey]: true }));
+      
+      try {
+        let processedFile = file;
+        // Only compress if file is larger than 1MB
+        if (file.size > 1024 * 1024) {
+          processedFile = await compressImage(file);
+        }
+        
+        const combo = combinations.find(c => c.id === id);
+        if (combo?.designImage.preview) URL.revokeObjectURL(combo.designImage.preview);
+        updateCombination(id, {
+          designImage: { file: processedFile, preview: URL.createObjectURL(processedFile), alt: '' },
+          designImageUrl: ''
+        });
+      } catch (error) {
+        console.error('Error compressing image:', error);
+        // Use original file if compression fails
+        const combo = combinations.find(c => c.id === id);
+        if (combo?.designImage.preview) URL.revokeObjectURL(combo.designImage.preview);
+        updateCombination(id, {
+          designImage: { file, preview: URL.createObjectURL(file), alt: '' },
+          designImageUrl: ''
+        });
+      } finally {
+        setCompressingImages(prev => {
+          const newState = { ...prev };
+          delete newState[fileKey];
+          return newState;
+        });
+        e.target.value = ''; // Reset input
+      }
     }
   };
 
@@ -470,12 +759,14 @@ export default function NewProduct() {
       isValid = false;
     }
 
-    // Images are optional if mockup/design images are provided
-    const hasMockupDesign = (mockupImage.file || mockupImageUrl) && (designImage.file || designImageUrl);
+    // Images are optional if combinations are provided
+    const hasCombinations = combinations.some(combo => 
+      (combo.mockupImage.file || combo.mockupImageUrl) && (combo.designImage.file || combo.designImageUrl)
+    );
     const hasLegacyImages = uploadedImages.length > 0 || urlImages.length > 0;
     
-    if (!hasMockupDesign && !hasLegacyImages) {
-      errors.images = 'Either mockup/design images or legacy product images are required';
+    if (!hasCombinations && !hasLegacyImages) {
+      errors.images = 'Either image combinations or legacy product images are required';
       isValid = false;
     }
 
@@ -524,29 +815,57 @@ export default function NewProduct() {
         formDataToSend.append('urlImages', JSON.stringify(urlImages));
       }
 
-      // Add mockup image
-      if (mockupImage.file) {
-        formDataToSend.append('mockupImage', mockupImage.file);
-        formDataToSend.append('mockupImageAlt', mockupImageAlt || 'Product mockup');
-      } else if (mockupImageUrl) {
-        formDataToSend.append('mockupImageUrl', mockupImageUrl);
-        formDataToSend.append('mockupImageAlt', mockupImageAlt || 'Product mockup');
-      }
-
-      // Add design image
-      if (designImage.file) {
-        formDataToSend.append('designImage', designImage.file);
-        formDataToSend.append('designImageAlt', designImageAlt || 'Product design');
-      } else if (designImageUrl) {
-        formDataToSend.append('designImageUrl', designImageUrl);
-        formDataToSend.append('designImageAlt', designImageAlt || 'Product design');
-      }
+      // Add multiple combinations
+      const validCombinations = combinations.filter(combo => 
+        (combo.mockupImage.file || combo.mockupImageUrl) && (combo.designImage.file || combo.designImageUrl)
+      );
       
-      // Add design image transformations
-      formDataToSend.append('designPositionX', designPosition.x.toString());
-      formDataToSend.append('designPositionY', designPosition.y.toString());
-      formDataToSend.append('designScale', designScale.toString());
-      formDataToSend.append('designRotation', designRotation.toString());
+      if (validCombinations.length > 0) {
+        // Create metadata array for combinations
+        const combinationsMetadata = validCombinations.map((combo, index) => ({
+          hasMockupFile: !!combo.mockupImage.file,
+          hasDesignFile: !!combo.designImage.file,
+          mockupUrl: combo.mockupImageUrl || null,
+          designUrl: combo.designImageUrl || null,
+          mockupAlt: combo.mockupImageAlt || `Mockup ${index + 1}`,
+          designAlt: combo.designImageAlt || `Design ${index + 1}`,
+          position: combo.designPosition,
+          scale: combo.designScale,
+          rotation: combo.designRotation,
+          name: combo.name || undefined,
+          order: combo.order
+        }));
+        
+        formDataToSend.append('combinations', JSON.stringify(combinationsMetadata));
+        
+        // Add combination files and metadata
+        validCombinations.forEach((combo, index) => {
+          if (combo.mockupImage.file) {
+            formDataToSend.append(`combination_${index}_mockup`, combo.mockupImage.file);
+            formDataToSend.append(`combination_${index}_mockupAlt`, combo.mockupImageAlt || `Mockup ${index + 1}`);
+          } else if (combo.mockupImageUrl) {
+            formDataToSend.append(`combination_${index}_mockupUrl`, combo.mockupImageUrl);
+            formDataToSend.append(`combination_${index}_mockupAlt`, combo.mockupImageAlt || `Mockup ${index + 1}`);
+          }
+          
+          if (combo.designImage.file) {
+            formDataToSend.append(`combination_${index}_design`, combo.designImage.file);
+            formDataToSend.append(`combination_${index}_designAlt`, combo.designImageAlt || `Design ${index + 1}`);
+          } else if (combo.designImageUrl) {
+            formDataToSend.append(`combination_${index}_designUrl`, combo.designImageUrl);
+            formDataToSend.append(`combination_${index}_designAlt`, combo.designImageAlt || `Design ${index + 1}`);
+          }
+          
+          formDataToSend.append(`combination_${index}_positionX`, combo.designPosition.x.toString());
+          formDataToSend.append(`combination_${index}_positionY`, combo.designPosition.y.toString());
+          formDataToSend.append(`combination_${index}_scale`, combo.designScale.toString());
+          formDataToSend.append(`combination_${index}_rotation`, combo.designRotation.toString());
+          if (combo.name) {
+            formDataToSend.append(`combination_${index}_name`, combo.name);
+          }
+          formDataToSend.append(`combination_${index}_order`, combo.order.toString());
+        });
+      }
 
       const response = await fetch('/api/admin/products', {
         method: 'POST',
@@ -607,607 +926,474 @@ export default function NewProduct() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Mockup and Design Images Section - PRIMARY METHOD */}
+            {/* Multiple Mockup and Design Combinations Section */}
             <div className="space-y-4">
-              <label className="block text-sm font-medium text-gray-700">
-                Product Mockup & Design Images <span className="text-green-600 font-semibold">(Primary Method - Recommended)</span>
-              </label>
+              <div className="flex justify-between items-center">
+                <label className="block text-sm font-medium text-gray-700">
+                  Product Image Combinations <span className="text-green-600 font-semibold">(Primary Method - Recommended)</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={addCombination}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+                >
+                  <FaPlus className="h-4 w-4" />
+                  Add Image Combination
+                </button>
+              </div>
               <div className="bg-green-50 border-2 border-green-300 rounded-lg p-4 mb-4">
                 <h4 className="text-sm font-semibold text-green-900 mb-2 flex items-center gap-2">
                   <span>⭐</span> Primary Product Display Method
                 </h4>
                 <p className="text-xs text-green-800 mb-2">
-                  <strong>This is the preferred way to display products.</strong> Upload a base mockup image (the product template) and a design image that will be overlaid on top of it.
-                  The design image will be displayed on top of the mockup to show how the product will look. These images will be used for product cards and detail pages.
+                  <strong>This is the preferred way to display products.</strong> Upload multiple sets of mockup and design images to create a carousel on the product page.
+                  Each combination consists of a base mockup image (the product template) and a design image that will be overlaid on top of it.
+                  Customers can browse through all combinations on the product page.
                 </p>
                 <p className="text-xs text-green-700 font-medium">
-                  💡 Tip: You can adjust the position, size, and rotation of the design image using the controls below. Legacy images (below) are optional and only used as a fallback.
+                  💡 Tip: You can add multiple combinations to show different views, angles, or designs. Each combination can have its own position, size, and rotation settings.
+                </p>
+                <p className="text-xs text-green-600 mt-2">
+                  📦 <strong>Automatic Compression:</strong> Images larger than 1MB will be automatically compressed to optimize file size while maintaining quality. This helps ensure fast uploads and prevents file size errors.
                 </p>
               </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Mockup Image */}
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Mockup Image (Base Template)
-                  </label>
-                  {mockupImage.preview ? (
-                    <div className="relative">
-                      <div className="aspect-square relative rounded-lg overflow-hidden border border-gray-200">
-                        <Image
-                          src={mockupImage.preview}
-                          alt="Mockup preview"
-                          fill
-                          className="object-cover"
+
+              {/* Combinations List */}
+              {combinations.length > 0 && (
+                <div className="space-y-6">
+                  {combinations.map((combo, index) => (
+                    <div key={combo.id} className="border-2 border-gray-200 rounded-lg p-4 bg-white">
+                      <div className="flex justify-between items-center mb-4">
+                        <h4 className="text-sm font-semibold text-gray-700">
+                          Combination {index + 1}
+                        </h4>
+                        <button
+                          type="button"
+                          onClick={() => removeCombination(combo.id)}
+                          className="text-red-600 hover:text-red-800 flex items-center gap-1 text-sm"
+                        >
+                          <FaTrash className="h-4 w-4" />
+                          Remove
+                        </button>
+                      </div>
+                      
+                      <div className="mb-4">
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Combination Name (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={combo.name || ''}
+                          onChange={(e) => updateCombination(combo.id, { name: e.target.value })}
+                          placeholder="e.g., Front View, Back View, Detail Shot"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
                         />
                       </div>
-                      <button
-                        type="button"
-                        onClick={handleMockupImageRemove}
-                        className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"
-                      >
-                        <FaTrash size={12} />
-                      </button>
-                    </div>
-                  ) : mockupImageUrl ? (
-                    <div className="relative">
-                      <div className="aspect-square relative rounded-lg overflow-hidden border border-gray-200">
-                        <Image
-                          src={mockupImageUrl}
-                          alt="Mockup"
-                          fill
-                          className="object-cover"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.src = '/images/logo.jpg';
-                          }}
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleMockupImageRemove}
-                        className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"
-                      >
-                        <FaTrash size={12} />
-                      </button>
-                    </div>
-                  ) : null}
-                  <div className="space-y-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (mockupFileInputRef.current) {
-                          mockupFileInputRef.current.value = ''; // Reset to allow selecting same file again
-                          mockupFileInputRef.current.click();
-                        }
-                      }}
-                      className="w-full flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-purple-500 transition-colors"
-                    >
-                      <div className="text-center">
-                        <FaUpload className="mx-auto h-6 w-6 text-gray-400 mb-2" />
-                        <span className="block text-sm font-medium text-gray-600">
-                          {(mockupImage.preview || mockupImageUrl) ? 'Replace Mockup' : 'Upload Mockup'}
-                        </span>
-                      </div>
-                    </button>
-                    <input
-                      type="file"
-                      ref={mockupFileInputRef}
-                      onChange={handleMockupImageSelect}
-                      accept="image/*"
-                      className="hidden"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowMockupSelector(true);
-                        if (previousMockups.length === 0) {
-                          fetchPreviousMockups();
-                        }
-                      }}
-                      className="w-full flex items-center justify-center border-2 border-dashed border-blue-300 rounded-lg p-3 hover:border-blue-500 transition-colors bg-blue-50"
-                    >
-                      <div className="text-center">
-                        <FaLink className="mx-auto h-5 w-5 text-blue-400 mb-1" />
-                        <span className="block text-xs font-medium text-blue-600">
-                          Select from Previous Mockups
-                        </span>
-                      </div>
-                    </button>
-                    <div className="text-xs text-gray-500">Or enter URL:</div>
-                    <input
-                      type="url"
-                      value={mockupImageUrl}
-                      onChange={(e) => setMockupImageUrl(e.target.value)}
-                      placeholder="https://example.com/mockup.jpg"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                    />
-                    <input
-                      type="text"
-                      value={mockupImageAlt}
-                      onChange={(e) => setMockupImageAlt(e.target.value)}
-                      placeholder="Mockup alt text"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                    />
-                  </div>
-                </div>
 
-                {/* Design Image */}
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Design Image (Overlay)
-                  </label>
-                  {designImage.preview ? (
-                    <div className="relative">
-                      <div className="aspect-square relative rounded-lg overflow-hidden border border-gray-200">
-                        <Image
-                          src={designImage.preview}
-                          alt="Design preview"
-                          fill
-                          className="object-cover"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleDesignImageRemove}
-                        className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"
-                      >
-                        <FaTrash size={12} />
-                      </button>
-                    </div>
-                  ) : designImageUrl ? (
-                    <div className="relative">
-                      <div className="aspect-square relative rounded-lg overflow-hidden border border-gray-200">
-                        <Image
-                          src={designImageUrl}
-                          alt="Design"
-                          fill
-                          className="object-cover"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.src = '/images/logo.jpg';
-                          }}
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleDesignImageRemove}
-                        className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"
-                      >
-                        <FaTrash size={12} />
-                      </button>
-                    </div>
-                  ) : null}
-                  <div className="space-y-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (designFileInputRef.current) {
-                          designFileInputRef.current.value = ''; // Reset to allow selecting same file again
-                          designFileInputRef.current.click();
-                        }
-                      }}
-                      className="w-full flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-purple-500 transition-colors"
-                    >
-                      <div className="text-center">
-                        <FaUpload className="mx-auto h-6 w-6 text-gray-400 mb-2" />
-                        <span className="block text-sm font-medium text-gray-600">
-                          {(designImage.preview || designImageUrl) ? 'Replace Design' : 'Upload Design'}
-                        </span>
-                      </div>
-                    </button>
-                    <input
-                      type="file"
-                      ref={designFileInputRef}
-                      onChange={handleDesignImageSelect}
-                      accept="image/*"
-                      className="hidden"
-                    />
-                    <div className="text-xs text-gray-500">Or enter URL:</div>
-                    <input
-                      type="url"
-                      value={designImageUrl}
-                      onChange={(e) => setDesignImageUrl(e.target.value)}
-                      placeholder="https://example.com/design.jpg"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                    />
-                    <input
-                      type="text"
-                      value={designImageAlt}
-                      onChange={(e) => setDesignImageAlt(e.target.value)}
-                      placeholder="Design alt text"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Live Preview Section */}
-            {(mockupImage.preview || mockupImageUrl || designImage.preview || designImageUrl || formData.name) && (
-              <div className="space-y-4 border-t pt-6">
-                <label className="block text-sm font-medium text-gray-700">
-                  Live Preview - Product Card
-                </label>
-                <p className="text-xs text-gray-500 mb-2">
-                  This is how your product will appear on the frontend with the mockup and design images overlapping.
-                </p>
-                <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
-                  <p className="text-xs text-green-800 font-medium">
-                    💾 <strong>Save Note:</strong> The positioning, size, and rotation settings you adjust below will be automatically saved when you click "Create Product" at the bottom of the form. This preview shows exactly how it will appear to customers.
-                  </p>
-                </div>
-                <div className="max-w-sm mx-auto">
-                  <p className="text-xs text-gray-500 mb-2 text-center">
-                    👆 Click the preview card to view at full scale
-                  </p>
-                  <div 
-                    className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden cursor-pointer hover:shadow-xl transition-shadow"
-                    onClick={() => setShowFullPreview(true)}
-                  >
-                    <div 
-                      className="relative bg-gray-100"
-                      style={{
-                        aspectRatio: '1/1',
-                        width: '100%',
-                        position: 'relative',
-                        overflow: 'hidden',
-                        isolation: 'isolate' // Isolate this container from transforms
-                      }}
-                    >
-                      {(mockupImage.preview || mockupImageUrl || designImage.preview || designImageUrl) ? (
-                        <ProductImageOverlay
-                          key={`preview-${mockupImage.preview || mockupImageUrl || 'no-mockup'}-${designImage.preview || designImageUrl || 'no-design'}`}
-                          mockupImage={
-                            mockupImage.preview 
-                              ? { url: mockupImage.preview, alt: mockupImageAlt || 'Mockup preview' }
-                              : mockupImageUrl 
-                              ? { url: mockupImageUrl, alt: mockupImageAlt || 'Mockup' }
-                              : undefined
-                          }
-                          designImage={
-                            designImage.preview 
-                              ? { 
-                                  url: designImage.preview, 
-                                  alt: designImageAlt || 'Design preview',
-                                  position: designPosition,
-                                  scale: designScale,
-                                  rotation: designRotation
-                                }
-                              : designImageUrl 
-                              ? { 
-                                  url: designImageUrl, 
-                                  alt: designImageAlt || 'Design',
-                                  position: designPosition,
-                                  scale: designScale,
-                                  rotation: designRotation
-                                }
-                              : undefined
-                          }
-                          className="w-full h-full"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                          <div className="bg-gradient-to-r from-purple-600 via-blue-500 to-orange-400 text-white brand-text text-sm px-3 py-1 rounded-lg">
-                            MR SHIRT PERSONALISATION LTD
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-4">
-                      <h3 className="font-semibold text-lg text-gray-900 mb-1">
-                        {formData.name || 'Product Name'}
-                      </h3>
-                      <p className="text-sm text-gray-500 mb-2">
-                        {formData.category || 'Category'}
-                      </p>
-                      <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                        {formData.description || 'Product description will appear here...'}
-                      </p>
-                      {formData.colors.length > 0 && (
-                        <div className="flex items-center mb-3">
-                          <span className="text-xs text-gray-500 mr-2">Colors:</span>
-                          <div className="flex space-x-1">
-                            {formData.colors.slice(0, 5).map((color, index) => (
-                              <div
-                                key={index}
-                                className="w-4 h-4 rounded-full border border-gray-300"
-                                style={{ backgroundColor: color.hexCode }}
-                                title={color.name}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      <div className="flex items-center justify-between">
-                        {formData.price && formData.basePrice && parseFloat(formData.basePrice) > parseFloat(formData.price) ? (
-                          <div className="flex flex-col items-start gap-1">
-                            <span className="text-xs text-red-600 line-through tracking-tight">
-                              RRP: £{parseFloat(formData.basePrice).toFixed(2)}
-                            </span>
-                            <span className="text-xl font-bold text-green-700 leading-tight">
-                              £{parseFloat(formData.price).toFixed(2)}
-                            </span>
-                          </div>
-                        ) : formData.price ? (
-                          <span className="text-lg font-bold text-purple-600">
-                            £{parseFloat(formData.price).toFixed(2)}
-                          </span>
-                        ) : (
-                          <span className="text-lg font-bold text-purple-600">£0.00</span>
-                        )}
-                        <span className="text-sm text-purple-600">View Details →</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Design Image Position & Scale Controls */}
-            {(designImage.preview || designImageUrl) && (
-              <div className="space-y-4 border-t pt-6">
-                <label className="block text-sm font-medium text-gray-700">
-                  Design Image Position & Size (Design Only)
-                </label>
-                <p className="text-xs text-gray-500 mb-2">
-                  Adjust the position, size, and rotation of the <strong>design image only</strong>. The mockup image remains unchanged.
-                </p>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                  <p className="text-xs text-blue-800">
-                    💡 <strong>Tip:</strong> Adjust the sliders below and watch the live preview update in real-time. These settings will be saved automatically when you click "Create Product" at the bottom of the page.
-                  </p>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Position X */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Horizontal Position: {designPosition.x}%
-                    </label>
-                    <input
-                      type="range"
-                      min="-50"
-                      max="50"
-                      value={designPosition.x}
-                      onChange={(e) => setDesignPosition({ ...designPosition, x: parseInt(e.target.value) })}
-                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                    />
-                    <div className="flex justify-between text-xs text-gray-500 mt-1">
-                      <span>Left</span>
-                      <span>Center</span>
-                      <span>Right</span>
-                    </div>
-                  </div>
-
-                  {/* Position Y */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Vertical Position: {designPosition.y}%
-                    </label>
-                    <input
-                      type="range"
-                      min="-50"
-                      max="50"
-                      value={designPosition.y}
-                      onChange={(e) => setDesignPosition({ ...designPosition, y: parseInt(e.target.value) })}
-                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                    />
-                    <div className="flex justify-between text-xs text-gray-500 mt-1">
-                      <span>Top</span>
-                      <span>Center</span>
-                      <span>Bottom</span>
-                    </div>
-                  </div>
-
-                  {/* Scale */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Size: {designScale}%
-                    </label>
-                    <input
-                      type="range"
-                      min="10"
-                      max="200"
-                      value={designScale}
-                      onChange={(e) => setDesignScale(parseInt(e.target.value))}
-                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                    />
-                    <div className="flex justify-between text-xs text-gray-500 mt-1">
-                      <span>10%</span>
-                      <span>100%</span>
-                      <span>200%</span>
-                    </div>
-                  </div>
-
-                  {/* Rotation */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Rotation: {designRotation}°
-                    </label>
-                    <input
-                      type="range"
-                      min="-180"
-                      max="180"
-                      value={designRotation}
-                      onChange={(e) => setDesignRotation(parseInt(e.target.value))}
-                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                    />
-                    <div className="flex justify-between text-xs text-gray-500 mt-1">
-                      <span>-180°</span>
-                      <span>0°</span>
-                      <span>180°</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Preset Management */}
-                <div className="border-t pt-4 mt-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Design Presets
-                  </label>
-                  <p className="text-xs text-gray-500 mb-3">
-                    Save your current settings as a preset to reuse for future products, or load an existing preset.
-                  </p>
-                  
-                  <div className="space-y-3">
-                    {/* Load Preset */}
-                    <div className="flex gap-2">
-                      <select
-                        value={selectedPreset}
-                        onChange={(e) => setSelectedPreset(e.target.value)}
-                        className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="">Select a preset to load...</option>
-                        {presets.map(preset => (
-                          <option key={preset._id} value={preset._id}>
-                            {preset.name} {preset.description ? `- ${preset.description}` : ''}
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        type="button"
-                        onClick={handleLoadPreset}
-                        disabled={!selectedPreset}
-                        className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        Load
-                      </button>
-                    </div>
-
-                    {/* Save Preset Button */}
-                    <button
-                      type="button"
-                      onClick={() => setShowSavePresetModal(true)}
-                      className="w-full px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center justify-center gap-2"
-                    >
-                      <FaPlus className="h-4 w-4" />
-                      Save Current Settings as Preset
-                    </button>
-
-                    {/* Preset List with Delete */}
-                    {presets.length > 0 && (
-                      <div className="border border-gray-200 rounded-lg p-3 bg-gray-50">
-                        <p className="text-xs font-medium text-gray-700 mb-2">Saved Presets:</p>
-                        <div className="space-y-1 max-h-32 overflow-y-auto">
-                          {presets.map(preset => (
-                            <div key={preset._id} className="flex items-center justify-between text-xs">
-                              <span className="text-gray-600">
-                                {preset.name}
-                                {preset.description && <span className="text-gray-400 ml-1">({preset.description})</span>}
-                              </span>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Mockup Image */}
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700">
+                            Mockup Image (Base Template)
+                          </label>
+                          {combo.mockupImage.preview ? (
+                            <div className="relative">
+                              <div className="aspect-square relative rounded-lg overflow-hidden border border-gray-200">
+                                <Image
+                                  src={combo.mockupImage.preview}
+                                  alt="Mockup preview"
+                                  fill
+                                  className="object-cover"
+                                />
+                              </div>
                               <button
                                 type="button"
-                                onClick={() => handleDeletePreset(preset._id)}
-                                className="text-red-600 hover:text-red-800 ml-2"
-                                title="Delete preset"
+                                onClick={() => {
+                                  if (combo.mockupImage.preview) URL.revokeObjectURL(combo.mockupImage.preview);
+                                  updateCombination(combo.id, { 
+                                    mockupImage: { file: null, preview: null },
+                                    mockupImageUrl: '',
+                                    mockupImageAlt: ''
+                                  });
+                                }}
+                                className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"
                               >
-                                <FaTrash className="h-3 w-3" />
+                                <FaTrash size={12} />
                               </button>
                             </div>
-                          ))}
+                          ) : combo.mockupImageUrl ? (
+                            <div className="relative">
+                              <div className="aspect-square relative rounded-lg overflow-hidden border border-gray-200">
+                                <Image
+                                  src={combo.mockupImageUrl}
+                                  alt="Mockup"
+                                  fill
+                                  className="object-cover"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.src = '/images/logo.jpg';
+                                  }}
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => updateCombination(combo.id, { 
+                                  mockupImageUrl: '',
+                                  mockupImageAlt: ''
+                                })}
+                                className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"
+                              >
+                                <FaTrash size={12} />
+                              </button>
+                            </div>
+                          ) : null}
+                          <div className="space-y-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const input = document.createElement('input');
+                                input.type = 'file';
+                                input.accept = 'image/*';
+                                input.onchange = async (e) => {
+                                  const file = (e.target as HTMLInputElement).files?.[0];
+                                  if (file) {
+                                    const fileEvent = { target: { files: [file] } } as any;
+                                    await handleCombinationMockupSelect(combo.id, fileEvent);
+                                  }
+                                };
+                                input.click();
+                              }}
+                              disabled={compressingImages[`combo-${combo.id}-mockup`]}
+                              className="w-full flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-purple-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <div className="text-center">
+                                {compressingImages[`combo-${combo.id}-mockup`] ? (
+                                  <>
+                                    <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-purple-500 mx-auto mb-2"></div>
+                                    <span className="block text-sm font-medium text-gray-600">
+                                      Compressing...
+                                    </span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <FaUpload className="mx-auto h-6 w-6 text-gray-400 mb-2" />
+                                    <span className="block text-sm font-medium text-gray-600">
+                                      Upload Mockup
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedCombinationForMockup(combo.id);
+                                setShowMockupSelector(true);
+                                if (previousMockups.length === 0) {
+                                  fetchPreviousMockups();
+                                }
+                              }}
+                              className="w-full flex items-center justify-center border-2 border-dashed border-blue-300 rounded-lg p-3 hover:border-blue-500 transition-colors bg-blue-50"
+                            >
+                              <div className="text-center">
+                                <FaLink className="mx-auto h-5 w-5 text-blue-400 mb-1" />
+                                <span className="block text-xs font-medium text-blue-600">
+                                  Select from Previous Mockups
+                                </span>
+                              </div>
+                            </button>
+                            <div className="text-xs text-gray-500">Or enter URL:</div>
+                            <input
+                              type="url"
+                              value={combo.mockupImageUrl}
+                              onChange={(e) => updateCombination(combo.id, { mockupImageUrl: e.target.value })}
+                              placeholder="https://example.com/mockup.jpg"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                            />
+                            <input
+                              type="text"
+                              value={combo.mockupImageAlt}
+                              onChange={(e) => updateCombination(combo.id, { mockupImageAlt: e.target.value })}
+                              placeholder="Mockup alt text"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Design Image */}
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-gray-700">
+                            Design Image (Overlay)
+                          </label>
+                          {combo.designImage.preview ? (
+                            <div className="relative">
+                              <div className="aspect-square relative rounded-lg overflow-hidden border border-gray-200">
+                                <Image
+                                  src={combo.designImage.preview}
+                                  alt="Design preview"
+                                  fill
+                                  className="object-cover"
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (combo.designImage.preview) URL.revokeObjectURL(combo.designImage.preview);
+                                  updateCombination(combo.id, { 
+                                    designImage: { file: null, preview: null },
+                                    designImageUrl: '',
+                                    designImageAlt: ''
+                                  });
+                                }}
+                                className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"
+                              >
+                                <FaTrash size={12} />
+                              </button>
+                            </div>
+                          ) : combo.designImageUrl ? (
+                            <div className="relative">
+                              <div className="aspect-square relative rounded-lg overflow-hidden border border-gray-200">
+                                <Image
+                                  src={combo.designImageUrl}
+                                  alt="Design"
+                                  fill
+                                  className="object-cover"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.src = '/images/logo.jpg';
+                                  }}
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => updateCombination(combo.id, { 
+                                  designImageUrl: '',
+                                  designImageAlt: ''
+                                })}
+                                className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"
+                              >
+                                <FaTrash size={12} />
+                              </button>
+                            </div>
+                          ) : null}
+                          <div className="space-y-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const input = document.createElement('input');
+                                input.type = 'file';
+                                input.accept = 'image/*';
+                                input.onchange = async (e) => {
+                                  const file = (e.target as HTMLInputElement).files?.[0];
+                                  if (file) {
+                                    const fileEvent = { target: { files: [file] } } as any;
+                                    await handleCombinationDesignSelect(combo.id, fileEvent);
+                                  }
+                                };
+                                input.click();
+                              }}
+                              disabled={compressingImages[`combo-${combo.id}-design`]}
+                              className="w-full flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-4 hover:border-purple-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <div className="text-center">
+                                {compressingImages[`combo-${combo.id}-design`] ? (
+                                  <>
+                                    <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-purple-500 mx-auto mb-2"></div>
+                                    <span className="block text-sm font-medium text-gray-600">
+                                      Compressing...
+                                    </span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <FaUpload className="mx-auto h-6 w-6 text-gray-400 mb-2" />
+                                    <span className="block text-sm font-medium text-gray-600">
+                                      Upload Design
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </button>
+                            <div className="text-xs text-gray-500">Or enter URL:</div>
+                            <input
+                              type="url"
+                              value={combo.designImageUrl}
+                              onChange={(e) => updateCombination(combo.id, { designImageUrl: e.target.value })}
+                              placeholder="https://example.com/design.jpg"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                            />
+                            <input
+                              type="text"
+                              value={combo.designImageAlt}
+                              onChange={(e) => updateCombination(combo.id, { designImageAlt: e.target.value })}
+                              placeholder="Design alt text"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                            />
+                          </div>
                         </div>
                       </div>
-                    )}
-                  </div>
-                </div>
 
-                {/* Reset Button */}
-                <div className="flex justify-end mt-4">
+                      {/* Design Position & Scale Controls for this combination */}
+                      {(combo.designImage.preview || combo.designImageUrl) && (
+                        <div className="mt-4 pt-4 border-t border-gray-200">
+                          <label className="block text-sm font-medium text-gray-700 mb-3">
+                            Design Image Position & Size (for this combination)
+                          </label>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Position X */}
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 mb-2">
+                                Horizontal Position: {combo.designPosition.x}%
+                              </label>
+                              <input
+                                type="range"
+                                min="-50"
+                                max="50"
+                                value={combo.designPosition.x}
+                                onChange={(e) => updateCombination(combo.id, { 
+                                  designPosition: { ...combo.designPosition, x: parseInt(e.target.value) }
+                                })}
+                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                              />
+                            </div>
+
+                            {/* Position Y */}
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 mb-2">
+                                Vertical Position: {combo.designPosition.y}%
+                              </label>
+                              <input
+                                type="range"
+                                min="-50"
+                                max="50"
+                                value={combo.designPosition.y}
+                                onChange={(e) => updateCombination(combo.id, { 
+                                  designPosition: { ...combo.designPosition, y: parseInt(e.target.value) }
+                                })}
+                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                              />
+                            </div>
+
+                            {/* Scale */}
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 mb-2">
+                                Size: {combo.designScale}%
+                              </label>
+                              <input
+                                type="range"
+                                min="10"
+                                max="200"
+                                value={combo.designScale}
+                                onChange={(e) => updateCombination(combo.id, { designScale: parseInt(e.target.value) })}
+                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                              />
+                            </div>
+
+                            {/* Rotation */}
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 mb-2">
+                                Rotation: {combo.designRotation}°
+                              </label>
+                              <input
+                                type="range"
+                                min="-180"
+                                max="180"
+                                value={combo.designRotation}
+                                onChange={(e) => updateCombination(combo.id, { designRotation: parseInt(e.target.value) })}
+                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Preview for this combination */}
+                          {(combo.mockupImage.preview || combo.mockupImageUrl || combo.designImage.preview || combo.designImageUrl) && (
+                            <div className="mt-4">
+                              <label className="block text-xs font-medium text-gray-700 mb-2">
+                                Preview
+                              </label>
+                              <div className="max-w-xs">
+                                <div className="relative bg-gray-100 rounded-lg overflow-hidden border border-gray-200" style={{ aspectRatio: '1/1' }}>
+                                  <ProductImageOverlay
+                                    mockupImage={
+                                      combo.mockupImage.preview 
+                                        ? { url: combo.mockupImage.preview, alt: combo.mockupImageAlt || 'Mockup preview' }
+                                        : combo.mockupImage.url
+                                        ? { url: combo.mockupImage.url, alt: combo.mockupImageAlt || combo.mockupImage.alt || 'Mockup' }
+                                        : combo.mockupImageUrl 
+                                        ? { url: combo.mockupImageUrl, alt: combo.mockupImageAlt || 'Mockup' }
+                                        : undefined
+                                    }
+                                    designImage={
+                                      combo.designImage.preview 
+                                        ? { 
+                                            url: combo.designImage.preview, 
+                                            alt: combo.designImageAlt || 'Design preview',
+                                            position: combo.designPosition,
+                                            scale: combo.designScale,
+                                            rotation: combo.designRotation
+                                          }
+                                        : combo.designImage.url
+                                        ? { 
+                                            url: combo.designImage.url, 
+                                            alt: combo.designImageAlt || combo.designImage.alt || 'Design',
+                                            position: combo.designPosition,
+                                            scale: combo.designScale,
+                                            rotation: combo.designRotation
+                                          }
+                                        : combo.designImageUrl 
+                                        ? { 
+                                            url: combo.designImageUrl, 
+                                            alt: combo.designImageAlt || 'Design',
+                                            position: combo.designPosition,
+                                            scale: combo.designScale,
+                                            rotation: combo.designRotation
+                                          }
+                                        : undefined
+                                    }
+                                    className="w-full h-full"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {combinations.length === 0 && (
+                <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg bg-gray-50">
+                  <p className="text-sm text-gray-600 mb-4">No image combinations added yet.</p>
                   <button
                     type="button"
-                    onClick={() => {
-                      setDesignPosition({ x: 0, y: 0 });
-                      setDesignScale(100);
-                      setDesignRotation(0);
-                    }}
-                    className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-50"
+                    onClick={addCombination}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
                   >
-                    Reset to Default
+                    Add Your First Combination
                   </button>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
-            {/* Save Preset Modal */}
-            {showSavePresetModal && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Save Design Preset</h3>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Preset Name <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={presetName}
-                        onChange={(e) => setPresetName(e.target.value)}
-                        placeholder="e.g., Centered Large Design"
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        maxLength={100}
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Description (Optional)
-                      </label>
-                      <textarea
-                        value={presetDescription}
-                        onChange={(e) => setPresetDescription(e.target.value)}
-                        placeholder="e.g., For large logos centered on t-shirts"
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        rows={3}
-                        maxLength={500}
-                      />
-                    </div>
-
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                      <p className="text-xs text-blue-800">
-                        <strong>Current Settings:</strong><br />
-                        Position: X={designPosition.x}%, Y={designPosition.y}%<br />
-                        Scale: {designScale}%<br />
-                        Rotation: {designRotation}°
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3 mt-6">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowSavePresetModal(false);
-                        setPresetName('');
-                        setPresetDescription('');
-                      }}
-                      className="flex-1 px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleSavePreset}
-                      disabled={presetLoading || !presetName.trim()}
-                      className="flex-1 px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {presetLoading ? 'Saving...' : 'Save Preset'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Mockup Selector Modal */}
             {showMockupSelector && (
               <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
                 <div className="bg-white rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-auto">
                   <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900">Select Previous Mockup</h3>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Select Previous Mockup
+                      {selectedCombinationForMockup && (
+                        <span className="text-sm text-gray-500 ml-2">(for Combination {combinations.findIndex(c => c.id === selectedCombinationForMockup) + 1})</span>
+                      )}
+                    </h3>
                     <button
                       type="button"
-                      onClick={() => setShowMockupSelector(false)}
+                      onClick={() => {
+                        setShowMockupSelector(false);
+                        setSelectedCombinationForMockup(null);
+                      }}
                       className="text-gray-400 hover:text-gray-600"
                     >
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1233,7 +1419,13 @@ export default function NewProduct() {
                           <button
                             key={`${mockup.url}-${index}`}
                             type="button"
-                            onClick={() => handleSelectMockup(mockup)}
+                            onClick={() => {
+                              if (selectedCombinationForMockup) {
+                                handleCombinationSelectMockup(selectedCombinationForMockup, mockup);
+                              } else {
+                                handleSelectMockup(mockup);
+                              }
+                            }}
                             className="group relative aspect-square rounded-lg overflow-hidden border-2 border-gray-200 hover:border-purple-500 transition-all hover:shadow-lg bg-white"
                           >
                             <img
@@ -1273,7 +1465,10 @@ export default function NewProduct() {
                   <div className="mt-6 flex justify-end">
                     <button
                       type="button"
-                      onClick={() => setShowMockupSelector(false)}
+                      onClick={() => {
+                        setShowMockupSelector(false);
+                        setSelectedCombinationForMockup(null);
+                      }}
                       className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
                     >
                       Close
@@ -1458,11 +1653,21 @@ export default function NewProduct() {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="aspect-square flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg hover:border-purple-500 transition-colors"
+                  disabled={Object.keys(compressingImages).some(key => key.startsWith('legacy-'))}
+                  className="aspect-square flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg hover:border-purple-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <div className="text-center">
-                    <FaUpload className="mx-auto h-8 w-8 text-gray-400" />
-                    <span className="mt-2 block text-sm font-medium text-gray-600">Upload Image</span>
+                    {Object.keys(compressingImages).some(key => key.startsWith('legacy-')) ? (
+                      <>
+                        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500 mx-auto"></div>
+                        <span className="mt-2 block text-sm font-medium text-gray-600">Compressing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <FaUpload className="mx-auto h-8 w-8 text-gray-400" />
+                        <span className="mt-2 block text-sm font-medium text-gray-600">Upload Image</span>
+                      </>
+                    )}
                   </div>
                 </button>
 

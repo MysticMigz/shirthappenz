@@ -20,6 +20,12 @@ interface Product {
   customizable: boolean;
   mockupImage?: { url: string; alt: string };
   designImage?: { url: string; alt: string; position?: { x: number; y: number }; scale?: number; rotation?: number };
+  mockupDesignCombinations?: Array<{
+    mockupImage: { url: string; alt: string };
+    designImage: { url: string; alt: string; position?: { x: number; y: number }; scale?: number; rotation?: number };
+    name?: string;
+    order?: number;
+  }>;
 }
 
 const ProductGrid = () => {
@@ -139,26 +145,47 @@ const ProductGrid = () => {
                     </div>
                   )}
                   <div className="relative aspect-square bg-gray-100">
-                    {product.mockupImage || product.designImage ? (
-                      <ProductImageOverlay
-                        mockupImage={product.mockupImage}
-                        designImage={product.designImage}
-                        fallbackImage={product.images[0] ? { url: product.images[0].url, alt: product.images[0].alt || product.name } : undefined}
-                      />
-                    ) : product.images[0] ? (
-                      <Image
-                        src={product.images[0].url}
-                        alt={product.images[0].alt || product.name}
-                        fill
-                        className="object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                        <div className="bg-gradient-to-r from-purple-600 via-blue-500 to-orange-400 text-white brand-text text-lg px-4 py-2 rounded-lg">
-                          MR SHIRT PERSONALISATION LTD
+                    {(() => {
+                      // Priority 1: Use first combination from mockupDesignCombinations (preview card)
+                      if (product.mockupDesignCombinations && product.mockupDesignCombinations.length > 0) {
+                        const firstCombination = product.mockupDesignCombinations
+                          .sort((a, b) => (a.order || 0) - (b.order || 0))[0];
+                        if (firstCombination?.mockupImage && firstCombination?.designImage) {
+                          return (
+                            <ProductImageOverlay
+                              mockupImage={firstCombination.mockupImage}
+                              designImage={firstCombination.designImage}
+                              fallbackImage={product.images[0] ? { url: product.images[0].url, alt: product.images[0].alt || product.name } : undefined}
+                            />
+                          );
+                        }
+                      }
+                      // Priority 2: Use legacy single mockup/design
+                      if (product.mockupImage || product.designImage) {
+                        return (
+                          <ProductImageOverlay
+                            mockupImage={product.mockupImage}
+                            designImage={product.designImage}
+                            fallbackImage={product.images[0] ? { url: product.images[0].url, alt: product.images[0].alt || product.name } : undefined}
+                          />
+                        );
+                      }
+                      // Priority 3: Use legacy images
+                      return product.images[0] ? (
+                        <Image
+                          src={product.images[0].url}
+                          alt={product.images[0].alt || product.name}
+                          fill
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                          <div className="bg-gradient-to-r from-purple-600 via-blue-500 to-orange-400 text-white brand-text text-lg px-4 py-2 rounded-lg">
+                            MR SHIRT PERSONALISATION LTD
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      );
+                    })()}
                   </div>
 
                   <div className="p-4">

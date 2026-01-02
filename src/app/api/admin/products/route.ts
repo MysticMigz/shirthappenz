@@ -319,12 +319,115 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Add mockup and design images to product data
+      // Handle multiple combinations
+      const combinationsData = formData.get('combinations') as string;
+      let mockupDesignCombinations: Array<{
+        mockupImage: { url: string; alt: string };
+        designImage: { url: string; alt: string; position?: { x: number; y: number }; scale?: number; rotation?: number };
+        name?: string;
+        order?: number;
+      }> = [];
+
+      if (combinationsData) {
+        try {
+          const combinationsInfo = JSON.parse(combinationsData);
+          
+          // Process each combination
+          for (let i = 0; i < combinationsInfo.length; i++) {
+            const comboInfo = combinationsInfo[i];
+            let comboMockupImage: { url: string; alt: string } | undefined;
+            let comboDesignImage: { url: string; alt: string; position?: { x: number; y: number }; scale?: number; rotation?: number } | undefined;
+
+            // Handle mockup image for this combination
+            const comboMockupFile = formData.get(`combination_${i}_mockup`) as File | null;
+            if (comboMockupFile && comboMockupFile.size > 0) {
+              const uploadFormData = new FormData();
+              uploadFormData.append('file', comboMockupFile);
+              const uploadResponse = await fetch(`${process.env.NEXTAUTH_URL || 'https://mrshirtpersonalisation.co.uk'}/api/upload`, {
+                method: 'POST',
+                body: uploadFormData,
+              });
+              if (uploadResponse.ok) {
+                const uploadData = await uploadResponse.json();
+                comboMockupImage = {
+                  url: uploadData.url,
+                  alt: (formData.get(`combination_${i}_mockupAlt`) as string) || `Mockup ${i + 1}`
+                };
+              }
+            } else {
+              const comboMockupUrl = formData.get(`combination_${i}_mockupUrl`) as string || comboInfo.mockupUrl;
+              if (comboMockupUrl) {
+                comboMockupImage = {
+                  url: comboMockupUrl,
+                  alt: (formData.get(`combination_${i}_mockupAlt`) as string) || comboInfo.mockupAlt || `Mockup ${i + 1}`
+                };
+              }
+            }
+
+            // Handle design image for this combination
+            const comboDesignFile = formData.get(`combination_${i}_design`) as File | null;
+            if (comboDesignFile && comboDesignFile.size > 0) {
+              const uploadFormData = new FormData();
+              uploadFormData.append('file', comboDesignFile);
+              const uploadResponse = await fetch(`${process.env.NEXTAUTH_URL || 'https://mrshirtpersonalisation.co.uk'}/api/upload`, {
+                method: 'POST',
+                body: uploadFormData,
+              });
+              if (uploadResponse.ok) {
+                const uploadData = await uploadResponse.json();
+                comboDesignImage = {
+                  url: uploadData.url,
+                  alt: (formData.get(`combination_${i}_designAlt`) as string) || `Design ${i + 1}`,
+                  position: {
+                    x: parseFloat((formData.get(`combination_${i}_positionX`) as string) || '0'),
+                    y: parseFloat((formData.get(`combination_${i}_positionY`) as string) || '0')
+                  },
+                  scale: parseFloat((formData.get(`combination_${i}_scale`) as string) || '100'),
+                  rotation: parseFloat((formData.get(`combination_${i}_rotation`) as string) || '0')
+                };
+              }
+            } else {
+              const comboDesignUrl = formData.get(`combination_${i}_designUrl`) as string || comboInfo.designUrl;
+              if (comboDesignUrl) {
+                comboDesignImage = {
+                  url: comboDesignUrl,
+                  alt: (formData.get(`combination_${i}_designAlt`) as string) || comboInfo.designAlt || `Design ${i + 1}`,
+                  position: {
+                    x: parseFloat((formData.get(`combination_${i}_positionX`) as string) || comboInfo.position?.x?.toString() || '0'),
+                    y: parseFloat((formData.get(`combination_${i}_positionY`) as string) || comboInfo.position?.y?.toString() || '0')
+                  },
+                  scale: parseFloat((formData.get(`combination_${i}_scale`) as string) || comboInfo.scale?.toString() || '100'),
+                  rotation: parseFloat((formData.get(`combination_${i}_rotation`) as string) || comboInfo.rotation?.toString() || '0')
+                };
+              }
+            }
+
+            // Only add combination if both images are present
+            if (comboMockupImage && comboDesignImage) {
+              mockupDesignCombinations.push({
+                mockupImage: comboMockupImage,
+                designImage: comboDesignImage,
+                name: (formData.get(`combination_${i}_name`) as string) || comboInfo.name || undefined,
+                order: parseInt((formData.get(`combination_${i}_order`) as string) || comboInfo.order?.toString() || i.toString())
+              });
+            }
+          }
+        } catch (error) {
+          console.error('Error parsing combinations data:', error);
+        }
+      }
+
+      // Add mockup and design images to product data (legacy support)
       if (mockupImageData) {
         productData.mockupImage = mockupImageData;
       }
       if (designImageData) {
         productData.designImage = designImageData;
+      }
+      
+      // Add combinations array
+      if (mockupDesignCombinations.length > 0) {
+        productData.mockupDesignCombinations = mockupDesignCombinations;
       }
     } else {
       // Handle JSON data (fallback for existing functionality)
@@ -380,12 +483,17 @@ export async function POST(request: NextRequest) {
       customizable: validatedData.customizable
     };
 
-    // Add mockup and design images if they exist
+    // Add mockup and design images if they exist (legacy)
     if (productData.mockupImage) {
       finalProductData.mockupImage = productData.mockupImage;
     }
     if (productData.designImage) {
       finalProductData.designImage = productData.designImage;
+    }
+    
+    // Add combinations array
+    if (productData.mockupDesignCombinations && productData.mockupDesignCombinations.length > 0) {
+      finalProductData.mockupDesignCombinations = productData.mockupDesignCombinations;
     }
 
     console.log('Final product data being saved:', JSON.stringify(finalProductData, null, 2));

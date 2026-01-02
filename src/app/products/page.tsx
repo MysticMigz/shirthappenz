@@ -26,6 +26,12 @@ interface Product {
   collections?: Array<{ _id: string; name: string; slug: string }>;
   mockupImage?: { url: string; alt: string };
   designImage?: { url: string; alt: string; position?: { x: number; y: number }; scale?: number; rotation?: number };
+  mockupDesignCombinations?: Array<{
+    mockupImage: { url: string; alt: string };
+    designImage: { url: string; alt: string; position?: { x: number; y: number }; scale?: number; rotation?: number };
+    name?: string;
+    order?: number;
+  }>;
 }
 
 interface Category {
@@ -791,14 +797,34 @@ export default function ProductsPage() {
             >
               <Link href={`/product/${product._id}`}>
                 <div className="relative aspect-square bg-gray-100">
-                  {product.mockupImage || product.designImage ? (
-                    <ProductImageOverlay
-                      mockupImage={product.mockupImage}
-                      designImage={product.designImage}
-                      fallbackImage={getProductImage(product) ? { url: getProductImage(product)!.url, alt: getProductImage(product)!.alt || product.name } : undefined}
-                      className="transition-all duration-300 ease-in-out"
-                    />
-                  ) : (() => {
+                  {(() => {
+                    // Priority 1: Use first combination from mockupDesignCombinations (preview card)
+                    if (product.mockupDesignCombinations && product.mockupDesignCombinations.length > 0) {
+                      const firstCombination = product.mockupDesignCombinations
+                        .sort((a, b) => (a.order || 0) - (b.order || 0))[0];
+                      if (firstCombination?.mockupImage && firstCombination?.designImage) {
+                        return (
+                          <ProductImageOverlay
+                            mockupImage={firstCombination.mockupImage}
+                            designImage={firstCombination.designImage}
+                            fallbackImage={getProductImage(product) ? { url: getProductImage(product)!.url, alt: getProductImage(product)!.alt || product.name } : undefined}
+                            className="transition-all duration-300 ease-in-out"
+                          />
+                        );
+                      }
+                    }
+                    // Priority 2: Use legacy single mockup/design
+                    if (product.mockupImage || product.designImage) {
+                      return (
+                        <ProductImageOverlay
+                          mockupImage={product.mockupImage}
+                          designImage={product.designImage}
+                          fallbackImage={getProductImage(product) ? { url: getProductImage(product)!.url, alt: getProductImage(product)!.alt || product.name } : undefined}
+                          className="transition-all duration-300 ease-in-out"
+                        />
+                      );
+                    }
+                    // Priority 3: Use legacy images
                     const productImage = getProductImage(product);
                     return productImage ? (
                       <Image
