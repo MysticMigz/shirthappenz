@@ -1232,9 +1232,61 @@ export default function NewProduct() {
                         </div>
                       </div>
 
-                      {/* Design Position & Scale Controls for this combination */}
+                      {/* Preview and Design Position & Scale Controls for this combination */}
                       {(combo.designImage.preview || combo.designImageUrl) && (
                         <div className="mt-4 pt-4 border-t border-gray-200">
+                          {/* Preview for this combination - Centered and above controls */}
+                          {(combo.mockupImage.preview || combo.mockupImageUrl || combo.designImage.preview || combo.designImageUrl) && (
+                            <div className="mb-6">
+                              <label className="block text-sm font-medium text-gray-700 mb-3 text-center">
+                                Preview
+                              </label>
+                              <div className="flex justify-center">
+                                <div className="relative bg-gray-100 rounded-lg overflow-hidden border border-gray-200" style={{ aspectRatio: '1/1', maxWidth: '400px', width: '100%' }}>
+                                  <ProductImageOverlay
+                                    mockupImage={
+                                      combo.mockupImage.preview 
+                                        ? { url: combo.mockupImage.preview, alt: combo.mockupImageAlt || 'Mockup preview' }
+                                        : combo.mockupImage.url
+                                        ? { url: combo.mockupImage.url, alt: combo.mockupImageAlt || combo.mockupImage.alt || 'Mockup' }
+                                        : combo.mockupImageUrl 
+                                        ? { url: combo.mockupImageUrl, alt: combo.mockupImageAlt || 'Mockup' }
+                                        : undefined
+                                    }
+                                    designImage={
+                                      combo.designImage.preview 
+                                        ? { 
+                                            url: combo.designImage.preview, 
+                                            alt: combo.designImageAlt || 'Design preview',
+                                            position: combo.designPosition,
+                                            scale: combo.designScale,
+                                            rotation: combo.designRotation
+                                          }
+                                        : combo.designImage.url
+                                        ? { 
+                                            url: combo.designImage.url, 
+                                            alt: combo.designImageAlt || combo.designImage.alt || 'Design',
+                                            position: combo.designPosition,
+                                            scale: combo.designScale,
+                                            rotation: combo.designRotation
+                                          }
+                                        : combo.designImageUrl 
+                                        ? { 
+                                            url: combo.designImageUrl, 
+                                            alt: combo.designImageAlt || 'Design',
+                                            position: combo.designPosition,
+                                            scale: combo.designScale,
+                                            rotation: combo.designRotation
+                                          }
+                                        : undefined
+                                    }
+                                    className="w-full h-full"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
                           <label className="block text-sm font-medium text-gray-700 mb-3">
                             Design Image Position & Size (for this combination)
                           </label>
@@ -1303,58 +1355,6 @@ export default function NewProduct() {
                               />
                             </div>
                           </div>
-
-                          {/* Preview for this combination */}
-                          {(combo.mockupImage.preview || combo.mockupImageUrl || combo.designImage.preview || combo.designImageUrl) && (
-                            <div className="mt-4">
-                              <label className="block text-xs font-medium text-gray-700 mb-2">
-                                Preview
-                              </label>
-                              <div className="max-w-xs">
-                                <div className="relative bg-gray-100 rounded-lg overflow-hidden border border-gray-200" style={{ aspectRatio: '1/1' }}>
-                                  <ProductImageOverlay
-                                    mockupImage={
-                                      combo.mockupImage.preview 
-                                        ? { url: combo.mockupImage.preview, alt: combo.mockupImageAlt || 'Mockup preview' }
-                                        : combo.mockupImage.url
-                                        ? { url: combo.mockupImage.url, alt: combo.mockupImageAlt || combo.mockupImage.alt || 'Mockup' }
-                                        : combo.mockupImageUrl 
-                                        ? { url: combo.mockupImageUrl, alt: combo.mockupImageAlt || 'Mockup' }
-                                        : undefined
-                                    }
-                                    designImage={
-                                      combo.designImage.preview 
-                                        ? { 
-                                            url: combo.designImage.preview, 
-                                            alt: combo.designImageAlt || 'Design preview',
-                                            position: combo.designPosition,
-                                            scale: combo.designScale,
-                                            rotation: combo.designRotation
-                                          }
-                                        : combo.designImage.url
-                                        ? { 
-                                            url: combo.designImage.url, 
-                                            alt: combo.designImageAlt || combo.designImage.alt || 'Design',
-                                            position: combo.designPosition,
-                                            scale: combo.designScale,
-                                            rotation: combo.designRotation
-                                          }
-                                        : combo.designImageUrl 
-                                        ? { 
-                                            url: combo.designImageUrl, 
-                                            alt: combo.designImageAlt || 'Design',
-                                            position: combo.designPosition,
-                                            scale: combo.designScale,
-                                            rotation: combo.designRotation
-                                          }
-                                        : undefined
-                                    }
-                                    className="w-full h-full"
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                          )}
                         </div>
                       )}
                     </div>

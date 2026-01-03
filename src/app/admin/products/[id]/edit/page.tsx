@@ -2429,71 +2429,18 @@ export default function EditProduct({ params }: { params: { id: string } }) {
                             placeholder="Design alt text"
                             className="mt-2 w-full px-3 py-2 border border-gray-300 rounded-lg text-xs"
                           />
-                          {/* Quick position controls */}
-                          <div className="mt-2 space-y-2">
-                            <div className="grid grid-cols-2 gap-2">
-                              <div>
-                                <label className="text-xs text-gray-600">X: {combo.designPosition.x}</label>
-                                <input
-                                  type="range"
-                                  min="-50"
-                                  max="50"
-                                  value={combo.designPosition.x}
-                                  onChange={(e) => updateCombination(combo.id, {
-                                    designPosition: { ...combo.designPosition, x: parseInt(e.target.value) }
-                                  })}
-                                  className="w-full"
-                                />
-                              </div>
-                              <div>
-                                <label className="text-xs text-gray-600">Y: {combo.designPosition.y}</label>
-                                <input
-                                  type="range"
-                                  min="-50"
-                                  max="50"
-                                  value={combo.designPosition.y}
-                                  onChange={(e) => updateCombination(combo.id, {
-                                    designPosition: { ...combo.designPosition, y: parseInt(e.target.value) }
-                                  })}
-                                  className="w-full"
-                                />
-                              </div>
-                            </div>
-                            <div>
-                              <label className="text-xs text-gray-600">Scale: {combo.designScale}%</label>
-                              <input
-                                type="range"
-                                min="10"
-                                max="200"
-                                value={combo.designScale}
-                                onChange={(e) => updateCombination(combo.id, { designScale: parseInt(e.target.value) })}
-                                className="w-full"
-                              />
-                            </div>
-                            <div>
-                              <label className="text-xs text-gray-600">Rotation: {combo.designRotation}°</label>
-                              <input
-                                type="range"
-                                min="-180"
-                                max="180"
-                                value={combo.designRotation}
-                                onChange={(e) => updateCombination(combo.id, { designRotation: parseInt(e.target.value) })}
-                                className="w-full"
-                              />
-                            </div>
-                          </div>
                         </div>
                       </div>
 
-                      {/* Live Preview */}
+                      {/* Live Preview - Centered and above controls */}
                       {(combo.mockupImage.preview || combo.mockupImage.url || combo.mockupImageUrl) && 
                        (combo.designImage.preview || combo.designImage.url || combo.designImageUrl) && (
-                        <div className="mt-4 border-t pt-4">
-                          <label className="block text-xs font-medium text-gray-700 mb-2">
-                            Live Preview
+                        <div className="mt-4 border-t pt-4 mb-4">
+                          <label className="block text-sm font-medium text-gray-700 mb-3 text-center">
+                            Preview
                           </label>
-                          <div className="relative bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
-                            <div className="aspect-square relative">
+                          <div className="flex justify-center">
+                            <div className="relative bg-gray-100 rounded-lg overflow-hidden border border-gray-200" style={{ aspectRatio: '1/1', maxWidth: '400px', width: '100%' }}>
                               <ProductImageOverlay
                                 mockupImage={
                                   combo.mockupImage.preview 
@@ -2544,8 +2491,67 @@ export default function EditProduct({ params }: { params: { id: string } }) {
                               />
                             </div>
                           </div>
+                        </div>
+                      )}
+
+                      {/* Quick position controls */}
+                      {(combo.designImage.preview || combo.designImage.url || combo.designImageUrl) && (
+                        <div className="mt-2 space-y-2 border-t pt-4">
+                          <label className="block text-sm font-medium text-gray-700 mb-3">
+                            Design Image Position & Size (for this combination)
+                          </label>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-xs text-gray-600">X: {combo.designPosition.x}</label>
+                              <input
+                                type="range"
+                                min="-50"
+                                max="50"
+                                value={combo.designPosition.x}
+                                onChange={(e) => updateCombination(combo.id, {
+                                  designPosition: { ...combo.designPosition, x: parseInt(e.target.value) }
+                                })}
+                                className="w-full"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-gray-600">Y: {combo.designPosition.y}</label>
+                              <input
+                                type="range"
+                                min="-50"
+                                max="50"
+                                value={combo.designPosition.y}
+                                onChange={(e) => updateCombination(combo.id, {
+                                  designPosition: { ...combo.designPosition, y: parseInt(e.target.value) }
+                                })}
+                                className="w-full"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-xs text-gray-600">Scale: {combo.designScale}%</label>
+                            <input
+                              type="range"
+                              min="10"
+                              max="200"
+                              value={combo.designScale}
+                              onChange={(e) => updateCombination(combo.id, { designScale: parseInt(e.target.value) })}
+                              className="w-full"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs text-gray-600">Rotation: {combo.designRotation}°</label>
+                            <input
+                              type="range"
+                              min="-180"
+                              max="180"
+                              value={combo.designRotation}
+                              onChange={(e) => updateCombination(combo.id, { designRotation: parseInt(e.target.value) })}
+                              className="w-full"
+                            />
+                          </div>
                           <p className="text-xs text-gray-500 mt-2">
-                            This is how the combination will appear in the carousel. Adjust position, scale, and rotation above to see changes in real-time.
+                            Adjust position, scale, and rotation above to see changes in the preview above.
                           </p>
                         </div>
                       )}
