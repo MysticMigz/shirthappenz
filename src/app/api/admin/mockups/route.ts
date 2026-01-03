@@ -31,14 +31,16 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    // Get all products with mockup images
+    // Get all products with mockup images (both legacy and combinations)
     const products = await (Product as any).find({
-      mockupImage: { $exists: true, $ne: null },
-      'mockupImage.url': { $exists: true, $ne: '' }
+      $or: [
+        { mockupImage: { $exists: true, $ne: null }, 'mockupImage.url': { $exists: true, $ne: '' } },
+        { mockupDesignCombinations: { $exists: true, $ne: null, $not: { $size: 0 } } }
+      ]
     })
-    .select('name mockupImage category createdAt')
+    .select('name mockupImage mockupDesignCombinations category createdAt')
     .sort({ createdAt: -1 })
-    .limit(100); // Limit to most recent 100 products with mockups
+    .limit(200); // Increased limit to account for multiple combinations per product
     
     // Extract unique mockups (group by URL to avoid duplicates)
     const mockupMap = new Map<string, {
@@ -49,34 +51,54 @@ export async function GET(request: NextRequest) {
       createdAt: Date;
     }>();
     
+    const processMockup = (url: string, alt: string, product: any) => {
+      // Ensure URL is a valid string
+      if (typeof url !== 'string' || !url.trim()) {
+        console.warn('⚠️ [Mockups API] Invalid URL found:', url, 'for product:', product.name);
+        return;
+      }
+      
+      // Ensure URL is absolute (Cloudinary URLs should already be absolute)
+      // Don't modify URLs that already start with http:// or https://
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        // If it's a relative URL, make it absolute
+        url = url.startsWith('/') ? url : `/${url}`;
+      }
+      
+      // Only add if we haven't seen this URL before, or if this product is newer
+      if (!mockupMap.has(url) || 
+          new Date(product.createdAt) > new Date(mockupMap.get(url)!.createdAt)) {
+        mockupMap.set(url, {
+          url: url.trim(),
+          alt: alt || product.name || 'Product mockup',
+          productName: product.name || 'Unknown Product',
+          category: product.category || 'uncategorized',
+          createdAt: product.createdAt
+        });
+      }
+    };
+    
     products.forEach((product: any) => {
+      // Process legacy mockupImage
       if (product.mockupImage?.url) {
-        let url = product.mockupImage.url;
-        
-        // Ensure URL is a valid string
-        if (typeof url !== 'string' || !url.trim()) {
-          console.warn('⚠️ [Mockups API] Invalid URL found:', url, 'for product:', product.name);
-          return;
-        }
-        
-        // Ensure URL is absolute (Cloudinary URLs should already be absolute)
-        // Don't modify URLs that already start with http:// or https://
-        if (!url.startsWith('http://') && !url.startsWith('https://')) {
-          // If it's a relative URL, make it absolute
-          url = url.startsWith('/') ? url : `/${url}`;
-        }
-        
-        // Only add if we haven't seen this URL before, or if this product is newer
-        if (!mockupMap.has(url) || 
-            new Date(product.createdAt) > new Date(mockupMap.get(url)!.createdAt)) {
-          mockupMap.set(url, {
-            url: url.trim(),
-            alt: product.mockupImage.alt || product.name || 'Product mockup',
-            productName: product.name || 'Unknown Product',
-            category: product.category || 'uncategorized',
-            createdAt: product.createdAt
-          });
-        }
+        processMockup(
+          product.mockupImage.url,
+          product.mockupImage.alt || product.name || 'Product mockup',
+          product
+        );
+      }
+      
+      // Process mockups from mockupDesignCombinations
+      if (product.mockupDesignCombinations && Array.isArray(product.mockupDesignCombinations)) {
+        product.mockupDesignCombinations.forEach((combo: any) => {
+          if (combo.mockupImage?.url) {
+            processMockup(
+              combo.mockupImage.url,
+              combo.mockupImage.alt || combo.name || product.name || 'Product mockup',
+              product
+            );
+          }
+        });
       }
     });
     
