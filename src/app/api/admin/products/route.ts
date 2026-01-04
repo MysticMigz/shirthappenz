@@ -471,6 +471,7 @@ export async function POST(request: NextRequest) {
     const finalProductData: any = {
       name: validatedData.name.trim(),
       description: validatedData.description.trim(),
+      productDetails: validatedData.productDetails || '',
       price: validatedData.price,
       basePrice: validatedData.basePrice,
       category: validatedData.category,

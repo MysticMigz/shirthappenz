@@ -220,6 +220,7 @@ export const orderSchema = z.object({
 export const productSchema = z.object({
   name: z.string().min(1, 'Product name is required').max(200),
   description: z.string().min(1, 'Description is required').max(2000),
+  productDetails: z.string().optional().default(''),
   price: z.number().min(0.01, 'Price must be greater than 0'),
   basePrice: z.number().min(0.01, 'Base price must be greater than 0'),
   category: z.enum(['tshirts', 'jerseys', 'tanktops', 'longsleeve', 'hoodies', 'sweatshirts', 'sweatpants', 'accessories', 'shortsleeve', 'crewneck']),
