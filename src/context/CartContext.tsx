@@ -15,6 +15,12 @@ interface CartItem {
   orderSource?: string;
   mockupImage?: { url: string; alt: string };
   designImage?: { url: string; alt: string; position?: { x: number; y: number }; scale?: number; rotation?: number };
+  mockupDesignCombinations?: Array<{
+    mockupImage: { url: string; alt: string };
+    designImage: { url: string; alt: string; position?: { x: number; y: number }; scale?: number; rotation?: number };
+    name?: string;
+    order?: number;
+  }>;
   customization?: {
     name?: string;
     number?: string;

@@ -87,25 +87,51 @@ export default function CartPage() {
                               </>
                             ) : (
                               <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-md border border-gray-200">
-                                {item.mockupImage || item.designImage ? (
-                                  <ProductImageOverlay
-                                    mockupImage={item.mockupImage}
-                                    designImage={item.designImage}
-                                    fallbackImage={item.image ? { url: item.image, alt: item.name } : undefined}
-                                    className="w-full h-full"
-                                  />
-                                ) : item.image ? (
-                                  <Image
-                                    src={item.image}
-                                    alt={item.name}
-                                    fill
-                                    className="object-cover object-center"
-                                  />
-                                ) : (
-                                  <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-                                    <span className="text-gray-400">No image</span>
-                                  </div>
-                                )}
+                                {(() => {
+                                  // Priority 1: Use first combination from mockupDesignCombinations (sorted by order)
+                                  if (item.mockupDesignCombinations && item.mockupDesignCombinations.length > 0) {
+                                    const sortedCombinations = [...item.mockupDesignCombinations].sort((a, b) => (a.order || 0) - (b.order || 0));
+                                    const firstCombination = sortedCombinations[0];
+                                    if (firstCombination?.mockupImage?.url && firstCombination?.designImage?.url) {
+                                      return (
+                                        <ProductImageOverlay
+                                          mockupImage={firstCombination.mockupImage}
+                                          designImage={firstCombination.designImage}
+                                          fallbackImage={item.image ? { url: item.image, alt: item.name } : undefined}
+                                          className="w-full h-full"
+                                        />
+                                      );
+                                    }
+                                  }
+                                  // Priority 2: Use legacy single mockup/design
+                                  if (item.mockupImage || item.designImage) {
+                                    return (
+                                      <ProductImageOverlay
+                                        mockupImage={item.mockupImage}
+                                        designImage={item.designImage}
+                                        fallbackImage={item.image ? { url: item.image, alt: item.name } : undefined}
+                                        className="w-full h-full"
+                                      />
+                                    );
+                                  }
+                                  // Priority 3: Use regular image
+                                  if (item.image) {
+                                    return (
+                                      <Image
+                                        src={item.image}
+                                        alt={item.name}
+                                        fill
+                                        className="object-cover object-center"
+                                      />
+                                    );
+                                  }
+                                  // Fallback
+                                  return (
+                                    <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                                      <span className="text-gray-400">No image</span>
+                                    </div>
+                                  );
+                                })()}
                               </div>
                             )}
                           </div>

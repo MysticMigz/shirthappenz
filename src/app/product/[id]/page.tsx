@@ -575,6 +575,13 @@ export default function ProductPage({ params }: { params: { id: string } }) {
       const productImage = getProductImage();
       const availableStock = getColorStock(selectedColor, selectedSize);
       
+      // Get first combination from mockupDesignCombinations (sorted by order) for cart display
+      let firstCombination = null;
+      if (product.mockupDesignCombinations && product.mockupDesignCombinations.length > 0) {
+        const sortedCombinations = [...product.mockupDesignCombinations].sort((a, b) => (a.order || 0) - (b.order || 0));
+        firstCombination = sortedCombinations[0];
+      }
+      
       const cartItem = {
         productId: product._id,
         name: product.name,
@@ -584,7 +591,8 @@ export default function ProductPage({ params }: { params: { id: string } }) {
         image: productImage?.url || product.images[0]?.url,
         color: selectedColor,
         mockupImage: product.mockupImage,
-        designImage: product.designImage
+        designImage: product.designImage,
+        mockupDesignCombinations: product.mockupDesignCombinations || undefined
       };
       
       const result = addItem(cartItem, availableStock);
