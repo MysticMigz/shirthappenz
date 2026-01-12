@@ -22,7 +22,8 @@ export default function DiscountWheel() {
     const fetchDiscountCodes = async () => {
       try {
         console.log('Fetching discount codes...');
-        const response = await fetch('/api/discount-codes');
+        // Add cache-busting query parameter to ensure fresh data
+        const response = await fetch(`/api/discount-codes?t=${Date.now()}`);
         if (response.ok) {
           const data = await response.json();
           console.log('Received discount codes:', data.discountCodes);
@@ -40,6 +41,22 @@ export default function DiscountWheel() {
     };
 
     fetchDiscountCodes();
+
+    // Refetch every 5 minutes to get updated vouchers
+    const interval = setInterval(() => {
+      fetchDiscountCodes();
+    }, 5 * 60 * 1000); // 5 minutes
+
+    // Refetch when window gains focus (user returns to tab)
+    const handleFocus = () => {
+      fetchDiscountCodes();
+    };
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, []);
 
   useEffect(() => {
