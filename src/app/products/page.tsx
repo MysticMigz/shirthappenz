@@ -797,6 +797,14 @@ export default function ProductsPage() {
             >
               <Link href={`/product/${product._id}`}>
                 <div className="relative aspect-square bg-gray-100">
+                  {/* Discount Badge - Overlay on image */}
+                  {product.basePrice > product.price && (
+                    <div className="absolute top-3 right-3 z-10">
+                      <span className="bg-red-600 text-white text-sm sm:text-base font-extrabold px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg shadow-lg">
+                        -{Math.round(((product.basePrice - product.price) / product.basePrice) * 100)}%
+                      </span>
+                    </div>
+                  )}
                   {(() => {
                     // Priority 1: Use first combination from mockupDesignCombinations (preview card)
                     if (product.mockupDesignCombinations && product.mockupDesignCombinations.length > 0) {
@@ -971,7 +979,7 @@ export default function ProductsPage() {
                         RRP: £{product.basePrice.toFixed(2)}
                       </span>
                       <span className="text-sm sm:text-lg font-bold text-green-700">
-                        Offer: £{product.price.toFixed(2)}
+                        £{product.price.toFixed(2)}
                       </span>
                     </>
                   ) : (
