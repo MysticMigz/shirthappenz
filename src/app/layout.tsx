@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "./providers";
 import DiscountWheel from "@/components/DiscountWheel";
 import CookieConsent from "@/components/CookieConsent";
+import { Analytics } from "@vercel/analytics/next";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -63,6 +64,7 @@ export default function RootLayout({
           <DiscountWheel />
           {children}
           <CookieConsent />
+          <Analytics />
         </Providers>
       </body>
     </html>
