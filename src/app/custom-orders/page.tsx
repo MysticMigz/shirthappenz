@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Header from '@/app/components/Header';
+import { FaPhone, FaWhatsapp } from 'react-icons/fa';
 
 interface Product {
   _id: string;
@@ -288,47 +289,26 @@ export default function CustomOrdersPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="border border-gray-200 rounded-lg p-4">
               <h3 className="text-lg font-medium text-gray-900 mb-2">A4 Size (210 x 297mm)</h3>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">1-10 items:</span>
-                  <span className="font-medium">£8.50 per item</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">11-25 items:</span>
-                  <span className="font-medium">£7.50 per item</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">26-50 items:</span>
-                  <span className="font-medium">£6.50 per item</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">51+ items:</span>
-                  <span className="font-medium">£5.50 per item</span>
-                </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">Per item</span>
+                <span className="font-medium text-lg">£10 per item</span>
               </div>
             </div>
             
             <div className="border border-gray-200 rounded-lg p-4">
               <h3 className="text-lg font-medium text-gray-900 mb-2">A3 Size (297 x 420mm)</h3>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">1-10 items:</span>
-                  <span className="font-medium">£12.50 per item</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">11-25 items:</span>
-                  <span className="font-medium">£11.50 per item</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">26-50 items:</span>
-                  <span className="font-medium">£10.50 per item</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">51+ items:</span>
-                  <span className="font-medium">£9.50 per item</span>
-                </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">Per item</span>
+                <span className="font-medium text-lg">£12.50 per item</span>
               </div>
             </div>
+          </div>
+
+          <div className="mt-4 p-4 bg-amber-50 border-l-4 border-amber-500 rounded-lg">
+            <h4 className="font-semibold text-amber-900 mb-2">Bulk orders</h4>
+            <p className="text-sm text-amber-800">
+              Need larger quantities? Please <strong>send us an email</strong> or use our <strong>contact form</strong> so we can provide a tailored quote and discuss your requirements.
+            </p>
           </div>
           
           <div className="mt-4 p-4 bg-blue-50 rounded-lg">
@@ -915,7 +895,7 @@ export default function CustomOrdersPage() {
                   />
                   <div>
                     <div className="font-medium text-gray-900">A4 (210 x 297mm)</div>
-                    <div className="text-sm text-gray-600">Standard size - £8.50+ per item</div>
+                    <div className="text-sm text-gray-600">Standard size - £10 per item</div>
                   </div>
                 </label>
                 
@@ -930,7 +910,7 @@ export default function CustomOrdersPage() {
                   />
                   <div>
                     <div className="font-medium text-gray-900">A3 (297 x 420mm)</div>
-                    <div className="text-sm text-gray-600">Large size - £12.50+ per item</div>
+                    <div className="text-sm text-gray-600">Large size - £12.50 per item</div>
                   </div>
                 </label>
               </div>
@@ -1057,9 +1037,26 @@ export default function CustomOrdersPage() {
               <p className="text-sm text-gray-600 break-words px-4">customer.service@mrshirtpersonalisation.co.uk</p>
             </div>
             <div className="text-center">
-              <h4 className="font-medium text-gray-900 mb-3">Hotline</h4>
-              <p className="text-sm text-gray-600 mb-2">020 3597 3380</p>
-              <p className="text-xs text-gray-500">Monday - Friday 9h-12h and 13h30-16h30</p>
+              <h4 className="font-medium text-gray-900 mb-3">Phone</h4>
+              <p className="text-sm text-gray-600 mb-3">07902 870 824</p>
+              <div className="flex justify-center gap-4">
+                <a
+                  href="https://wa.me/447902870824"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 text-green-600 hover:text-green-700 transition-colors"
+                  aria-label="Contact us on WhatsApp"
+                >
+                  <FaWhatsapp className="w-6 h-6" />
+                </a>
+                <a
+                  href="tel:07902870824"
+                  className="inline-flex items-center gap-2 text-gray-700 hover:text-gray-900 transition-colors"
+                  aria-label="Call us"
+                >
+                  <FaPhone className="w-5 h-5" />
+                </a>
+              </div>
             </div>
           </div>
         </div>
