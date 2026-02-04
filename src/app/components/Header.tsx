@@ -96,13 +96,14 @@ const Header = () => {
           {/* Top row with logo, search, and cart */}
           <div className="flex items-center justify-between py-4">
             {/* Logo */}
-            <Link href="/" className="flex items-center group">
+            <Link href="/" className="flex items-center group flex-shrink-0">
               <Image
                 src="/images/logo.png"
                 alt="MR SHIRT PERSONALISATION Logo"
                 width={600}
                 height={240}
-                                 className="h-24 w-auto sm:h-28 md:h-32 lg:h-36 brightness-110 transition-transform duration-300 ease-in-out group-hover:scale-110"
+                sizes="(max-width: 640px) 140px, (max-width: 768px) 180px, (max-width: 1024px) 220px, 260px"
+                className="w-[140px] sm:w-[180px] md:w-[220px] lg:w-[260px] h-auto object-contain brightness-110 transition-transform duration-300 ease-in-out group-hover:scale-110"
                 style={{ border: 'none', outline: 'none', boxShadow: 'none', background: 'transparent' }}
                 priority
               />
