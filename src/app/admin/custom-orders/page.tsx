@@ -227,7 +227,7 @@ export default function CustomOrdersPage() {
       // If we already have a saved invoice on the order, load it (including any admin-added lines)
       if ((order as any).invoiceData?.items?.length) {
         const saved = (order as any).invoiceData;
-        const savedItems = (saved.items || []).map((itm: any) => {
+        let savedItems = (saved.items || []).map((itm: any) => {
           const qty = Number(itm.quantity) || 0;
           const unitPrice = Number(itm.unitPrice) || 0;
           const total = Number(itm.total);
@@ -238,6 +238,19 @@ export default function CustomOrdersPage() {
             total: Number.isFinite(total) ? total : unitPrice * qty,
           };
         });
+
+        // Ensure every invoice has a Shipping line item (admin-editable)
+        const hasShippingLine = savedItems.some((itm: any) => {
+          const desc = String(itm?.description || '').trim().toLowerCase();
+          return desc === 'shipping' || desc.startsWith('shipping ');
+        });
+        if (!hasShippingLine) {
+          savedItems = [
+            ...savedItems,
+            { description: 'Shipping', quantity: 1, unitPrice: 0, total: 0 },
+          ];
+        }
+
         const subtotal = savedItems.reduce((sum: number, itm: any) => sum + (Number(itm.total) || 0), 0);
         const vatRate = 0.20;
         const vatAmount = subtotal * vatRate;
