@@ -351,7 +351,8 @@ export const generateCustomerInvoicePDF = async (order: CustomerOrder) => {
     doc.text(order.shippingDetails.country, 120, 125);
     doc.text(`Shipping: ${order.shippingDetails.shippingMethod}`, 120, 135);
 
-    let yPosition = 150;
+    // Start table a bit higher to reduce vertical whitespace
+    let yPosition = 140;
 
     // Create items table
     const tableData = order.items.map(item => {
@@ -579,7 +580,8 @@ export const generateCustomOrderInvoicePDF = async (invoiceData: any) => {
     const finalY = (doc as any).lastAutoTable.finalY || yPosition + 50;
 
     // Add pricing summary
-    const summaryY = finalY + 20;
+    // Tighter spacing after items table
+    const summaryY = finalY + 12;
     doc.setFontSize(12);
     doc.text('Subtotal:', 120, summaryY);
     doc.text(`£${invoiceData.pricing.subtotal.toFixed(2)}`, 160, summaryY);
@@ -593,19 +595,20 @@ export const generateCustomOrderInvoicePDF = async (invoiceData: any) => {
     doc.text(`£${invoiceData.pricing.total.toFixed(2)}`, 160, summaryY + 25);
 
     // Add notes if present
-    let notesY = summaryY + 40;
+    // Tighter spacing after totals section
+    let notesY = summaryY + 32;
     if (invoiceData.notes) {
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.text('Notes:', 20, notesY);
       doc.text(invoiceData.notes, 20, notesY + 10);
-      notesY += 20;
+      notesY += 14;
     }
 
     // Add payment information with proper spacing
     if (invoiceData.paymentLink) {
-      // Add extra spacing before payment link
-      notesY += 10;
+      // Minimal spacing before payment link
+      notesY += 4;
       
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
@@ -623,12 +626,12 @@ export const generateCustomOrderInvoicePDF = async (invoiceData: any) => {
           lines.push(paymentLink.substring(i, i + maxLineLength));
         }
         lines.forEach((line, index) => {
-          doc.text(line, 20, notesY + 10 + (index * 5));
+          doc.text(line, 20, notesY + 10 + (index * 4));
         });
-        notesY += 10 + (lines.length * 5);
+        notesY += 10 + (lines.length * 4);
       } else {
         doc.text(paymentLink, 20, notesY + 10);
-        notesY += 20;
+        notesY += 14;
       }
       
       doc.setTextColor(0, 0, 0); // Reset to black
