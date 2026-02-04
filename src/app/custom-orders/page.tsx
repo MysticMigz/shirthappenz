@@ -81,6 +81,7 @@ export default function CustomOrdersPage() {
   });
 
   const [selectedProductData, setSelectedProductData] = useState<Product | null>(null);
+  const [dtfUnitPrices, setDtfUnitPrices] = useState<{ a4: number; a3: number } | null>(null);
 
   const openPreview = (product: Product) => {
     setPreviewProduct(product);
@@ -96,6 +97,29 @@ export default function CustomOrdersPage() {
 
   useEffect(() => {
     fetchProducts();
+  }, []);
+
+  useEffect(() => {
+    const fetchDtfPrices = async () => {
+      try {
+        const [a4Res, a3Res] = await Promise.all([
+          fetch('/api/site-settings?key=dtfA4UnitPrice'),
+          fetch('/api/site-settings?key=dtfA3UnitPrice'),
+        ]);
+        const a4Data = a4Res.ok ? await a4Res.json() : null;
+        const a3Data = a3Res.ok ? await a3Res.json() : null;
+        const a4 = Number(a4Data?.value);
+        const a3 = Number(a3Data?.value);
+        if (!Number.isFinite(a4) || !Number.isFinite(a3)) {
+          setDtfUnitPrices(null);
+          return;
+        }
+        setDtfUnitPrices({ a4, a3 });
+      } catch {
+        setDtfUnitPrices(null);
+      }
+    };
+    fetchDtfPrices();
   }, []);
 
   // Auto-dismiss success messages after 5 seconds
@@ -506,7 +530,9 @@ export default function CustomOrdersPage() {
               <h3 className="text-lg font-medium text-gray-900 mb-2">A4 Size (210 x 297mm)</h3>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Per item</span>
-                <span className="font-medium text-lg">£10 per item</span>
+                <span className="font-medium text-lg">
+                  {dtfUnitPrices ? `£${dtfUnitPrices.a4.toFixed(2)} per item` : 'Not configured'}
+                </span>
               </div>
             </div>
             
@@ -514,7 +540,9 @@ export default function CustomOrdersPage() {
               <h3 className="text-lg font-medium text-gray-900 mb-2">A3 Size (297 x 420mm)</h3>
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Per item</span>
-                <span className="font-medium text-lg">£12.50 per item</span>
+                <span className="font-medium text-lg">
+                  {dtfUnitPrices ? `£${dtfUnitPrices.a3.toFixed(2)} per item` : 'Not configured'}
+                </span>
               </div>
             </div>
           </div>

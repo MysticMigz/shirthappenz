@@ -409,12 +409,18 @@ export async function sendCustomOrderAdminNotificationEmail(params: {
   sizeQuantities: Record<string, Record<string, unknown>>;
   designFiles: CustomOrderDesignFile[];
 }) {
-  const totalQuantity = Object.values(params.sizeQuantities || {}).reduce((sum, colorQuantities) => {
-    return (
-      sum +
-      Object.values(colorQuantities || {}).reduce((sizeSum, qty) => sizeSum + (Number(qty) || 0), 0)
-    );
-  }, 0);
+  const totalQuantity = Object.values(params.sizeQuantities || {}).reduce(
+    (sum: number, colorQuantities: Record<string, unknown>) => {
+      return (
+        sum +
+        Object.values(colorQuantities || {}).reduce(
+          (sizeSum: number, qty) => sizeSum + (Number(qty) || 0),
+          0
+        )
+      );
+    },
+    0
+  );
 
   const sizeBreakdownHtml = Object.entries(params.sizeQuantities || {})
     .map(([color, quantities]) => {
@@ -526,12 +532,18 @@ export async function sendCustomOrderCustomerConfirmationEmail(params: {
   notes?: string;
   designFiles: CustomOrderDesignFile[];
 }) {
-  const totalQuantity = Object.values(params.sizeQuantities || {}).reduce((sum, colorQuantities) => {
-    return (
-      sum +
-      Object.values(colorQuantities || {}).reduce((sizeSum, qty) => sizeSum + (Number(qty) || 0), 0)
-    );
-  }, 0);
+  const totalQuantity = Object.values(params.sizeQuantities || {}).reduce(
+    (sum: number, colorQuantities: Record<string, unknown>) => {
+      return (
+        sum +
+        Object.values(colorQuantities || {}).reduce(
+          (sizeSum: number, qty) => sizeSum + (Number(qty) || 0),
+          0
+        )
+      );
+    },
+    0
+  );
 
   const sizeBreakdownHtml = Object.entries(params.sizeQuantities || {})
     .map(([color, quantities]) => {

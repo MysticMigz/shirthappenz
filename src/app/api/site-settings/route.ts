@@ -9,15 +9,19 @@ export async function GET(request: NextRequest) {
     
     const { searchParams } = new URL(request.url);
     const key = searchParams.get('key');
+
+    const defaults: Record<string, any> = {
+      productsEnabled: true,
+    };
     
     if (key) {
       // Get specific setting
       const setting = await (SiteSettings as any).findOne({ key });
       if (!setting) {
-        // Return default value if setting doesn't exist
+        // Return default value if setting doesn't exist (only for explicitly defaulted keys)
         return NextResponse.json({ 
           key,
-          value: key === 'productsEnabled' ? true : null 
+          value: Object.prototype.hasOwnProperty.call(defaults, key) ? defaults[key] : null
         });
       }
       return NextResponse.json({ 
@@ -37,7 +41,7 @@ export async function GET(request: NextRequest) {
     // Return default values on error
     return NextResponse.json({ 
       settings: [
-        { key: 'productsEnabled', value: true }
+        { key: 'productsEnabled', value: true },
       ]
     });
   }

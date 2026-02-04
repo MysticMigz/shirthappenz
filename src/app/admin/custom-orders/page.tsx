@@ -63,7 +63,9 @@ export default function CustomOrdersPage() {
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [invoiceData, setInvoiceData] = useState<any>(null);
   const [paymentLink, setPaymentLink] = useState<string | null>(null);
+  const [paymentLinkAmount, setPaymentLinkAmount] = useState<number | null>(null);
   const [generatingPaymentLink, setGeneratingPaymentLink] = useState(false);
+  const [dtfUnitPrices, setDtfUnitPrices] = useState<{ a4: number; a3: number } | null>(null);
 
   // Reset product preview when selecting a different order
   useEffect(() => {
@@ -74,6 +76,29 @@ export default function CustomOrdersPage() {
   useEffect(() => {
     fetchOrders();
   }, [currentPage, statusFilter]);
+
+  useEffect(() => {
+    const fetchDtfPrices = async () => {
+      try {
+        const [a4Res, a3Res] = await Promise.all([
+          fetch('/api/site-settings?key=dtfA4UnitPrice'),
+          fetch('/api/site-settings?key=dtfA3UnitPrice'),
+        ]);
+        const a4Json = a4Res.ok ? await a4Res.json() : null;
+        const a3Json = a3Res.ok ? await a3Res.json() : null;
+        const a4 = Number(a4Json?.value);
+        const a3 = Number(a3Json?.value);
+        if (!Number.isFinite(a4) || !Number.isFinite(a3)) {
+          setDtfUnitPrices(null);
+          return;
+        }
+        setDtfUnitPrices({ a4, a3 });
+      } catch (e) {
+        setDtfUnitPrices(null);
+      }
+    };
+    fetchDtfPrices();
+  }, []);
 
   const fetchOrders = async () => {
     try {
@@ -145,6 +170,63 @@ export default function CustomOrdersPage() {
 
   const generateInvoice = async (order: CustomOrder) => {
     try {
+      // If we already have a saved invoice on the order, load it (including any admin-added lines)
+      if ((order as any).invoiceData?.items?.length) {
+        const saved = (order as any).invoiceData;
+        const savedItems = (saved.items || []).map((itm: any) => {
+          const qty = Number(itm.quantity) || 0;
+          const unitPrice = Number(itm.unitPrice) || 0;
+          const total = Number(itm.total);
+          return {
+            ...itm,
+            quantity: qty,
+            unitPrice,
+            total: Number.isFinite(total) ? total : unitPrice * qty,
+          };
+        });
+        const subtotal = savedItems.reduce((sum: number, itm: any) => sum + (Number(itm.total) || 0), 0);
+        const vatRate = 0.20;
+        const vatAmount = subtotal * vatRate;
+        const grandTotal = subtotal + vatAmount;
+
+        const invoiceFromSaved = {
+          ...saved,
+          items: savedItems,
+          pricing: {
+            ...(saved.pricing || {}),
+            subtotal,
+            vatRate: vatRate * 100,
+            vatAmount,
+            total: grandTotal,
+          },
+        };
+
+        setInvoiceData(invoiceFromSaved);
+        setShowInvoiceModal(true);
+
+        const link = (order as any).paymentLink || saved.paymentLink || null;
+        setPaymentLink(link);
+        setPaymentLinkAmount(link ? Number(invoiceFromSaved.pricing?.total) || null : null);
+        return;
+      }
+
+      // Ensure DTF pricing is loaded (stored via Admin → Site Settings)
+      let prices = dtfUnitPrices;
+      if (!prices) {
+        const [a4Res, a3Res] = await Promise.all([
+          fetch('/api/site-settings?key=dtfA4UnitPrice'),
+          fetch('/api/site-settings?key=dtfA3UnitPrice'),
+        ]);
+        const a4Json = a4Res.ok ? await a4Res.json() : null;
+        const a3Json = a3Res.ok ? await a3Res.json() : null;
+        const a4 = Number(a4Json?.value);
+        const a3 = Number(a3Json?.value);
+        if (Number.isFinite(a4) && Number.isFinite(a3)) {
+          prices = { a4, a3 };
+          setDtfUnitPrices(prices);
+        }
+      }
+
       // Use saved product details or fetch if not available
       let productData = order.productDetails;
       if (!productData) {
@@ -160,10 +242,24 @@ export default function CustomOrdersPage() {
         );
       }, 0);
 
-      // Calculate pricing: A4/A3 unit price × total units
-      // A4: £10, A3: £12.50
-      const unitPrice = order.paperSize === 'A3' ? 12.5 : 10;
-      const subtotal = unitPrice * totalQuantity;
+      // Print size pricing: A4/A3 unit price × total units
+      if (!prices) {
+        alert('DTF pricing is not configured. Go to Admin → Site Settings and set A4/A3 unit prices, then try again.');
+        return;
+      }
+      const unitPrice = order.paperSize === 'A3' ? prices.a3 : prices.a4;
+      const lineTotal = unitPrice * totalQuantity;
+
+      const items = [
+        {
+          description: `Custom ${productData?.name || 'Product'} Design - ${order.paperSize || 'A4'} DTF Printing${order.printSize ? ` (Print size: ${order.printSize})` : ''}`,
+          quantity: totalQuantity,
+          unitPrice: unitPrice,
+          total: lineTotal
+        }
+      ];
+
+      const subtotal = lineTotal;
       const vatRate = 0.20; // 20% VAT
       const vatAmount = subtotal * vatRate;
       const total = subtotal + vatAmount;
@@ -188,14 +284,7 @@ export default function CustomOrdersPage() {
             postalCode: order.postalCode
           }
         },
-        items: [
-          {
-            description: `Custom ${productData?.name || 'Product'} Design - ${order.paperSize} DTF Printing${order.printSize ? ` (Print size: ${order.printSize})` : ''}`,
-            quantity: totalQuantity,
-            unitPrice: unitPrice,
-            total: subtotal
-          }
-        ],
+        items,
         pricing: {
           subtotal,
           vatRate: vatRate * 100,
@@ -208,6 +297,8 @@ export default function CustomOrdersPage() {
 
       setInvoiceData(invoice);
       setShowInvoiceModal(true);
+      setPaymentLink(null);
+      setPaymentLinkAmount(null);
     } catch (error) {
       console.error('Error fetching product details:', error);
       // Fallback to basic invoice without product details
@@ -218,8 +309,39 @@ export default function CustomOrdersPage() {
         );
       }, 0);
 
-      const unitPrice = order.paperSize === 'A3' ? 12.5 : 10;
-      const subtotal = unitPrice * totalQuantity;
+      let prices = dtfUnitPrices;
+      if (!prices) {
+        const [a4Res, a3Res] = await Promise.all([
+          fetch('/api/site-settings?key=dtfA4UnitPrice'),
+          fetch('/api/site-settings?key=dtfA3UnitPrice'),
+        ]);
+        const a4Json = a4Res.ok ? await a4Res.json() : null;
+        const a3Json = a3Res.ok ? await a3Res.json() : null;
+        const a4 = Number(a4Json?.value);
+        const a3 = Number(a3Json?.value);
+        if (Number.isFinite(a4) && Number.isFinite(a3)) {
+          prices = { a4, a3 };
+          setDtfUnitPrices(prices);
+        }
+      }
+      if (!prices) {
+        alert('DTF pricing is not configured. Go to Admin → Site Settings and set A4/A3 unit prices, then try again.');
+        return;
+      }
+
+      const unitPrice = order.paperSize === 'A3' ? prices.a3 : prices.a4;
+      const lineTotal = unitPrice * totalQuantity;
+
+      const items = [
+        {
+          description: `Custom Design - ${order.paperSize || 'A4'} DTF Printing${order.printSize ? ` (Print size: ${order.printSize})` : ''}`,
+          quantity: totalQuantity,
+          unitPrice: unitPrice,
+          total: lineTotal
+        }
+      ];
+
+      const subtotal = lineTotal;
       const vatRate = 0.20;
       const vatAmount = subtotal * vatRate;
       const total = subtotal + vatAmount;
@@ -244,14 +366,7 @@ export default function CustomOrdersPage() {
             postalCode: order.postalCode
           }
         },
-        items: [
-          {
-            description: `Custom Design - ${order.paperSize || 'A4'} DTF Printing${order.printSize ? ` (Print size: ${order.printSize})` : ''}`,
-            quantity: totalQuantity,
-            unitPrice: unitPrice,
-            total: subtotal
-          }
-        ],
+        items,
         pricing: {
           subtotal,
           vatRate: vatRate * 100,
@@ -264,6 +379,8 @@ export default function CustomOrdersPage() {
 
       setInvoiceData(invoice);
       setShowInvoiceModal(true);
+      setPaymentLink(null);
+      setPaymentLinkAmount(null);
     }
   };
 
@@ -300,6 +417,32 @@ export default function CustomOrdersPage() {
       const data = await response.json();
       console.log('Payment link generated:', data);
       setPaymentLink(data.paymentLink);
+      setPaymentLinkAmount(invoiceData.pricing.total);
+
+      // Persist the current invoice (including any added line items) to the order
+      try {
+        const updatedInvoiceData = {
+          ...invoiceData,
+          paymentLink: data.paymentLink,
+        };
+        await fetch(`/api/custom-orders/${selectedOrder._id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            invoiceData: updatedInvoiceData,
+            paymentLink: data.paymentLink
+          }),
+        });
+
+        // Update local state so preview shows the saved extra lines immediately
+        setSelectedOrder(prev => prev ? { ...prev, invoiceData: updatedInvoiceData, paymentLink: data.paymentLink } : prev);
+        setOrders(prev => prev.map(o => o._id === selectedOrder._id ? { ...o, invoiceData: updatedInvoiceData, paymentLink: data.paymentLink } as any : o));
+      } catch (saveError) {
+        console.error('Failed to save invoice data after generating payment link:', saveError);
+        // Don't block payment link generation if save fails
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       console.error('Error generating payment link:', errorMessage);
@@ -1049,6 +1192,15 @@ export default function CustomOrdersPage() {
                         </svg>
                         <span>Generate Invoice</span>
                       </button>
+                      {!dtfUnitPrices && (
+                        <button
+                          type="button"
+                          onClick={() => router.push('/admin/site-settings')}
+                          className="px-4 py-2 bg-amber-500 text-white rounded-md hover:bg-amber-600"
+                        >
+                          Configure DTF Pricing
+                        </button>
+                      )}
                       <button
                         onClick={() => deleteOrder(selectedOrder)}
                         className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
@@ -1182,13 +1334,64 @@ export default function CustomOrdersPage() {
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Price</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                           {invoiceData.items.map((item: any, index: number) => (
                             <tr key={index}>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.description}</td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.quantity}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {index === 0 ? (
+                                  item.description
+                                ) : (
+                                  <input
+                                    type="text"
+                                    value={item.description}
+                                    onChange={(e) => {
+                                      const nextItems = invoiceData.items.map((itm: any, idx: number) =>
+                                        idx === index ? { ...itm, description: e.target.value } : itm
+                                      );
+                                      setInvoiceData({ ...invoiceData, items: nextItems });
+                                    }}
+                                    className="w-full min-w-[220px] px-2 py-1 border border-gray-300 rounded text-sm"
+                                  />
+                                )}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {index === 0 ? (
+                                  item.quantity
+                                ) : (
+                                  <input
+                                    type="number"
+                                    step="1"
+                                    min="0"
+                                    value={item.quantity}
+                                    onChange={(e) => {
+                                      const newQty = Math.max(0, parseInt(e.target.value) || 0);
+                                      const newTotal = (Number(item.unitPrice) || 0) * newQty;
+                                      const nextItems = invoiceData.items.map((itm: any, idx: number) =>
+                                        idx === index ? { ...itm, quantity: newQty, total: newTotal } : itm
+                                      );
+                                      const newSubtotal = nextItems.reduce((sum: number, itm: any) => sum + (Number(itm.total) || 0), 0);
+                                      const vatRate = 0.20;
+                                      const newVatAmount = newSubtotal * vatRate;
+                                      const newGrandTotal = newSubtotal + newVatAmount;
+                                      setInvoiceData({
+                                        ...invoiceData,
+                                        items: nextItems,
+                                        pricing: {
+                                          ...invoiceData.pricing,
+                                          subtotal: newSubtotal,
+                                          vatRate: vatRate * 100,
+                                          vatAmount: newVatAmount,
+                                          total: newGrandTotal
+                                        }
+                                      });
+                                    }}
+                                    className="w-20 px-2 py-1 border border-gray-300 rounded text-sm"
+                                  />
+                                )}
+                              </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                 <input
                                   type="number"
@@ -1197,18 +1400,21 @@ export default function CustomOrdersPage() {
                                   onChange={(e) => {
                                     const newUnitPrice = parseFloat(e.target.value) || 0;
                                     const newTotal = newUnitPrice * item.quantity;
-                                    const newSubtotal = newTotal;
-                                    const newVatAmount = newSubtotal * 0.20;
+                                    const nextItems = invoiceData.items.map((itm: any, idx: number) =>
+                                      idx === index ? { ...itm, unitPrice: newUnitPrice, total: newTotal } : itm
+                                    );
+                                    const newSubtotal = nextItems.reduce((sum: number, itm: any) => sum + (Number(itm.total) || 0), 0);
+                                    const vatRate = 0.20;
+                                    const newVatAmount = newSubtotal * vatRate;
                                     const newGrandTotal = newSubtotal + newVatAmount;
                                     
                                     setInvoiceData({
                                       ...invoiceData,
-                                      items: invoiceData.items.map((itm: any, idx: number) => 
-                                        idx === index ? { ...itm, unitPrice: newUnitPrice, total: newTotal } : itm
-                                      ),
+                                      items: nextItems,
                                       pricing: {
                                         ...invoiceData.pricing,
                                         subtotal: newSubtotal,
+                                        vatRate: vatRate * 100,
                                         vatAmount: newVatAmount,
                                         total: newGrandTotal
                                       }
@@ -1218,10 +1424,67 @@ export default function CustomOrdersPage() {
                                 />
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">£{item.total.toFixed(2)}</td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {index === 0 ? null : (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const nextItems = invoiceData.items.filter((_: any, idx: number) => idx !== index);
+                                      const newSubtotal = nextItems.reduce((sum: number, itm: any) => sum + (Number(itm.total) || 0), 0);
+                                      const vatRate = 0.20;
+                                      const newVatAmount = newSubtotal * vatRate;
+                                      const newGrandTotal = newSubtotal + newVatAmount;
+                                      setInvoiceData({
+                                        ...invoiceData,
+                                        items: nextItems,
+                                        pricing: {
+                                          ...invoiceData.pricing,
+                                          subtotal: newSubtotal,
+                                          vatRate: vatRate * 100,
+                                          vatAmount: newVatAmount,
+                                          total: newGrandTotal
+                                        }
+                                      });
+                                    }}
+                                    className="text-red-600 hover:text-red-800 text-sm"
+                                  >
+                                    Remove
+                                  </button>
+                                )}
+                              </td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
+                    </div>
+                    <div className="mt-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const nextItems = [
+                            ...invoiceData.items,
+                            { description: 'Additional cost', quantity: 1, unitPrice: 0, total: 0 }
+                          ];
+                          const newSubtotal = nextItems.reduce((sum: number, itm: any) => sum + (Number(itm.total) || 0), 0);
+                          const vatRate = 0.20;
+                          const newVatAmount = newSubtotal * vatRate;
+                          const newGrandTotal = newSubtotal + newVatAmount;
+                          setInvoiceData({
+                            ...invoiceData,
+                            items: nextItems,
+                            pricing: {
+                              ...invoiceData.pricing,
+                              subtotal: newSubtotal,
+                              vatRate: vatRate * 100,
+                              vatAmount: newVatAmount,
+                              total: newGrandTotal
+                            }
+                          });
+                        }}
+                        className="px-4 py-2 bg-gray-900 text-white rounded-md hover:bg-black"
+                      >
+                        Add line item
+                      </button>
                     </div>
                   </div>
 
@@ -1252,41 +1515,69 @@ export default function CustomOrdersPage() {
                   )}
 
                   {/* Payment Link Section */}
-                  {paymentLink ? (
-                    <div className="bg-green-50 border border-green-200 rounded-md p-4 mb-4">
-                      <h4 className="text-sm font-medium text-green-800 mb-2">Payment Link Generated</h4>
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="text"
-                          value={paymentLink}
-                          readOnly
-                          className="flex-1 px-3 py-2 text-sm border border-green-300 rounded-md bg-white"
-                        />
-                        <button
-                          onClick={() => navigator.clipboard.writeText(paymentLink)}
-                          className="px-3 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700"
-                        >
-                          Copy
-                        </button>
-                        <button
-                          onClick={() => window.open(paymentLink, '_blank')}
-                          className="px-3 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                        >
-                          Open
-                        </button>
+                  {(() => {
+                    const isStale =
+                      !!paymentLink &&
+                      paymentLinkAmount !== null &&
+                      Math.abs(paymentLinkAmount - invoiceData.pricing.total) > 0.009;
+
+                    return (
+                      <div className={`rounded-md p-4 mb-4 border ${paymentLink ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                          <div>
+                            <h4 className="text-sm font-medium text-gray-900">
+                              {paymentLink ? 'Payment Link' : 'Payment Link (not generated)'}
+                            </h4>
+                            <p className="text-xs text-gray-600 mt-1">
+                              Amount will be created from the current invoice total.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={generatePaymentLink}
+                            disabled={generatingPaymentLink}
+                            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {generatingPaymentLink ? 'Generating...' : (paymentLink ? 'Regenerate Payment Link' : 'Generate Payment Link')}
+                          </button>
+                        </div>
+
+                        {paymentLink && (
+                          <div className="mt-3">
+                            <div className="flex items-center space-x-2">
+                              <input
+                                type="text"
+                                value={paymentLink}
+                                readOnly
+                                className="flex-1 px-3 py-2 text-sm border border-green-300 rounded-md bg-white"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => navigator.clipboard.writeText(paymentLink)}
+                                className="px-3 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700"
+                              >
+                                Copy
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => window.open(paymentLink, '_blank')}
+                                className="px-3 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                              >
+                                Open
+                              </button>
+                            </div>
+
+                            {isStale && (
+                              <div className="mt-3 p-3 rounded border border-amber-300 bg-amber-50 text-amber-900 text-sm">
+                                This payment link was generated for <strong>£{paymentLinkAmount?.toFixed(2)}</strong>, but the invoice total is now <strong>£{invoiceData.pricing.total.toFixed(2)}</strong>.
+                                Please click <strong>Regenerate Payment Link</strong> to include the new costs.
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ) : (
-                    <div className="mb-4">
-                      <button
-                        onClick={generatePaymentLink}
-                        disabled={generatingPaymentLink}
-                        className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {generatingPaymentLink ? 'Generating...' : 'Generate Payment Link'}
-                      </button>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   {/* Action Buttons */}
                   <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
@@ -1300,6 +1591,14 @@ export default function CustomOrdersPage() {
                       onClick={async () => {
                         try {
                           console.log('Generating invoice:', invoiceData);
+                          const isStale =
+                            !!paymentLink &&
+                            paymentLinkAmount !== null &&
+                            Math.abs(paymentLinkAmount - invoiceData.pricing.total) > 0.009;
+                          if (isStale) {
+                            alert('Your payment link is out of date for the current invoice total. Please regenerate it before downloading/saving this invoice.');
+                            return;
+                          }
                           
                           // Generate the PDF with payment link if available
                           const pdfData = {
@@ -1321,6 +1620,10 @@ export default function CustomOrdersPage() {
                                 paymentLink: paymentLink
                               }),
                             });
+
+                            // Update local state so re-opening preview shows the saved lines
+                            setSelectedOrder(prev => prev ? { ...prev, invoiceData: pdfData, paymentLink: paymentLink || prev.paymentLink } : prev);
+                            setOrders(prev => prev.map(o => o._id === selectedOrder._id ? { ...o, invoiceData: pdfData, paymentLink: paymentLink || (o as any).paymentLink } as any : o));
                           } catch (error) {
                             console.error('Failed to save invoice data:', error);
                           }

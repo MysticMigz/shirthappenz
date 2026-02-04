@@ -46,6 +46,16 @@ export default function SiteSettingsPage() {
       if (!data.settings || !data.settings.find((s: SiteSetting) => s.key === 'productsEnabled')) {
         await initializeProductsEnabled();
       }
+
+      // Initialize DTF pricing settings if missing
+      const hasA4 = data.settings?.some((s: SiteSetting) => s.key === 'dtfA4UnitPrice');
+      const hasA3 = data.settings?.some((s: SiteSetting) => s.key === 'dtfA3UnitPrice');
+      if (!hasA4) {
+        await initializeNumberSetting('dtfA4UnitPrice', 10, 'DTF unit price for A4 print size');
+      }
+      if (!hasA3) {
+        await initializeNumberSetting('dtfA3UnitPrice', 12.5, 'DTF unit price for A3 print size');
+      }
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -69,6 +79,21 @@ export default function SiteSettingsPage() {
       }
     } catch (err) {
       console.error('Error initializing productsEnabled setting:', err);
+    }
+  };
+
+  const initializeNumberSetting = async (key: string, value: number, description: string) => {
+    try {
+      const response = await fetch('/api/admin/site-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key, value, description })
+      });
+      if (response.ok) {
+        await fetchSettings();
+      }
+    } catch (err) {
+      console.error(`Error initializing ${key} setting:`, err);
     }
   };
 
@@ -122,6 +147,48 @@ export default function SiteSettingsPage() {
     return setting.value as boolean;
   };
 
+  const getNumberSettingValue = (key: string, fallback: number) => {
+    const setting = settings.find(s => s.key === key);
+    if (!setting) return fallback;
+    const val = Number(setting.value);
+    return Number.isFinite(val) ? val : fallback;
+  };
+
+  const updateNumberSetting = async (key: string, value: number, description: string) => {
+    try {
+      setSaving(true);
+      setError(null);
+      setSuccess(null);
+
+      const response = await fetch('/api/admin/site-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key, value, description })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update setting');
+      }
+
+      const data = await response.json();
+      setSettings(prev => {
+        const existing = prev.find(s => s.key === key);
+        if (existing) {
+          return prev.map(s => s.key === key ? { ...s, value } : s);
+        }
+        return [...prev, data.setting];
+      });
+
+      setSuccess('DTF pricing updated successfully.');
+      setTimeout(() => setSuccess(null), 5000);
+    } catch (err: any) {
+      setError(err.message);
+      setTimeout(() => setError(null), 5000);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 p-6">
@@ -136,6 +203,8 @@ export default function SiteSettingsPage() {
   }
 
   const productsEnabled = getSettingValue('productsEnabled');
+  const dtfA4UnitPrice = getNumberSettingValue('dtfA4UnitPrice', 10);
+  const dtfA3UnitPrice = getNumberSettingValue('dtfA3UnitPrice', 12.5);
 
   return (
     <div className="min-h-screen bg-gray-100 p-6">
@@ -200,6 +269,61 @@ export default function SiteSettingsPage() {
                 </p>
               </div>
             )}
+          </div>
+
+          {/* DTF Pricing */}
+          <div className="mb-8 p-6 border border-gray-200 rounded-lg">
+            <div className="mb-4">
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">DTF Print Pricing</h2>
+              <p className="text-gray-600 text-sm">
+                These prices are used on the Custom Orders page and in custom order invoice generation.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <label className="block text-sm font-medium text-gray-700 mb-2">A4 unit price (£)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  defaultValue={dtfA4UnitPrice}
+                  disabled={saving}
+                  onBlur={(e) => {
+                    const val = Number(e.target.value);
+                    if (!Number.isFinite(val)) return;
+                    updateNumberSetting('dtfA4UnitPrice', val, 'DTF unit price for A4 print size');
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">Used for A4 print size.</p>
+              </div>
+
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <label className="block text-sm font-medium text-gray-700 mb-2">A3 unit price (£)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  defaultValue={dtfA3UnitPrice}
+                  disabled={saving}
+                  onBlur={(e) => {
+                    const val = Number(e.target.value);
+                    if (!Number.isFinite(val)) return;
+                    updateNumberSetting('dtfA3UnitPrice', val, 'DTF unit price for A3 print size');
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">Used for A3 print size.</p>
+              </div>
+            </div>
+
+            <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+              <p className="text-sm text-blue-800">
+                Current: <strong>A4</strong> £{dtfA4UnitPrice.toFixed(2)} • <strong>A3</strong> £{dtfA3UnitPrice.toFixed(2)}
+              </p>
+              <p className="text-xs text-blue-600 mt-1">Tip: change a value, then click/tap out of the field to save.</p>
+            </div>
           </div>
         </div>
       </div>
