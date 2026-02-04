@@ -432,13 +432,14 @@ export default function CustomOrdersPage() {
           },
           body: JSON.stringify({
             invoiceData: updatedInvoiceData,
-            paymentLink: data.paymentLink
+            paymentLink: data.paymentLink,
+            paymentLinkId: data.paymentLinkId
           }),
         });
 
         // Update local state so preview shows the saved extra lines immediately
-        setSelectedOrder(prev => prev ? { ...prev, invoiceData: updatedInvoiceData, paymentLink: data.paymentLink } : prev);
-        setOrders(prev => prev.map(o => o._id === selectedOrder._id ? { ...o, invoiceData: updatedInvoiceData, paymentLink: data.paymentLink } as any : o));
+        setSelectedOrder(prev => prev ? { ...prev, invoiceData: updatedInvoiceData, paymentLink: data.paymentLink, paymentLinkId: data.paymentLinkId } : prev);
+        setOrders(prev => prev.map(o => o._id === selectedOrder._id ? { ...o, invoiceData: updatedInvoiceData, paymentLink: data.paymentLink, paymentLinkId: data.paymentLinkId } as any : o));
       } catch (saveError) {
         console.error('Failed to save invoice data after generating payment link:', saveError);
         // Don't block payment link generation if save fails
@@ -1551,6 +1552,57 @@ export default function CustomOrdersPage() {
                                 readOnly
                                 className="flex-1 px-3 py-2 text-sm border border-green-300 rounded-md bg-white"
                               />
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  try {
+                                    if (!selectedOrder) return;
+                                    const res = await fetch(`/api/custom-orders/${selectedOrder._id}/payment-status`, {
+                                      method: 'POST',
+                                    });
+                                    const json = await res.json();
+                                    if (!res.ok) {
+                                      alert(json?.error || 'Failed to verify payment status');
+                                      return;
+                                    }
+                                    if (json?.paid) {
+                                      alert('Payment confirmed. Order marked as paid.');
+                                      setSelectedOrder((prev) =>
+                                        prev
+                                          ? ({
+                                              ...prev,
+                                              status: 'paid',
+                                              paymentStatus: 'completed',
+                                              paymentCompletedAt: new Date().toISOString(),
+                                            } as any)
+                                          : prev
+                                      );
+                                      setOrders((prev) =>
+                                        prev.map((o) =>
+                                          o._id === selectedOrder._id
+                                            ? ({
+                                                ...o,
+                                                status: 'paid',
+                                                paymentStatus: 'completed',
+                                                paymentCompletedAt: new Date().toISOString(),
+                                              } as any)
+                                            : o
+                                        )
+                                      );
+                                    } else {
+                                      alert(
+                                        'No paid checkout session found for this payment link yet. If Stripe shows it as paid, your webhook is not delivering—check Stripe webhook logs.'
+                                      );
+                                    }
+                                  } catch (e) {
+                                    console.error('Verify payment failed:', e);
+                                    alert('Failed to verify payment status.');
+                                  }
+                                }}
+                                className="px-3 py-2 text-sm bg-gray-800 text-white rounded-md hover:bg-gray-900"
+                              >
+                                Verify
+                              </button>
                               <button
                                 type="button"
                                 onClick={() => navigator.clipboard.writeText(paymentLink)}

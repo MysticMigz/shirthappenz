@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
-import { headers } from 'next/headers';
 import Stripe from 'stripe';
-import mongoose from 'mongoose';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-05-28.basil',
@@ -12,11 +10,76 @@ const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
 // Force dynamic rendering - webhooks use headers() and cannot be statically generated
 export const dynamic = 'force-dynamic';
+// Stripe signature verification + Stripe SDK require Node.js runtime
+export const runtime = 'nodejs';
+
+async function resolveCustomOrderFromCheckoutSession(session: Stripe.Checkout.Session): Promise<{ orderId: string } | null> {
+  // Preferred: metadata on the session
+  if (session.metadata?.orderType === 'custom' && session.metadata?.orderId) {
+    return { orderId: session.metadata.orderId };
+  }
+
+  // Payment links sometimes don't propagate metadata to the session.
+  // In that case, fetch the PaymentLink and read metadata from there.
+  const paymentLinkId = session.payment_link;
+  if (paymentLinkId && typeof paymentLinkId === 'string') {
+    try {
+      const paymentLink = await stripe.paymentLinks.retrieve(paymentLinkId);
+      if (paymentLink.metadata?.orderType === 'custom' && paymentLink.metadata?.orderId) {
+        return { orderId: paymentLink.metadata.orderId };
+      }
+    } catch (err) {
+      console.warn('Failed to retrieve payment link for session:', session.id, err);
+    }
+  }
+
+  return null;
+}
+
+async function markCustomOrderPaid(params: {
+  orderId: string;
+  paymentId?: string | null;
+  checkoutSessionId?: string | null;
+  paymentIntentId?: string | null;
+  paymentLinkId?: string | null;
+  eventType: string;
+}) {
+  const mongoose = await connectToDatabase();
+  const db = mongoose.connection.db;
+
+  if (!db) {
+    throw new Error('Database connection failed');
+  }
+
+  const customOrdersCollection = db.collection('customOrders');
+
+  const update: any = {
+    status: 'paid',
+    paymentStatus: 'completed',
+    paymentCompletedAt: new Date().toISOString(),
+    lastStripeEventType: params.eventType,
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (params.paymentId) update.paymentId = params.paymentId;
+  if (params.checkoutSessionId) update.lastStripeCheckoutSessionId = params.checkoutSessionId;
+  if (params.paymentIntentId) update.lastStripePaymentIntentId = params.paymentIntentId;
+  if (params.paymentLinkId) update.paymentLinkId = params.paymentLinkId;
+
+  const result = await customOrdersCollection.updateOne(
+    { _id: new mongoose.Types.ObjectId(params.orderId) },
+    { $set: update }
+  );
+
+  if (result.matchedCount === 0) {
+    throw new Error(`Custom order not found: ${params.orderId}`);
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.text();
-    const signature = headers().get('stripe-signature');
+    const signature = request.headers.get('stripe-signature');
 
     if (!signature) {
       return NextResponse.json(
@@ -40,54 +103,27 @@ export async function POST(request: NextRequest) {
     console.log('Received Stripe webhook:', event.type);
 
     // Handle payment link completed event
-    if (event.type === 'checkout.session.completed') {
+    if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
       const session = event.data.object as Stripe.Checkout.Session;
       
       console.log('Payment completed for session:', session.id);
       console.log('Session metadata:', session.metadata);
 
+      const resolved = await resolveCustomOrderFromCheckoutSession(session);
       // Check if this is a custom order payment
-      if (session.metadata?.orderType === 'custom' && session.metadata?.orderId) {
-        const orderId = session.metadata.orderId;
+      if (resolved?.orderId) {
+        const orderId = resolved.orderId;
         
         console.log('Updating custom order status for:', orderId);
 
-        // Connect to database
-        const mongoose = await connectToDatabase();
-        const db = mongoose.connection.db;
-        
-        if (!db) {
-          console.error('Database connection failed');
-          return NextResponse.json(
-            { error: 'Database connection failed' },
-            { status: 500 }
-          );
-        }
-
-        const customOrdersCollection = db.collection('customOrders');
-
-        // Update order status to paid
-        const result = await customOrdersCollection.updateOne(
-          { _id: new mongoose.Types.ObjectId(orderId) },
-          {
-            $set: {
-              status: 'paid',
-              paymentStatus: 'completed',
-              paymentId: session.payment_intent as string,
-              paymentCompletedAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            }
-          }
-        );
-
-        if (result.matchedCount === 0) {
-          console.error('Order not found:', orderId);
-          return NextResponse.json(
-            { error: 'Order not found' },
-            { status: 404 }
-          );
-        }
-
+        await markCustomOrderPaid({
+          orderId,
+          paymentId: (session.payment_intent as string) || null,
+          checkoutSessionId: session.id,
+          paymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : null,
+          paymentLinkId: typeof session.payment_link === 'string' ? session.payment_link : null,
+          eventType: event.type,
+        });
         console.log('Order status updated to paid:', orderId);
       }
     }
@@ -99,49 +135,42 @@ export async function POST(request: NextRequest) {
       console.log('Payment intent succeeded:', paymentIntent.id);
       console.log('Payment intent metadata:', paymentIntent.metadata);
 
-      // Check if this is a custom order payment
+      // Preferred: metadata on the payment intent
       if (paymentIntent.metadata?.orderType === 'custom' && paymentIntent.metadata?.orderId) {
         const orderId = paymentIntent.metadata.orderId;
-        
         console.log('Updating custom order status for payment intent:', orderId);
-
-        // Connect to database
-        const mongoose = await connectToDatabase();
-        const db = mongoose.connection.db;
-        
-        if (!db) {
-          console.error('Database connection failed');
-          return NextResponse.json(
-            { error: 'Database connection failed' },
-            { status: 500 }
-          );
-        }
-
-        const customOrdersCollection = db.collection('customOrders');
-
-        // Update order status to paid
-        const result = await customOrdersCollection.updateOne(
-          { _id: new mongoose.Types.ObjectId(orderId) },
-          {
-            $set: {
-              status: 'paid',
-              paymentStatus: 'completed',
-              paymentId: paymentIntent.id,
-              paymentCompletedAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
+        await markCustomOrderPaid({
+          orderId,
+          paymentId: paymentIntent.id,
+          paymentIntentId: paymentIntent.id,
+          eventType: event.type,
+        });
+        console.log('Order status updated to paid:', orderId);
+      } else {
+        // Fallback: find checkout session for this payment intent, then resolve via session/payment link metadata
+        try {
+          const sessions = await (stripe.checkout.sessions.list as any)({
+            payment_intent: paymentIntent.id,
+            limit: 5,
+          });
+          const session = sessions?.data?.[0] as Stripe.Checkout.Session | undefined;
+          if (session) {
+            const resolved = await resolveCustomOrderFromCheckoutSession(session);
+            if (resolved?.orderId) {
+              await markCustomOrderPaid({
+                orderId: resolved.orderId,
+                paymentId: paymentIntent.id,
+                checkoutSessionId: session.id,
+                paymentIntentId: paymentIntent.id,
+                paymentLinkId: typeof session.payment_link === 'string' ? session.payment_link : null,
+                eventType: event.type,
+              });
+              console.log('Order status updated to paid via session lookup:', resolved.orderId);
             }
           }
-        );
-
-        if (result.matchedCount === 0) {
-          console.error('Order not found:', orderId);
-          return NextResponse.json(
-            { error: 'Order not found' },
-            { status: 404 }
-          );
+        } catch (err) {
+          console.warn('Could not resolve custom order from payment intent:', paymentIntent.id, err);
         }
-
-        console.log('Order status updated to paid:', orderId);
       }
     }
 

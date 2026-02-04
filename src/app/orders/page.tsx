@@ -41,6 +41,8 @@ interface OrderItem {
 
 interface Order {
   _id: string;
+  orderType?: 'standard' | 'custom';
+  customOrderId?: string;
   reference: string;
   items: OrderItem[];
   shippingDetails: {
@@ -623,6 +625,12 @@ function OrdersPageContent() {
                         {/* Download Invoice Button */}
                         <button
                           onClick={() => {
+                            if (order.orderType === 'custom' && order.customOrderId) {
+                              const url = `/api/custom-orders/${order.customOrderId}/invoice`;
+                              window.open(url, '_blank');
+                              return;
+                            }
+
                             const url = `/api/orders/${order._id}/invoice?public=1&visitorId=${visitorId}`;
                             window.open(url, '_blank');
                           }}
@@ -635,6 +643,11 @@ function OrdersPageContent() {
                         </button>
                         
                         {(() => {
+                          // Custom orders are managed via the custom-orders flow (no cancellation UI here)
+                          if (order.orderType === 'custom') {
+                            return null;
+                          }
+
                           const cancellationStatus = getCancellationStatus(order);
                           const windowInfo = getCancellationWindowInfo(order);
                           

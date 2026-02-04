@@ -7,11 +7,11 @@ export async function PUT(
 ) {
   try {
     const body = await request.json();
-    const { status, invoiceData, paymentLink } = body;
+    const { status, invoiceData, paymentLink, paymentLinkId } = body;
 
-    if (!status && !invoiceData && !paymentLink) {
+    if (!status && !invoiceData && !paymentLink && !paymentLinkId) {
       return NextResponse.json(
-        { error: 'Status, invoiceData, or paymentLink is required' },
+        { error: 'Status, invoiceData, paymentLink, or paymentLinkId is required' },
         { status: 400 }
       );
     }
@@ -44,6 +44,10 @@ export async function PUT(
     if (paymentLink) {
       updateData.paymentLink = paymentLink;
       updateData.paymentLinkGeneratedAt = new Date().toISOString();
+    }
+
+    if (paymentLinkId) {
+      updateData.paymentLinkId = paymentLinkId;
     }
 
     // Update order

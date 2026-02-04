@@ -71,9 +71,22 @@ interface OrderItemDB {
   baseProductImage?: string;
 }
 
+function safeTotalQuantityFromSizeQuantities(sizeQuantities: any): number {
+  try {
+    return Object.values(sizeQuantities || {}).reduce((sum: number, colorQuantities: any) => {
+      return (
+        sum +
+        Object.values(colorQuantities || {}).reduce((sizeSum: number, qty: any) => sizeSum + (Number(qty) || 0), 0)
+      );
+    }, 0);
+  } catch {
+    return 0;
+  }
+}
+
 export async function GET(request: Request) {
   try {
-    await connectToDatabase();
+    const mongooseConn = await connectToDatabase();
 
     // Check authentication
     const session = await getServerSession(authOptions);
@@ -89,8 +102,94 @@ export async function GET(request: Request) {
       }
 
       // Get user's orders using the user's ObjectId
-      const orders = await (Order as any).find({ userId: user._id.toString() })
-        .sort({ createdAt: -1 });
+      const orders = await (Order as any)
+        .find({ userId: user._id.toString() })
+        .sort({ createdAt: -1 })
+        .lean();
+
+      // Also include paid custom orders for this email
+      const db = mongooseConn.connection.db;
+      if (db) {
+        const customOrders = await db
+          .collection('customOrders')
+          .find({
+            email: session.user.email,
+            paymentStatus: 'completed',
+          })
+          .sort({ submittedAt: -1 })
+          .toArray();
+
+        const mappedCustomOrders = customOrders.map((co: any) => {
+          const customOrderId = co?._id?.toString?.() || String(co?._id || '');
+          const createdAt = co?.submittedAt ? new Date(co.submittedAt).toISOString() : new Date().toISOString();
+          const reference = `CO-${String(customOrderId).slice(-6).toUpperCase()}`;
+
+          const invoicePricing = co?.invoiceData?.pricing || {};
+          const total = Number(invoicePricing.total);
+          const vat = Number(invoicePricing.vatAmount);
+
+          const totalQuantity = safeTotalQuantityFromSizeQuantities(co?.sizeQuantities);
+          const safeTotal = Number.isFinite(total) ? total : 0;
+          const safeVat = Number.isFinite(vat) ? vat : 0;
+          const unitPrice = totalQuantity > 0 ? safeTotal / totalQuantity : safeTotal;
+
+          const firstImage =
+            co?.productDetails?.images?.[0]?.url ||
+            co?.productDetails?.image ||
+            co?.productDetails?.imageUrl ||
+            null;
+
+          const itemName = co?.productDetails?.name
+            ? `Custom ${co.productDetails.name} Order`
+            : 'Custom Order';
+
+          return {
+            _id: `custom_${customOrderId}`,
+            orderType: 'custom',
+            customOrderId,
+            reference,
+            items: [
+              {
+                productId: String(co?.selectedProduct || ''),
+                name: itemName,
+                price: Number.isFinite(unitPrice) ? unitPrice : 0,
+                quantity: totalQuantity || 1,
+                size: 'Custom',
+                color: (co?.selectedColors?.[0] as string) || undefined,
+                image: firstImage || undefined,
+              },
+            ],
+            shippingDetails: {
+              firstName: co?.firstName || '',
+              lastName: co?.lastName || '',
+              email: co?.email || '',
+              phone: co?.phone || '',
+              address: co?.address || '',
+              addressLine2: co?.company || undefined,
+              city: co?.city || '',
+              county: co?.province || '',
+              postcode: co?.postalCode || '',
+              country: co?.country || 'United Kingdom',
+              shippingCost: 0,
+              shippingMethod: 'Standard Delivery',
+            },
+            total: safeTotal,
+            vat: safeVat,
+            status: 'paid',
+            productionStatus: 'not_started',
+            cancellationRequested: false,
+            createdAt,
+          };
+        });
+
+        const combined = [...mappedCustomOrders, ...orders].sort((a: any, b: any) => {
+          const da = new Date(a?.createdAt || 0).getTime();
+          const dbt = new Date(b?.createdAt || 0).getTime();
+          return dbt - da;
+        });
+
+        return NextResponse.json(combined);
+      }
 
       return NextResponse.json(orders);
     } else {
@@ -107,7 +206,8 @@ export async function GET(request: Request) {
 
       // Get orders by visitor ID for guest users
       const orders = await (Order as any).find({ visitorId })
-        .sort({ createdAt: -1 });
+        .sort({ createdAt: -1 })
+        .lean();
 
       return NextResponse.json(orders);
     }
