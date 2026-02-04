@@ -61,7 +61,7 @@ interface Order {
   };
   total: number;
   vat: number;
-  status: 'pending' | 'paid' | 'shipped' | 'delivered' | 'cancelled' | 'payment_failed';
+  status: 'pending' | 'paid' | 'in-progress' | 'shipped' | 'delivered' | 'cancelled' | 'payment_failed' | 'completed';
   productionStatus: 'not_started' | 'in_production' | 'quality_check' | 'ready_to_ship' | 'completed';
   cancellationRequested: boolean;
   cancellationReason?: string;
@@ -80,16 +80,19 @@ interface Order {
     refundedBy?: string;
     stripeRefundId?: string;
   };
+  invoiceData?: any;
   createdAt: string;
 }
 
 const statusColors = {
   pending: 'bg-yellow-100 text-yellow-800',
   paid: 'bg-green-100 text-green-800',
+  'in-progress': 'bg-blue-100 text-blue-800',
   shipped: 'bg-blue-100 text-blue-800',
   delivered: 'bg-green-100 text-green-800',
   cancelled: 'bg-red-100 text-red-800',
   payment_failed: 'bg-red-100 text-red-800',
+  completed: 'bg-green-100 text-green-800',
 };
 
 const formatDate = (dateString: string) => {
@@ -533,6 +536,71 @@ function OrdersPageContent() {
                     ))}
                   </div>
 
+                  {order.orderType === 'custom' && order.invoiceData?.items?.length && (
+                    <details className="mt-6 border-t border-gray-200 pt-6">
+                      <summary className="cursor-pointer text-sm font-medium text-gray-900 select-none">
+                        Invoice details
+                      </summary>
+                      <div className="mt-4 overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Description
+                              </th>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Qty
+                              </th>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Unit
+                              </th>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Total
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {order.invoiceData.items.map((itm: any, idx: number) => (
+                              <tr key={idx}>
+                                <td className="px-4 py-2 text-sm text-gray-900 whitespace-normal">
+                                  {itm.description}
+                                </td>
+                                <td className="px-4 py-2 text-sm text-gray-700">
+                                  {Number(itm.quantity) || 0}
+                                </td>
+                                <td className="px-4 py-2 text-sm text-gray-700">
+                                  £{(Number(itm.unitPrice) || 0).toFixed(2)}
+                                </td>
+                                <td className="px-4 py-2 text-sm text-gray-900 font-medium">
+                                  £{(Number(itm.total) || ((Number(itm.unitPrice) || 0) * (Number(itm.quantity) || 0))).toFixed(2)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {order.invoiceData?.pricing && (
+                        <div className="mt-4 flex justify-end">
+                          <div className="w-80 space-y-1 text-sm">
+                            <div className="flex justify-between text-gray-700">
+                              <span>Subtotal</span>
+                              <span className="font-medium">£{Number(order.invoiceData.pricing.subtotal || 0).toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between text-gray-700">
+                              <span>VAT ({Number(order.invoiceData.pricing.vatRate || 0)}%)</span>
+                              <span className="font-medium">£{Number(order.invoiceData.pricing.vatAmount || 0).toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between text-gray-900 pt-2 border-t">
+                              <span className="font-semibold">Total</span>
+                              <span className="font-semibold">£{Number(order.invoiceData.pricing.total || 0).toFixed(2)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </details>
+                  )}
+
                   <div className="mt-6 border-t border-gray-200 pt-6">
                     <div className="flex justify-between text-sm">
                       <span className="font-medium text-gray-900">Shipping Address</span>
@@ -610,7 +678,7 @@ function OrdersPageContent() {
                   <div className="mt-6 border-t border-gray-200 pt-6">
                     <div className="flex justify-between items-center">
                       <div className="text-sm text-gray-500">
-                        {order.productionStatus && (
+                        {order.orderType !== 'custom' && order.productionStatus && (
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                             Production: {order.productionStatus.replace('_', ' ')}
                           </span>

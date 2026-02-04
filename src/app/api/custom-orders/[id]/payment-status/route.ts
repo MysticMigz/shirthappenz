@@ -89,11 +89,17 @@ export async function POST(
       });
     }
 
+    const existingStatus = String((order as any)?.status || '').toLowerCase();
+    const nextWorkflowStatus =
+      !existingStatus || existingStatus === 'pending' || existingStatus === 'paid'
+        ? 'in-progress'
+        : (order as any)?.status;
+
     await customOrdersCollection.updateOne(
       { _id: new mongoose.Types.ObjectId(params.id) },
       {
         $set: {
-          status: 'paid',
+          status: nextWorkflowStatus,
           paymentStatus: 'completed',
           paymentId: typeof paidSession.payment_intent === 'string' ? paidSession.payment_intent : null,
           paymentCompletedAt: new Date().toISOString(),
@@ -123,7 +129,7 @@ export async function POST(
 
     return NextResponse.json({
       paid: true,
-      status: 'paid',
+      status: nextWorkflowStatus,
       paymentStatus: 'completed',
       paymentId: typeof paidSession.payment_intent === 'string' ? paidSession.payment_intent : null,
       checkoutSessionId: paidSession.id,

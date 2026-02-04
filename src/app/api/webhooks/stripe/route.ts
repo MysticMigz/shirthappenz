@@ -58,13 +58,26 @@ async function markCustomOrderPaid(params: {
     { projection: { paymentLinkId: 1, paymentStatus: 1, status: 1 } }
   );
 
+  const existingStatus = String((existing as any)?.status || '').toLowerCase();
+  const nextWorkflowStatus =
+    !existingStatus || existingStatus === 'pending' || existingStatus === 'paid'
+      ? 'in-progress'
+      : (existing as any)?.status;
+
   const update: any = {
-    status: 'paid',
+    status: nextWorkflowStatus,
     paymentStatus: 'completed',
     paymentCompletedAt: new Date().toISOString(),
     lastStripeEventType: params.eventType,
     updatedAt: new Date().toISOString(),
   };
+  // Ensure custom orders enter production workflow
+  if (!(existing as any)?.productionStatus) {
+    update.productionStatus = 'not_started';
+  }
+  if (!Number.isFinite(Number((existing as any)?.deliveryPriority))) {
+    update.deliveryPriority = 100;
+  }
 
   if (params.paymentId) update.paymentId = params.paymentId;
   if (params.checkoutSessionId) update.lastStripeCheckoutSessionId = params.checkoutSessionId;

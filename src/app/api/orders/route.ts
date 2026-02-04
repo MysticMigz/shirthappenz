@@ -147,6 +147,11 @@ export async function GET(request: Request) {
             ? `Custom ${co.productDetails.name} Order${sizeLabel ? ` (${sizeLabel})` : ''}`
             : 'Custom Order';
 
+          const workflowStatusRaw = String(co?.status || '').toLowerCase();
+          const workflowStatus =
+            workflowStatusRaw ||
+            ((co?.paymentStatus === 'completed' || co?.paymentStatus === 'paid') ? 'in-progress' : 'pending');
+
           return {
             _id: `custom_${customOrderId}`,
             orderType: 'custom',
@@ -179,9 +184,10 @@ export async function GET(request: Request) {
             },
             total: safeTotal,
             vat: safeVat,
-            status: 'paid',
+            status: workflowStatus,
             productionStatus: 'not_started',
             cancellationRequested: false,
+            invoiceData: co?.invoiceData || null,
             createdAt,
           };
         });

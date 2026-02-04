@@ -119,6 +119,19 @@ export default function AdminDashboardPage() {
           </Link>
 
           <Link
+            href="/admin/custom-orders"
+            className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
+          >
+            <div className="flex items-center text-purple-600 mb-4">
+              <svg className="w-6 h-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 11c0-1.657-1.79-3-4-3S4 9.343 4 11s1.79 3 4 3 4-1.343 4-3zm0 0c0 1.657 1.79 3 4 3s4-1.343 4-3-1.79-3-4-3-4 1.343-4 3zM4 20v-1a5 5 0 015-5h0M20 20v-1a5 5 0 00-5-5h0" />
+              </svg>
+              <h3 className="text-lg font-semibold">Manage Custom Orders</h3>
+            </div>
+            <p className="text-gray-600">View and manage custom order invoices</p>
+          </Link>
+
+          <Link
             href="/admin/products"
             className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow"
           >

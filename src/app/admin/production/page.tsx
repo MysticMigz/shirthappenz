@@ -69,6 +69,15 @@ const STATUS_COLORS: Record<string, string> = {
   completed: "bg-purple-50 border-purple-200",
 };
 
+function formatDateDDMMYYYY(date: Date) {
+  // Must be deterministic across server + client to avoid hydration errors
+  return date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
 const DAYS_TO_SCHEDULE = 7;
 const BATCH_SIZE = 50;
 const STATUS_FLOW = [
@@ -85,12 +94,12 @@ function getDueDate(order: Order): string {
   if (shipping.includes("next day")) orderDate.setDate(orderDate.getDate() + 1);
   else if (shipping.includes("express")) orderDate.setDate(orderDate.getDate() + 3);
   else orderDate.setDate(orderDate.getDate() + 5);
-  return orderDate.toLocaleDateString();
+  return formatDateDDMMYYYY(orderDate);
 }
 
 function formatPlacedDate(dateStr: string) {
   const d = new Date(dateStr);
-  return d.toLocaleDateString();
+  return formatDateDDMMYYYY(d);
 }
 
 // Helper to get effective priority (overdue = 150+)
@@ -186,7 +195,7 @@ export default function ProductionDashboard() {
   for (let i = 0; i < DAYS_TO_SCHEDULE; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() + i);
-    dateList.push(d.toLocaleDateString());
+    dateList.push(formatDateDDMMYYYY(d));
   }
 
   // Orders for the selected day

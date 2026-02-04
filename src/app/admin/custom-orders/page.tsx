@@ -50,6 +50,33 @@ interface CustomOrder {
   paymentCompletedAt?: string;
 }
 
+type VisibleColumnKey =
+  | 'reference'
+  | 'product'
+  | 'quantity'
+  | 'value'
+  | 'colorsSizes'
+  | 'printingDetails'
+  | 'paymentStatus'
+  | 'orderStatus'
+  | 'submitted'
+  | 'notes';
+
+const CUSTOM_ORDERS_COLUMNS_STORAGE_KEY = 'admin_custom_orders_visible_columns_v1';
+
+const DEFAULT_VISIBLE_COLUMNS: Record<VisibleColumnKey, boolean> = {
+  reference: true,
+  product: true,
+  quantity: true,
+  value: true,
+  colorsSizes: true,
+  printingDetails: true,
+  paymentStatus: true,
+  orderStatus: true,
+  submitted: true,
+  notes: true,
+};
+
 export default function CustomOrdersPage() {
   const router = useRouter();
   const [orders, setOrders] = useState<CustomOrder[]>([]);
@@ -66,12 +93,39 @@ export default function CustomOrdersPage() {
   const [paymentLinkAmount, setPaymentLinkAmount] = useState<number | null>(null);
   const [generatingPaymentLink, setGeneratingPaymentLink] = useState(false);
   const [dtfUnitPrices, setDtfUnitPrices] = useState<{ a4: number; a3: number } | null>(null);
+  const [visibleColumns, setVisibleColumns] = useState<Record<VisibleColumnKey, boolean>>(DEFAULT_VISIBLE_COLUMNS);
+  const [showColumnsMenu, setShowColumnsMenu] = useState(false);
 
   // Reset product preview when selecting a different order
   useEffect(() => {
     setSelectedOrderPreviewColor('');
     setSelectedOrderPreviewImageIndex(0);
   }, [selectedOrder?._id]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(CUSTOM_ORDERS_COLUMNS_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object') return;
+
+      const next = { ...DEFAULT_VISIBLE_COLUMNS };
+      (Object.keys(DEFAULT_VISIBLE_COLUMNS) as VisibleColumnKey[]).forEach((key) => {
+        if (typeof parsed[key] === 'boolean') next[key] = parsed[key];
+      });
+      setVisibleColumns(next);
+    } catch {
+      // ignore corrupted localStorage values
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(CUSTOM_ORDERS_COLUMNS_STORAGE_KEY, JSON.stringify(visibleColumns));
+    } catch {
+      // ignore localStorage errors
+    }
+  }, [visibleColumns]);
 
   useEffect(() => {
     fetchOrders();
@@ -256,10 +310,12 @@ export default function CustomOrdersPage() {
           quantity: totalQuantity,
           unitPrice: unitPrice,
           total: lineTotal
-        }
+        },
+        // Default shipping line so admin can edit shipping cost easily
+        { description: 'Shipping', quantity: 1, unitPrice: 0, total: 0 }
       ];
 
-      const subtotal = lineTotal;
+      const subtotal = items.reduce((sum: number, itm: any) => sum + (Number(itm.total) || 0), 0);
       const vatRate = 0.20; // 20% VAT
       const vatAmount = subtotal * vatRate;
       const total = subtotal + vatAmount;
@@ -338,10 +394,12 @@ export default function CustomOrdersPage() {
           quantity: totalQuantity,
           unitPrice: unitPrice,
           total: lineTotal
-        }
+        },
+        // Default shipping line so admin can edit shipping cost easily
+        { description: 'Shipping', quantity: 1, unitPrice: 0, total: 0 }
       ];
 
-      const subtotal = lineTotal;
+      const subtotal = items.reduce((sum: number, itm: any) => sum + (Number(itm.total) || 0), 0);
       const vatRate = 0.20;
       const vatAmount = subtotal * vatRate;
       const total = subtotal + vatAmount;
@@ -386,7 +444,7 @@ export default function CustomOrdersPage() {
 
   const generatePaymentLink = async () => {
     if (!selectedOrder || !invoiceData) return;
-    if ((selectedOrder as any).paymentStatus === 'completed' || selectedOrder.status === 'paid') {
+    if ((selectedOrder as any).paymentStatus === 'completed') {
       alert('This order is already paid. A new payment link cannot be generated.');
       return;
     }
@@ -525,6 +583,104 @@ export default function CustomOrdersPage() {
                 <option value="cancelled">Cancelled</option>
               </select>
             </div>
+
+            <div className="relative">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Columns</label>
+              <button
+                type="button"
+                onClick={() => setShowColumnsMenu((v) => !v)}
+                className="px-3 py-2 border border-gray-300 rounded-md bg-white hover:bg-gray-50 text-sm"
+              >
+                Choose columns
+              </button>
+
+              {showColumnsMenu && (
+                <div className="absolute left-0 mt-2 w-72 rounded-md border border-gray-200 bg-white shadow-lg z-20 p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-sm font-medium text-gray-900">Visible columns</div>
+                    <button
+                      type="button"
+                      onClick={() => setShowColumnsMenu(false)}
+                      className="text-xs text-gray-500 hover:text-gray-700"
+                    >
+                      Close
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    {(Object.keys(DEFAULT_VISIBLE_COLUMNS) as VisibleColumnKey[]).map((key) => {
+                      const label =
+                        key === 'colorsSizes'
+                          ? 'Colors & Sizes'
+                          : key === 'printingDetails'
+                          ? 'Printing Details'
+                          : key === 'value'
+                          ? 'Value'
+                          : key === 'paymentStatus'
+                          ? 'Payment Status'
+                          : key === 'orderStatus'
+                          ? 'Order Status'
+                          : key === 'submitted'
+                          ? 'Submitted'
+                          : key.charAt(0).toUpperCase() + key.slice(1);
+
+                      return (
+                        <label key={key} className="flex items-center gap-2 select-none">
+                          <input
+                            type="checkbox"
+                            checked={!!visibleColumns[key]}
+                            onChange={(e) =>
+                              setVisibleColumns((prev) => ({ ...prev, [key]: e.target.checked }))
+                            }
+                          />
+                          <span className="text-gray-700">{label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setVisibleColumns({ ...DEFAULT_VISIBLE_COLUMNS })}
+                      className="text-xs px-2 py-1 rounded border border-gray-200 hover:bg-gray-50"
+                    >
+                      Reset
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setVisibleColumns((prev) => {
+                          const next: Record<VisibleColumnKey, boolean> = { ...prev };
+                          (Object.keys(next) as VisibleColumnKey[]).forEach((k) => (next[k] = false));
+                          return next;
+                        })
+                      }
+                      className="text-xs px-2 py-1 rounded border border-gray-200 hover:bg-gray-50"
+                    >
+                      Hide all
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setVisibleColumns((prev) => {
+                          const next: Record<VisibleColumnKey, boolean> = { ...prev };
+                          (Object.keys(next) as VisibleColumnKey[]).forEach((k) => (next[k] = true));
+                          return next;
+                        })
+                      }
+                      className="text-xs px-2 py-1 rounded border border-gray-200 hover:bg-gray-50"
+                    >
+                      Show all
+                    </button>
+                  </div>
+
+                  <div className="mt-2 text-[11px] text-gray-500">
+                    Customer and Actions are always shown.
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
@@ -537,30 +693,56 @@ export default function CustomOrdersPage() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-20 border-r-2 border-gray-300 min-w-[200px] max-w-[200px]">
                     Customer
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[250px]">
-                    Product
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">
-                    Quantity
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[180px]">
-                    Colors & Sizes
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[180px]">
-                    Printing Details
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[140px]">
-                    Payment Status
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
-                    Order Status
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[140px]">
-                    Submitted
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[200px]">
-                    Notes
-                  </th>
+                  {visibleColumns.reference && (
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
+                      Reference
+                    </th>
+                  )}
+                  {visibleColumns.product && (
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[250px]">
+                      Product
+                    </th>
+                  )}
+                  {visibleColumns.quantity && (
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">
+                      Quantity
+                    </th>
+                  )}
+                  {visibleColumns.value && (
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
+                      Value
+                    </th>
+                  )}
+                  {visibleColumns.colorsSizes && (
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[180px]">
+                      Colors & Sizes
+                    </th>
+                  )}
+                  {visibleColumns.printingDetails && (
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[180px]">
+                      Printing Details
+                    </th>
+                  )}
+                  {visibleColumns.paymentStatus && (
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[140px]">
+                      Payment Status
+                    </th>
+                  )}
+                  {visibleColumns.orderStatus && (
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
+                      Order Status
+                    </th>
+                  )}
+                  {visibleColumns.submitted && (
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[140px]">
+                      Submitted
+                    </th>
+                  )}
+                  {visibleColumns.notes && (
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[200px]">
+                      Notes
+                    </th>
+                  )}
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
                     Actions
                   </th>
@@ -569,7 +751,13 @@ export default function CustomOrdersPage() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {orders.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="px-4 py-8 text-center text-gray-500">
+                    <td
+                      colSpan={
+                        2 +
+                        (Object.values(visibleColumns).filter(Boolean).length || 0)
+                      }
+                      className="px-4 py-8 text-center text-gray-500"
+                    >
                       No orders found
                     </td>
                   </tr>
@@ -581,6 +769,10 @@ export default function CustomOrdersPage() {
                         Object.values(colorQuantities).reduce((sizeSum, qty) => sizeSum + (Number(qty) || 0), 0)
                       );
                     }, 0);
+
+                    const orderReference = `CO-${String(order._id).slice(-6).toUpperCase()}`;
+                    const invoiceTotal = Number((order as any)?.invoiceData?.pricing?.total);
+                    const orderValueLabel = Number.isFinite(invoiceTotal) ? `£${invoiceTotal.toFixed(2)}` : '—';
                     
                     return (
                       <tr key={order._id} className="hover:bg-gray-50 transition-colors">
@@ -596,147 +788,175 @@ export default function CustomOrdersPage() {
                             )}
                           </div>
                         </td>
-                        <td className="px-4 py-3 min-w-[250px]">
-                          <div className="flex items-start gap-3">
-                            {order.productDetails && (() => {
-                              const thumbUrl =
-                                order.productDetails.images?.[0]?.url ||
-                                order.productDetails.colors?.find(c => c.imageUrl)?.imageUrl;
-                              if (!thumbUrl) return null;
-                              return (
-                                <button
-                                  type="button"
-                                  onClick={() => setSelectedOrder(order)}
-                                  className="relative w-12 h-12 rounded-md overflow-hidden border border-gray-200 bg-gray-50 flex-shrink-0 hover:ring-2 hover:ring-purple-300"
-                                  aria-label={`View images for ${order.productDetails?.name || 'product'}`}
-                                  title="Click to preview images"
-                                >
-                                  <Image
-                                    src={thumbUrl}
-                                    alt={order.productDetails.images?.[0]?.alt || order.productDetails.name}
-                                    fill
-                                    className="object-cover"
-                                    sizes="48px"
-                                  />
-                                </button>
-                              );
-                            })()}
+                        {visibleColumns.reference && (
+                          <td className="px-4 py-3 min-w-[120px]">
+                            <div className="text-sm font-medium text-gray-900">{orderReference}</div>
+                            <div className="text-xs text-gray-500 mt-1 break-all">{String(order._id)}</div>
+                          </td>
+                        )}
+                        {visibleColumns.product && (
+                          <td className="px-4 py-3 min-w-[250px]">
+                            <div className="flex items-start gap-3">
+                              {order.productDetails && (() => {
+                                const thumbUrl =
+                                  order.productDetails.images?.[0]?.url ||
+                                  order.productDetails.colors?.find(c => c.imageUrl)?.imageUrl;
+                                if (!thumbUrl) return null;
+                                return (
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedOrder(order)}
+                                    className="relative w-12 h-12 rounded-md overflow-hidden border border-gray-200 bg-gray-50 flex-shrink-0 hover:ring-2 hover:ring-purple-300"
+                                    aria-label={`View images for ${order.productDetails?.name || 'product'}`}
+                                    title="Click to preview images"
+                                  >
+                                    <Image
+                                      src={thumbUrl}
+                                      alt={order.productDetails.images?.[0]?.alt || order.productDetails.name}
+                                      fill
+                                      className="object-cover"
+                                      sizes="48px"
+                                    />
+                                  </button>
+                                );
+                              })()}
 
-                            <div className="min-w-0">
-                              <div className="text-sm font-medium text-gray-900 break-words">
-                                {order.productDetails ? order.productDetails.name : `Product ID: ${order.selectedProduct}`}
+                              <div className="min-w-0">
+                                <div className="text-sm font-medium text-gray-900 break-words">
+                                  {order.productDetails ? order.productDetails.name : `Product ID: ${order.selectedProduct}`}
+                                </div>
+                                {order.productDetails && (
+                                  <div className="text-xs text-gray-500 mt-1 break-words">
+                                    {order.productDetails.category} • {order.productDetails.gender}
+                                  </div>
+                                )}
                               </div>
-                              {order.productDetails && (
-                                <div className="text-xs text-gray-500 mt-1 break-words">
-                                  {order.productDetails.category} • {order.productDetails.gender}
+                            </div>
+                            {order.productDetails && (
+                              <div className="sr-only">
+                                {order.productDetails.category} • {order.productDetails.gender}
+                              </div>
+                            )}
+                          </td>
+                        )}
+                        {visibleColumns.quantity && (
+                          <td className="px-4 py-3 whitespace-nowrap min-w-[100px]">
+                            <div className="text-sm font-semibold text-gray-900">{totalQuantity}</div>
+                            <div className="text-xs text-gray-500">Total items</div>
+                          </td>
+                        )}
+                        {visibleColumns.value && (
+                          <td className="px-4 py-3 whitespace-nowrap min-w-[120px]">
+                            <div className="text-sm font-semibold text-gray-900">{orderValueLabel}</div>
+                            <div className="text-xs text-gray-500">Invoice total</div>
+                          </td>
+                        )}
+                        {visibleColumns.colorsSizes && (
+                          <td className="px-4 py-3 text-sm text-gray-700 min-w-[180px]">
+                            <div>
+                              {order.selectedColors && order.selectedColors.length > 0 ? (
+                                <div className="mb-1">
+                                  <span className="text-xs font-medium text-gray-600">Colors: </span>
+                                  <span className="text-xs break-words">{order.selectedColors.join(', ')}</span>
+                                </div>
+                              ) : null}
+                              {order.sizeQuantities ? (
+                                <div className="text-xs">
+                                  {Object.entries(order.sizeQuantities).slice(0, 2).map(([color, colorQuantities]) => (
+                                    <div key={color} className="mb-1 break-words">
+                                      <span className="font-medium">{color}:</span>{' '}
+                                      {Object.entries(colorQuantities).filter(([_, qty]) => qty > 0).map(([size, qty]) => `${size}×${qty}`).join(', ')}
+                                    </div>
+                                  ))}
+                                  {Object.keys(order.sizeQuantities).length > 2 && (
+                                    <div className="text-gray-400 text-[10px]">+{Object.keys(order.sizeQuantities).length - 2} more</div>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-gray-400 text-xs">N/A</span>
+                              )}
+                            </div>
+                          </td>
+                        )}
+                        {visibleColumns.printingDetails && (
+                          <td className="px-4 py-3 text-sm text-gray-700 min-w-[180px]">
+                            <div>
+                              <div className="text-xs mb-1">
+                                <span className="font-medium">Type:</span> {order.printingType?.toUpperCase() || 'N/A'}
+                              </div>
+                              {order.paperSize && (
+                                <div className="text-xs mb-1">
+                                  <span className="font-medium">Paper:</span> {order.paperSize}
+                                </div>
+                              )}
+                              {order.printSize && (
+                                <div className="text-xs mb-1 break-words">
+                                  <span className="font-medium">Size:</span> {order.printSize}
+                                </div>
+                              )}
+                              {order.printingSurface && order.printingSurface.length > 0 && (
+                                <div className="text-xs break-words">
+                                  <span className="font-medium">Surface:</span> {order.printingSurface.join(', ')}
                                 </div>
                               )}
                             </div>
-                          </div>
-                          {order.productDetails && (
-                            <div className="sr-only">
-                              {order.productDetails.category} • {order.productDetails.gender}
+                          </td>
+                        )}
+                        {visibleColumns.paymentStatus && (
+                          <td className="px-4 py-3 whitespace-nowrap min-w-[140px]">
+                            <div className="flex flex-col gap-1">
+                              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                order.paymentStatus === 'completed' 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : order.paymentStatus === 'pending'
+                                  ? 'bg-yellow-100 text-yellow-800'
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {order.paymentStatus === 'completed' ? 'Paid' : order.paymentStatus || 'Pending'}
+                              </span>
+                              {order.paymentLink && (
+                                <a
+                                  href={order.paymentLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs text-blue-600 hover:underline break-all"
+                                >
+                                  View Link
+                                </a>
+                              )}
                             </div>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap min-w-[100px]">
-                          <div className="text-sm font-semibold text-gray-900">{totalQuantity}</div>
-                          <div className="text-xs text-gray-500">Total items</div>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-700 min-w-[180px]">
-                          <div>
-                            {order.selectedColors && order.selectedColors.length > 0 ? (
-                              <div className="mb-1">
-                                <span className="text-xs font-medium text-gray-600">Colors: </span>
-                                <span className="text-xs break-words">{order.selectedColors.join(', ')}</span>
-                              </div>
-                            ) : null}
-                            {order.sizeQuantities ? (
-                              <div className="text-xs">
-                                {Object.entries(order.sizeQuantities).slice(0, 2).map(([color, colorQuantities]) => (
-                                  <div key={color} className="mb-1 break-words">
-                                    <span className="font-medium">{color}:</span>{' '}
-                                    {Object.entries(colorQuantities).filter(([_, qty]) => qty > 0).map(([size, qty]) => `${size}×${qty}`).join(', ')}
-                                  </div>
-                                ))}
-                                {Object.keys(order.sizeQuantities).length > 2 && (
-                                  <div className="text-gray-400 text-[10px]">+{Object.keys(order.sizeQuantities).length - 2} more</div>
-                                )}
+                          </td>
+                        )}
+                        {visibleColumns.orderStatus && (
+                          <td className="px-4 py-3 whitespace-nowrap min-w-[120px]">
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.status)}`}>
+                              {order.status}
+                            </span>
+                          </td>
+                        )}
+                        {visibleColumns.submitted && (
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 min-w-[140px]">
+                            <div>{formatDate(order.submittedAt)}</div>
+                          </td>
+                        )}
+                        {visibleColumns.notes && (
+                          <td className="px-4 py-3 text-sm text-gray-500 min-w-[200px]">
+                            {order.notes ? (
+                              <div className="break-words" title={order.notes}>
+                                {order.notes.length > 60 ? `${order.notes.substring(0, 60)}...` : order.notes}
                               </div>
                             ) : (
-                              <span className="text-gray-400 text-xs">N/A</span>
+                              <span className="text-gray-400 italic text-xs">No notes</span>
                             )}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-700 min-w-[180px]">
-                          <div>
-                            <div className="text-xs mb-1">
-                              <span className="font-medium">Type:</span> {order.printingType?.toUpperCase() || 'N/A'}
-                            </div>
-                            {order.paperSize && (
-                              <div className="text-xs mb-1">
-                                <span className="font-medium">Paper:</span> {order.paperSize}
+                            {order.needsDesignAssistance && (
+                              <div className="mt-1">
+                                <span className="inline-flex px-1.5 py-0.5 text-[10px] font-semibold rounded bg-purple-100 text-purple-800">
+                                  Needs Design Help
+                                </span>
                               </div>
                             )}
-                            {order.printSize && (
-                              <div className="text-xs mb-1 break-words">
-                                <span className="font-medium">Size:</span> {order.printSize}
-                              </div>
-                            )}
-                            {order.printingSurface && order.printingSurface.length > 0 && (
-                              <div className="text-xs break-words">
-                                <span className="font-medium">Surface:</span> {order.printingSurface.join(', ')}
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap min-w-[140px]">
-                          <div className="flex flex-col gap-1">
-                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              order.paymentStatus === 'completed' 
-                                ? 'bg-green-100 text-green-800' 
-                                : order.paymentStatus === 'pending'
-                                ? 'bg-yellow-100 text-yellow-800'
-                                : 'bg-gray-100 text-gray-800'
-                            }`}>
-                              {order.paymentStatus === 'completed' ? 'Paid' : order.paymentStatus || 'Pending'}
-                            </span>
-                            {order.paymentLink && (
-                              <a
-                                href={order.paymentLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-xs text-blue-600 hover:underline break-all"
-                              >
-                                View Link
-                              </a>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap min-w-[120px]">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.status)}`}>
-                            {order.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 min-w-[140px]">
-                          <div>{formatDate(order.submittedAt)}</div>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-500 min-w-[200px]">
-                          {order.notes ? (
-                            <div className="break-words" title={order.notes}>
-                              {order.notes.length > 60 ? `${order.notes.substring(0, 60)}...` : order.notes}
-                            </div>
-                          ) : (
-                            <span className="text-gray-400 italic text-xs">No notes</span>
-                          )}
-                          {order.needsDesignAssistance && (
-                            <div className="mt-1">
-                              <span className="inline-flex px-1.5 py-0.5 text-[10px] font-semibold rounded bg-purple-100 text-purple-800">
-                                Needs Design Help
-                              </span>
-                            </div>
-                          )}
-                        </td>
+                          </td>
+                        )}
                         <td className="px-4 py-3 whitespace-nowrap text-sm min-w-[120px]">
                           <div className="flex items-center gap-2">
                             <button
@@ -1553,7 +1773,7 @@ export default function CustomOrdersPage() {
 
                         {paymentLink && (
                           <div className="mt-3">
-                            {(((selectedOrder as any)?.paymentStatus === 'completed') || selectedOrder.status === 'paid') && (
+                            {((selectedOrder as any)?.paymentStatus === 'completed') && (
                               <div className="mb-3 p-3 rounded border border-green-200 bg-green-50 text-green-900 text-sm">
                                 Payment is completed. This payment link will be deactivated to prevent duplicate payments.
                               </div>

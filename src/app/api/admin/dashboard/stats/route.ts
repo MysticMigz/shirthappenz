@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user from database and verify admin status
-    await connectToDatabase();
+    const mongoose = await connectToDatabase();
     const user = await (User as any).findOne({ email: session.user.email });
     if (!user?.isAdmin) {
       return NextResponse.json(
@@ -31,35 +31,60 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get total orders and revenue (excluding cancelled and refunded orders)
-    const totalOrders = await (Order as any).countDocuments({
+    const db = mongoose.connection.db;
+
+    // Standard orders: total + revenue (excluding cancelled/payment_failed and refunded)
+    const standardOrdersQuery = {
       status: { $nin: ['cancelled', 'payment_failed'] },
       $or: [
         { 'metadata.refundAmount': { $exists: false } },
         { 'metadata.refundAmount': { $exists: true, $eq: null } }
       ]
-    });
+    };
+    const totalStandardOrders = await (Order as any).countDocuments(standardOrdersQuery);
     
-    const orders = await (Order as any).find({
-      status: { $nin: ['cancelled', 'payment_failed'] },
-      $or: [
-        { 'metadata.refundAmount': { $exists: false } },
-        { 'metadata.refundAmount': { $exists: true, $eq: null } }
-      ]
-    });
+    const orders = await (Order as any).find(standardOrdersQuery).lean();
     
-    const totalRevenue = orders.reduce((sum, order) => sum + order.total, 0);
+    const standardRevenue = orders.reduce((sum: number, order: any) => sum + (Number(order.total) || 0), 0);
 
     // Get pending orders
-    const pendingOrders = await (Order as any).countDocuments({ status: 'pending' });
+    const pendingStandardOrders = await (Order as any).countDocuments({ status: 'pending' });
 
     // Get low stock products (less than 10 items)
     const lowStockProducts = await (Product as any).countDocuments({ stock: { $lt: 10 } });
 
+    // Custom orders: count + revenue + pending
+    let totalCustomOrders = 0;
+    let pendingCustomOrders = 0;
+    let customRevenue = 0;
+    if (db) {
+      const customOrdersCollection = db.collection('customOrders');
+
+      totalCustomOrders = await customOrdersCollection.countDocuments({
+        status: { $ne: 'cancelled' },
+      });
+
+      pendingCustomOrders = await customOrdersCollection.countDocuments({
+        status: 'pending',
+      });
+
+      const paidCustomOrders = await customOrdersCollection
+        .find(
+          { paymentStatus: 'completed', status: { $ne: 'cancelled' } },
+          { projection: { invoiceData: 1 } }
+        )
+        .toArray();
+
+      customRevenue = paidCustomOrders.reduce((sum: number, co: any) => {
+        const total = Number(co?.invoiceData?.pricing?.total);
+        return sum + (Number.isFinite(total) ? total : 0);
+      }, 0);
+    }
+
     return NextResponse.json({
-      totalOrders,
-      totalRevenue,
-      pendingOrders,
+      totalOrders: totalStandardOrders + totalCustomOrders,
+      totalRevenue: standardRevenue + customRevenue,
+      pendingOrders: pendingStandardOrders + pendingCustomOrders,
       lowStockProducts,
     });
   } catch (error) {
