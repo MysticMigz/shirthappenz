@@ -69,6 +69,7 @@ export default function ProductPage({ params }: { params: { id: string } }) {
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [redirectingToCustomOrders, setRedirectingToCustomOrders] = useState(false);
   const [addingToCart, setAddingToCart] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [cartMessage, setCartMessage] = useState<{ message: string; type: 'success' | 'warning' | 'error' } | null>(null);
@@ -146,6 +147,16 @@ export default function ProductPage({ params }: { params: { id: string } }) {
 
     fetchProduct();
   }, [params.id, productsEnabled]);
+
+  // If this product is marked as customizable, it should only be accessible via the Custom Orders flow.
+  useEffect(() => {
+    if (loading) return;
+    if (!product) return;
+    if (!product.customizable) return;
+
+    setRedirectingToCustomOrders(true);
+    router.replace(`/custom-orders?productId=${product._id}`);
+  }, [loading, product, router]);
 
   // Hide success message after 3 seconds
   useEffect(() => {
@@ -642,6 +653,22 @@ export default function ProductPage({ params }: { params: { id: string } }) {
           <div className="flex flex-col items-center space-y-4">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
             <p className="text-gray-600">Loading...</p>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (redirectingToCustomOrders) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <div className="flex-grow flex items-center justify-center">
+          <div className="flex flex-col items-center space-y-4 text-center px-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+            <p className="text-gray-700 font-medium">This product is available via Custom Orders.</p>
+            <p className="text-gray-500 text-sm">Taking you to the Custom Orders page…</p>
           </div>
         </div>
         <Footer />

@@ -10,8 +10,9 @@ interface Product {
   _id: string;
   name: string;
   price: number;
-  images: Array<{ url: string; alt: string }>;
-  colors: Array<{ name: string; hexCode: string }>;
+  basePrice?: number;
+  images: Array<{ url: string; alt: string; color?: string }>;
+  colors: Array<{ name: string; hexCode: string; imageUrl?: string }>;
   sizes: string[];
   category: string;
 }
@@ -50,6 +51,9 @@ export default function CustomOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [previewProduct, setPreviewProduct] = useState<Product | null>(null);
+  const [previewColor, setPreviewColor] = useState<string>('');
+  const [previewImageIndex, setPreviewImageIndex] = useState<number>(0);
 
   const [formData, setFormData] = useState<CustomOrderForm>({
     firstName: '',
@@ -63,7 +67,7 @@ export default function CustomOrdersPage() {
     province: '',
     postalCode: '',
     selectedProduct: '',
-    quantity: 3,
+    quantity: 1,
     sizeQuantities: {},
     selectedColors: [],
     printingType: 'dtf',
@@ -77,6 +81,18 @@ export default function CustomOrdersPage() {
   });
 
   const [selectedProductData, setSelectedProductData] = useState<Product | null>(null);
+
+  const openPreview = (product: Product) => {
+    setPreviewProduct(product);
+    setPreviewColor('');
+    setPreviewImageIndex(0);
+  };
+
+  const closePreview = () => {
+    setPreviewProduct(null);
+    setPreviewColor('');
+    setPreviewImageIndex(0);
+  };
 
   useEffect(() => {
     fetchProducts();
@@ -232,7 +248,7 @@ export default function CustomOrdersPage() {
           province: '',
           postalCode: '',
           selectedProduct: '',
-          quantity: 3,
+          quantity: 1,
           sizeQuantities: {},
           selectedColors: [],
           printingType: 'dtf',
@@ -269,6 +285,205 @@ export default function CustomOrdersPage() {
       <Header />
       <div className="py-8">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Product Preview Modal */}
+        {previewProduct && (() => {
+          const colorImageUrl =
+            previewColor
+              ? previewProduct.colors?.find((c) => c.name === previewColor && c.imageUrl)?.imageUrl
+              : undefined;
+
+          const colorMatchedImages = previewColor
+            ? (previewProduct.images || []).filter((img) => img.color === previewColor)
+            : [];
+
+          const baseImages = previewColor && colorMatchedImages.length > 0
+            ? colorMatchedImages
+            : (previewProduct.images || []);
+
+          const previewImages = [
+            ...(colorImageUrl ? [{ url: colorImageUrl, alt: `${previewProduct.name} - ${previewColor}` }] : []),
+            ...baseImages.map((img) => ({ url: img.url, alt: img.alt || previewProduct.name }))
+          ].filter((img, idx, arr) => arr.findIndex((x) => x.url === img.url) === idx);
+
+          const safeIndex = Math.min(previewImageIndex, Math.max(0, previewImages.length - 1));
+          const activeImage = previewImages[safeIndex];
+
+          return (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Product preview"
+              onClick={closePreview}
+            >
+              <div
+                className="w-full max-w-3xl bg-white rounded-xl shadow-2xl overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+                  <div className="min-w-0">
+                    <h3 className="font-semibold text-gray-900 truncate">{previewProduct.name}</h3>
+                    <p className="text-xs text-gray-500">
+                      {previewProduct.colors?.length || 0} colours • {previewProduct.images?.length || 0} images
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleProductChange(previewProduct._id);
+                        closePreview();
+                        const el = document.getElementById('selectedProduct');
+                        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }}
+                      className="px-3 py-2 text-sm font-medium bg-purple-600 text-white rounded-md hover:bg-purple-700"
+                    >
+                      Select
+                    </button>
+                    <button
+                      type="button"
+                      onClick={closePreview}
+                      className="p-2 rounded-md hover:bg-gray-100"
+                      aria-label="Close preview"
+                    >
+                      <svg className="w-5 h-5 text-gray-700" viewBox="0 0 20 20" fill="currentColor">
+                        <path
+                          fillRule="evenodd"
+                          d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
+                  <div className="relative bg-gray-100">
+                    <div className="relative aspect-square">
+                      {activeImage ? (
+                        <Image
+                          src={activeImage.url}
+                          alt={activeImage.alt || previewProduct.name}
+                          fill
+                          className="object-contain bg-white"
+                          sizes="(max-width: 768px) 100vw, 50vw"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <span className="text-sm text-gray-500">No images available</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {previewImages.length > 1 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setPreviewImageIndex((i) => (i - 1 + previewImages.length) % previewImages.length)}
+                          className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-2 shadow"
+                          aria-label="Previous image"
+                        >
+                          <svg className="w-5 h-5 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                          </svg>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPreviewImageIndex((i) => (i + 1) % previewImages.length)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-2 shadow"
+                          aria-label="Next image"
+                        >
+                          <svg className="w-5 h-5 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </button>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="p-4">
+                    <div className="mb-4">
+                      {(() => {
+                        const hasDiscount =
+                          typeof previewProduct.basePrice === 'number' &&
+                          typeof previewProduct.price === 'number' &&
+                          previewProduct.basePrice > previewProduct.price;
+
+                        return hasDiscount ? (
+                          <div className="flex items-end gap-2">
+                            <span className="text-sm text-gray-400 line-through">£{previewProduct.basePrice!.toFixed(2)}</span>
+                            <span className="text-2xl font-bold text-green-700">£{previewProduct.price.toFixed(2)}</span>
+                          </div>
+                        ) : (
+                          <div className="text-2xl font-bold text-gray-900">£{previewProduct.price.toFixed(2)}</div>
+                        );
+                      })()}
+                      <p className="text-xs text-gray-500 mt-1">Tap a colour to filter images.</p>
+                    </div>
+
+                    <div className="mb-5">
+                      <div className="text-sm font-medium text-gray-900 mb-2">Colours</div>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPreviewColor('');
+                            setPreviewImageIndex(0);
+                          }}
+                          className={`px-3 py-1.5 text-xs rounded-full border ${
+                            previewColor === '' ? 'border-purple-600 bg-purple-50 text-purple-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          All
+                        </button>
+                        {(previewProduct.colors || []).map((c) => (
+                          <button
+                            type="button"
+                            key={c.name}
+                            onClick={() => {
+                              setPreviewColor(c.name);
+                              setPreviewImageIndex(0);
+                            }}
+                            className={`flex items-center gap-2 px-2 py-1.5 rounded-full border text-xs ${
+                              previewColor === c.name ? 'border-purple-600 bg-purple-50' : 'border-gray-300 hover:bg-gray-50'
+                            }`}
+                            aria-label={`Filter by ${c.name}`}
+                            title={c.name}
+                          >
+                            <span className="w-4 h-4 rounded-full border border-gray-300" style={{ backgroundColor: c.hexCode }} />
+                            <span className="max-w-[120px] truncate text-gray-800">{c.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {previewImages.length > 1 && (
+                      <div>
+                        <div className="text-sm font-medium text-gray-900 mb-2">Images</div>
+                        <div className="flex gap-2 overflow-x-auto pb-2">
+                          {previewImages.map((img, idx) => (
+                            <button
+                              type="button"
+                              key={img.url}
+                              onClick={() => setPreviewImageIndex(idx)}
+                              className={`relative w-16 h-16 rounded-lg overflow-hidden border ${
+                                idx === safeIndex ? 'border-purple-600' : 'border-gray-200 hover:border-gray-400'
+                              }`}
+                              aria-label={`Select image ${idx + 1}`}
+                            >
+                              <Image src={img.url} alt={img.alt || previewProduct.name} fill className="object-cover" sizes="64px" />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">Custom Orders</h1>
@@ -322,6 +537,131 @@ export default function CustomOrdersPage() {
             </ul>
           </div>
         </div>
+
+        {/* Customizable Products Preview */}
+        {products.length > 0 && (
+          <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
+            <div className="mb-6">
+              <h2 className="text-2xl font-semibold text-gray-900">Customizable Products</h2>
+              <p className="text-gray-600 mt-2">
+                Click a product image to preview available colours and photos.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {products.map((product) => {
+                const hasDiscount =
+                  typeof product.basePrice === 'number' &&
+                  typeof product.price === 'number' &&
+                  product.basePrice > product.price;
+
+                const coverImage =
+                  product.images?.[0] ||
+                  (product.colors?.find((c) => c.imageUrl)?.imageUrl
+                    ? { url: product.colors.find((c) => c.imageUrl)!.imageUrl!, alt: product.name }
+                    : null);
+
+                return (
+                  <div
+                    key={product._id}
+                    className="rounded-lg border border-gray-200 overflow-hidden bg-white hover:shadow-md transition-shadow"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => openPreview(product)}
+                      className="w-full text-left"
+                      aria-label={`Preview ${product.name}`}
+                    >
+                      <div className="relative aspect-square bg-gray-100">
+                        {coverImage ? (
+                          <Image
+                            src={coverImage.url}
+                            alt={coverImage.alt || product.name}
+                            fill
+                            className="object-cover"
+                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                            <div className="text-gray-500 text-sm font-medium px-4 text-center">
+                              No image available
+                            </div>
+                          </div>
+                        )}
+                        <div className="absolute bottom-3 left-3 bg-black/60 text-white text-xs px-2 py-1 rounded">
+                          Click to preview
+                        </div>
+                      </div>
+                    </button>
+
+                    <div className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="font-semibold text-gray-900 truncate">{product.name}</h3>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {product.colors?.length || 0} colours • {product.sizes?.length || 0} sizes
+                          </p>
+                        </div>
+                        <div className="text-right whitespace-nowrap">
+                          {hasDiscount ? (
+                            <div className="flex flex-col items-end">
+                              <span className="text-xs text-gray-400 line-through">
+                                £{product.basePrice!.toFixed(2)}
+                              </span>
+                              <span className="text-base font-bold text-green-700">
+                                £{product.price.toFixed(2)}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-base font-bold text-gray-900">
+                              £{product.price.toFixed(2)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {(product.colors || []).slice(0, 10).map((c) => (
+                          <span
+                            key={c.name}
+                            className="w-4 h-4 rounded-full border border-gray-300"
+                            style={{ backgroundColor: c.hexCode }}
+                            title={c.name}
+                            aria-label={c.name}
+                          />
+                        ))}
+                        {(product.colors?.length || 0) > 10 && (
+                          <span className="text-xs text-gray-500 ml-1">+{product.colors.length - 10}</span>
+                        )}
+                      </div>
+
+                      <div className="mt-4 flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openPreview(product)}
+                          className="flex-1 px-3 py-2 text-sm font-medium border border-gray-300 rounded-md hover:bg-gray-50"
+                        >
+                          Preview
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleProductChange(product._id);
+                            const el = document.getElementById('selectedProduct');
+                            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          }}
+                          className="flex-1 px-3 py-2 text-sm font-medium bg-purple-600 text-white rounded-md hover:bg-purple-700"
+                        >
+                          Select
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Message Display */}
         {message && (
@@ -596,11 +936,47 @@ export default function CustomOrdersPage() {
               </div>
             )}
 
+            {/* Color Selection */}
+            {selectedProductData && selectedProductData.colors.length > 0 && (
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Product Colors (Select all that apply)
+                </label>
+                <div className="flex flex-wrap gap-3">
+                  {selectedProductData.colors.map((color) => (
+                    <label key={color.name} className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        name="selectedColors"
+                        value={color.name}
+                        checked={formData.selectedColors.includes(color.name)}
+                        onChange={(e) => handleColorChange(color.name, e.target.checked)}
+                        className="sr-only"
+                      />
+                      <div
+                        className={`w-10 h-10 rounded-full border-2 ${
+                          formData.selectedColors.includes(color.name)
+                            ? 'border-purple-500 ring-2 ring-purple-200'
+                            : 'border-gray-300'
+                        }`}
+                        style={{ backgroundColor: color.hexCode }}
+                        title={color.name}
+                      />
+                      <span className="text-sm text-gray-700">{color.name}</span>
+                    </label>
+                  ))}
+                </div>
+                {formData.selectedColors.length === 0 && (
+                  <p className="text-sm text-red-600 mt-2">Please select at least one color</p>
+                )}
+              </div>
+            )}
+
             {/* Size Quantities */}
             {/* Quantity by Color and Size */}
             {selectedProductData && selectedProductData.sizes.length > 0 && formData.selectedColors.length > 0 && (
               <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Quantity by Color and Size
                 </label>
                 <div className="space-y-6">
@@ -670,44 +1046,8 @@ export default function CustomOrdersPage() {
                       return colorSum + Object.values(colorQuantities).reduce((sizeSum, qty) => sizeSum + qty, 0);
                     }, 0)} items
                   </p>
-                  <p className="text-xs text-blue-600 mt-1">Minimum order: 3 items total</p>
+                  <p className="text-xs text-blue-600 mt-1">No minimum order quantity.</p>
                 </div>
-              </div>
-            )}
-
-            {/* Color Selection */}
-            {selectedProductData && selectedProductData.colors.length > 0 && (
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  Product Colors (Select all that apply)
-                </label>
-                <div className="flex flex-wrap gap-3">
-                  {selectedProductData.colors.map((color) => (
-                    <label key={color.name} className="flex items-center space-x-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        name="selectedColors"
-                        value={color.name}
-                        checked={formData.selectedColors.includes(color.name)}
-                        onChange={(e) => handleColorChange(color.name, e.target.checked)}
-                        className="sr-only"
-                      />
-                      <div
-                        className={`w-10 h-10 rounded-full border-2 ${
-                          formData.selectedColors.includes(color.name)
-                            ? 'border-purple-500 ring-2 ring-purple-200'
-                            : 'border-gray-300'
-                        }`}
-                        style={{ backgroundColor: color.hexCode }}
-                        title={color.name}
-                      />
-                      <span className="text-sm text-gray-700">{color.name}</span>
-                    </label>
-                  ))}
-                </div>
-                {formData.selectedColors.length === 0 && (
-                  <p className="text-sm text-red-600 mt-2">Please select at least one color</p>
-                )}
               </div>
             )}
 

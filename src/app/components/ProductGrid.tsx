@@ -66,7 +66,8 @@ const ProductGrid = () => {
         if (!response.ok) throw new Error('Failed to fetch products');
         const data = await response.json();
         // Only set featured products
-        setProducts(data.products.filter((p: Product) => p.featured));
+        // Never show customizable products in the regular featured grid
+        setProducts(data.products.filter((p: Product) => p.featured && !p.customizable));
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch products');
       } finally {

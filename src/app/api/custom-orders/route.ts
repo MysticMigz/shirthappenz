@@ -123,13 +123,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate minimum order quantity
+    // Total quantity (for emails/admin visibility)
     const totalQuantity = Object.values(customOrderData.sizeQuantities).reduce((sum: number, colorQuantities: any) => {
       return sum + Object.values(colorQuantities).reduce((sizeSum: number, qty: any) => sizeSum + (qty || 0), 0);
     }, 0);
-    if (totalQuantity < 3) {
+    if (totalQuantity < 1) {
       return NextResponse.json(
-        { error: 'Minimum order quantity is 3 items total across all sizes' },
+        { error: 'Please specify quantities for at least one item' },
         { status: 400 }
       );
     }

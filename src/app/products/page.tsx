@@ -350,7 +350,8 @@ export default function ProductsPage() {
       if (data.products && data.products.length > 0) {
         console.log('First product colors:', data.products[0].colors);
       }
-      setProducts(data.products || []);
+      // Extra safety: never show customizable products on the regular products page
+      setProducts((data.products || []).filter((p: Product) => !p.customizable));
       setError(null);
     } catch (err) {
       setError('Failed to load products');
