@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { generateCustomOrderInvoicePDF } from '@/lib/pdf';
 
 interface CustomOrder {
@@ -54,6 +55,8 @@ export default function CustomOrdersPage() {
   const [orders, setOrders] = useState<CustomOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<CustomOrder | null>(null);
+  const [selectedOrderPreviewColor, setSelectedOrderPreviewColor] = useState<string>('');
+  const [selectedOrderPreviewImageIndex, setSelectedOrderPreviewImageIndex] = useState<number>(0);
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -61,6 +64,12 @@ export default function CustomOrdersPage() {
   const [invoiceData, setInvoiceData] = useState<any>(null);
   const [paymentLink, setPaymentLink] = useState<string | null>(null);
   const [generatingPaymentLink, setGeneratingPaymentLink] = useState(false);
+
+  // Reset product preview when selecting a different order
+  useEffect(() => {
+    setSelectedOrderPreviewColor('');
+    setSelectedOrderPreviewImageIndex(0);
+  }, [selectedOrder?._id]);
 
   useEffect(() => {
     fetchOrders();
@@ -110,6 +119,30 @@ export default function CustomOrdersPage() {
     }
   };
 
+  const deleteOrder = async (order: CustomOrder) => {
+    const ok = window.confirm(
+      `Delete this custom order?\n\n${order.firstName} ${order.lastName}\n${order.productDetails?.name || order.selectedProduct}\n\nThis cannot be undone.`
+    );
+    if (!ok) return;
+
+    try {
+      const response = await fetch(`/api/custom-orders/${order._id}`, { method: 'DELETE' });
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.error || 'Failed to delete order');
+      }
+
+      // Refresh list + close modal if needed
+      if (selectedOrder?._id === order._id) {
+        setSelectedOrder(null);
+      }
+      fetchOrders();
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      alert(error instanceof Error ? error.message : 'Failed to delete order');
+    }
+  };
+
   const generateInvoice = async (order: CustomOrder) => {
     try {
       // Use saved product details or fetch if not available
@@ -121,13 +154,15 @@ export default function CustomOrdersPage() {
       
       // Calculate total quantity
       const totalQuantity = Object.values(order.sizeQuantities).reduce((colorSum, colorQuantities) => {
-        return colorSum + Object.values(colorQuantities).reduce((sizeSum, qty) => sizeSum + qty, 0);
+        return (
+          colorSum +
+          Object.values(colorQuantities).reduce((sizeSum, qty) => sizeSum + (Number(qty) || 0), 0)
+        );
       }, 0);
 
-      // Calculate pricing based on quantity and paper size
-      const basePrice = order.paperSize === 'A3' ? 15 : 10; // A3 is more expensive
-      const quantityDiscount = totalQuantity >= 50 ? 0.15 : totalQuantity >= 25 ? 0.10 : totalQuantity >= 10 ? 0.05 : 0;
-      const unitPrice = basePrice * (1 - quantityDiscount);
+      // Calculate pricing: A4/A3 unit price × total units
+      // A4: £10, A3: £12.50
+      const unitPrice = order.paperSize === 'A3' ? 12.5 : 10;
       const subtotal = unitPrice * totalQuantity;
       const vatRate = 0.20; // 20% VAT
       const vatAmount = subtotal * vatRate;
@@ -138,6 +173,8 @@ export default function CustomOrdersPage() {
         invoiceDate: new Date().toLocaleDateString('en-GB'),
         dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB'), // 30 days from now
         orderId: order._id,
+        paperSize: order.paperSize || 'A4',
+        printSize: order.printSize || '',
         product: productData,
         customer: {
           name: `${order.firstName} ${order.lastName}`,
@@ -153,7 +190,7 @@ export default function CustomOrdersPage() {
         },
         items: [
           {
-            description: `Custom ${productData?.name || 'Product'} Design - ${order.paperSize} DTF Printing`,
+            description: `Custom ${productData?.name || 'Product'} Design - ${order.paperSize} DTF Printing${order.printSize ? ` (Print size: ${order.printSize})` : ''}`,
             quantity: totalQuantity,
             unitPrice: unitPrice,
             total: subtotal
@@ -175,12 +212,13 @@ export default function CustomOrdersPage() {
       console.error('Error fetching product details:', error);
       // Fallback to basic invoice without product details
       const totalQuantity = Object.values(order.sizeQuantities).reduce((colorSum, colorQuantities) => {
-        return colorSum + Object.values(colorQuantities).reduce((sizeSum, qty) => sizeSum + qty, 0);
+        return (
+          colorSum +
+          Object.values(colorQuantities).reduce((sizeSum, qty) => sizeSum + (Number(qty) || 0), 0)
+        );
       }, 0);
 
-      const basePrice = order.paperSize === 'A3' ? 15 : 10;
-      const quantityDiscount = totalQuantity >= 50 ? 0.15 : totalQuantity >= 25 ? 0.10 : totalQuantity >= 10 ? 0.05 : 0;
-      const unitPrice = basePrice * (1 - quantityDiscount);
+      const unitPrice = order.paperSize === 'A3' ? 12.5 : 10;
       const subtotal = unitPrice * totalQuantity;
       const vatRate = 0.20;
       const vatAmount = subtotal * vatRate;
@@ -191,6 +229,8 @@ export default function CustomOrdersPage() {
         invoiceDate: new Date().toLocaleDateString('en-GB'),
         dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB'),
         orderId: order._id,
+        paperSize: order.paperSize || 'A4',
+        printSize: order.printSize || '',
         product: null,
         customer: {
           name: `${order.firstName} ${order.lastName}`,
@@ -206,7 +246,7 @@ export default function CustomOrdersPage() {
         },
         items: [
           {
-            description: `Custom Design - ${order.paperSize || 'A4'} DTF Printing`,
+            description: `Custom Design - ${order.paperSize || 'A4'} DTF Printing${order.printSize ? ` (Print size: ${order.printSize})` : ''}`,
             quantity: totalQuantity,
             unitPrice: unitPrice,
             total: subtotal
@@ -233,7 +273,7 @@ export default function CustomOrdersPage() {
     console.log('Generating payment link for:', {
       orderId: selectedOrder._id,
       amount: invoiceData.pricing.total,
-      description: `Custom Order #${selectedOrder._id} - ${invoiceData.paperSize} DTF Printing`
+      description: `Custom Order #${selectedOrder._id} - ${invoiceData.paperSize || selectedOrder.paperSize || 'A4'} DTF Printing${invoiceData.printSize ? ` (Print size: ${invoiceData.printSize})` : ''}`
     });
 
     setGeneratingPaymentLink(true);
@@ -245,7 +285,7 @@ export default function CustomOrdersPage() {
         },
         body: JSON.stringify({
           amount: invoiceData.pricing.total,
-          description: `Custom Order #${selectedOrder._id} - ${selectedOrder.paperSize || 'A4'} DTF Printing`,
+          description: `Custom Order #${selectedOrder._id} - ${invoiceData.paperSize || selectedOrder.paperSize || 'A4'} DTF Printing${invoiceData.printSize ? ` (Print size: ${invoiceData.printSize})` : ''}`,
         }),
       });
 
@@ -384,7 +424,10 @@ export default function CustomOrdersPage() {
                 ) : (
                   orders.map((order) => {
                     const totalQuantity = Object.values(order.sizeQuantities || {}).reduce((colorSum, colorQuantities) => {
-                      return colorSum + Object.values(colorQuantities).reduce((sizeSum, qty) => sizeSum + qty, 0);
+                      return (
+                        colorSum +
+                        Object.values(colorQuantities).reduce((sizeSum, qty) => sizeSum + (Number(qty) || 0), 0)
+                      );
                     }, 0);
                     
                     return (
@@ -402,11 +445,44 @@ export default function CustomOrdersPage() {
                           </div>
                         </td>
                         <td className="px-4 py-3 min-w-[250px]">
-                          <div className="text-sm font-medium text-gray-900 break-words">
-                            {order.productDetails ? order.productDetails.name : `Product ID: ${order.selectedProduct}`}
+                          <div className="flex items-start gap-3">
+                            {order.productDetails && (() => {
+                              const thumbUrl =
+                                order.productDetails.images?.[0]?.url ||
+                                order.productDetails.colors?.find(c => c.imageUrl)?.imageUrl;
+                              if (!thumbUrl) return null;
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedOrder(order)}
+                                  className="relative w-12 h-12 rounded-md overflow-hidden border border-gray-200 bg-gray-50 flex-shrink-0 hover:ring-2 hover:ring-purple-300"
+                                  aria-label={`View images for ${order.productDetails?.name || 'product'}`}
+                                  title="Click to preview images"
+                                >
+                                  <Image
+                                    src={thumbUrl}
+                                    alt={order.productDetails.images?.[0]?.alt || order.productDetails.name}
+                                    fill
+                                    className="object-cover"
+                                    sizes="48px"
+                                  />
+                                </button>
+                              );
+                            })()}
+
+                            <div className="min-w-0">
+                              <div className="text-sm font-medium text-gray-900 break-words">
+                                {order.productDetails ? order.productDetails.name : `Product ID: ${order.selectedProduct}`}
+                              </div>
+                              {order.productDetails && (
+                                <div className="text-xs text-gray-500 mt-1 break-words">
+                                  {order.productDetails.category} • {order.productDetails.gender}
+                                </div>
+                              )}
+                            </div>
                           </div>
                           {order.productDetails && (
-                            <div className="text-xs text-gray-500 mt-1 break-words">
+                            <div className="sr-only">
                               {order.productDetails.category} • {order.productDetails.gender}
                             </div>
                           )}
@@ -510,12 +586,20 @@ export default function CustomOrdersPage() {
                           )}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-sm min-w-[120px]">
-                          <button
-                            onClick={() => setSelectedOrder(order)}
-                            className="px-3 py-1.5 rounded bg-purple-600 text-white text-xs font-semibold hover:bg-purple-700 transition-colors"
-                          >
-                            View Details
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => setSelectedOrder(order)}
+                              className="px-3 py-1.5 rounded bg-purple-600 text-white text-xs font-semibold hover:bg-purple-700 transition-colors"
+                            >
+                              View
+                            </button>
+                            <button
+                              onClick={() => deleteOrder(order)}
+                              className="px-3 py-1.5 rounded bg-red-600 text-white text-xs font-semibold hover:bg-red-700 transition-colors"
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -593,6 +677,164 @@ export default function CustomOrdersPage() {
                 </div>
 
                 <div className="space-y-6">
+                  {/* Product Image Preview */}
+                  {selectedOrder.productDetails && (
+                    <div>
+                      <h4 className="text-md font-medium text-gray-900 mb-3">Product Images</h4>
+                      {(() => {
+                        const pd = selectedOrder.productDetails!;
+                        const colorImageUrl =
+                          selectedOrderPreviewColor
+                            ? pd.colors?.find(c => c.name === selectedOrderPreviewColor && c.imageUrl)?.imageUrl
+                            : undefined;
+
+                        const colorMatchedImages = selectedOrderPreviewColor
+                          ? (pd.images || []).filter(img => img.color === selectedOrderPreviewColor)
+                          : [];
+
+                        const baseImages =
+                          selectedOrderPreviewColor && colorMatchedImages.length > 0
+                            ? colorMatchedImages
+                            : (pd.images || []);
+
+                        const previewImages = [
+                          ...(colorImageUrl ? [{ url: colorImageUrl, alt: `${pd.name} - ${selectedOrderPreviewColor}` }] : []),
+                          ...baseImages.map(img => ({ url: img.url, alt: img.alt || pd.name })),
+                        ].filter((img, idx, arr) => arr.findIndex(x => x.url === img.url) === idx);
+
+                        const safeIndex = Math.min(
+                          selectedOrderPreviewImageIndex,
+                          Math.max(0, previewImages.length - 1)
+                        );
+                        const activeImage = previewImages[safeIndex];
+
+                        return (
+                          <div className="border border-gray-200 rounded-lg overflow-hidden">
+                            <div className="grid grid-cols-1 md:grid-cols-2">
+                              <div className="relative bg-gray-100">
+                                <div className="relative aspect-square">
+                                  {activeImage ? (
+                                    <Image
+                                      src={activeImage.url}
+                                      alt={activeImage.alt || pd.name}
+                                      fill
+                                      className="object-contain bg-white"
+                                      sizes="(max-width: 768px) 100vw, 50vw"
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center">
+                                      <span className="text-sm text-gray-500">No images saved for this product</span>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {previewImages.length > 1 && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setSelectedOrderPreviewImageIndex((i) =>
+                                          (i - 1 + previewImages.length) % previewImages.length
+                                        )
+                                      }
+                                      className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-2 shadow"
+                                      aria-label="Previous image"
+                                    >
+                                      <svg className="w-5 h-5 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                      </svg>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setSelectedOrderPreviewImageIndex((i) => (i + 1) % previewImages.length)
+                                      }
+                                      className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white rounded-full p-2 shadow"
+                                      aria-label="Next image"
+                                    >
+                                      <svg className="w-5 h-5 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                      </svg>
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+
+                              <div className="p-4">
+                                <div className="text-sm font-medium text-gray-900 mb-2">Colours</div>
+                                <div className="flex flex-wrap gap-2 mb-4">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedOrderPreviewColor('');
+                                      setSelectedOrderPreviewImageIndex(0);
+                                    }}
+                                    className={`px-3 py-1.5 text-xs rounded-full border ${
+                                      selectedOrderPreviewColor === ''
+                                        ? 'border-purple-600 bg-purple-50 text-purple-700'
+                                        : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                                    }`}
+                                  >
+                                    All
+                                  </button>
+                                  {(pd.colors || []).map((c) => (
+                                    <button
+                                      type="button"
+                                      key={c.name}
+                                      onClick={() => {
+                                        setSelectedOrderPreviewColor(c.name);
+                                        setSelectedOrderPreviewImageIndex(0);
+                                      }}
+                                      className={`flex items-center gap-2 px-2 py-1.5 rounded-full border text-xs ${
+                                        selectedOrderPreviewColor === c.name
+                                          ? 'border-purple-600 bg-purple-50'
+                                          : 'border-gray-300 hover:bg-gray-50'
+                                      }`}
+                                      aria-label={`Filter images by ${c.name}`}
+                                      title={c.name}
+                                    >
+                                      <span className="w-4 h-4 rounded-full border border-gray-300" style={{ backgroundColor: c.hexCode }} />
+                                      <span className="max-w-[140px] truncate text-gray-800">{c.name}</span>
+                                    </button>
+                                  ))}
+                                </div>
+
+                                {previewImages.length > 1 && (
+                                  <>
+                                    <div className="text-sm font-medium text-gray-900 mb-2">Images</div>
+                                    <div className="flex gap-2 overflow-x-auto pb-2">
+                                      {previewImages.map((img, idx) => (
+                                        <button
+                                          type="button"
+                                          key={img.url}
+                                          onClick={() => setSelectedOrderPreviewImageIndex(idx)}
+                                          className={`relative w-16 h-16 rounded-lg overflow-hidden border ${
+                                            idx === safeIndex
+                                              ? 'border-purple-600'
+                                              : 'border-gray-200 hover:border-gray-400'
+                                          }`}
+                                          aria-label={`Select image ${idx + 1}`}
+                                        >
+                                          <Image
+                                            src={img.url}
+                                            alt={img.alt || pd.name}
+                                            fill
+                                            className="object-cover"
+                                            sizes="64px"
+                                          />
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+
                   {/* Customer Information */}
                   <div>
                     <h4 className="text-md font-medium text-gray-900 mb-3">Customer Information</h4>
@@ -643,7 +885,10 @@ export default function CustomOrdersPage() {
                       )}
                       <div>
                         <span className="font-medium">Total Quantity:</span> {Object.values(selectedOrder.sizeQuantities || {}).reduce((colorSum, colorQuantities) => {
-                          return colorSum + Object.values(colorQuantities).reduce((sizeSum, qty) => sizeSum + qty, 0);
+                          return (
+                            colorSum +
+                            Object.values(colorQuantities).reduce((sizeSum, qty) => sizeSum + (Number(qty) || 0), 0)
+                          );
                         }, 0)}
                       </div>
                       <div>
@@ -803,6 +1048,12 @@ export default function CustomOrdersPage() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                         <span>Generate Invoice</span>
+                      </button>
+                      <button
+                        onClick={() => deleteOrder(selectedOrder)}
+                        className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                      >
+                        Delete Order
                       </button>
                     </div>
                   </div>

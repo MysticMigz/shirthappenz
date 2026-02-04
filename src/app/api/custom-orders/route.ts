@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
-import { sendEmail } from '@/lib/email';
+import { sendCustomOrderAdminNotificationEmail, sendCustomOrderCustomerConfirmationEmail } from '@/lib/email';
 import { v2 as cloudinary } from 'cloudinary';
 
 cloudinary.config({
@@ -252,34 +252,44 @@ export async function POST(request: NextRequest) {
 
     // Send email notification to admin
     try {
-      await sendEmail({
-        to: 'admin@mrshirtpersonalisation.co.uk',
-        subject: 'New Custom Order Submission',
-        html: `
-          <h2>New Custom Order Submitted</h2>
-          <p><strong>Order ID:</strong> ${result.insertedId}</p>
-          <p><strong>Customer:</strong> ${customOrderData.firstName} ${customOrderData.lastName}</p>
-          <p><strong>Email:</strong> ${customOrderData.email}</p>
-          <p><strong>Phone:</strong> ${customOrderData.phone}</p>
-          <p><strong>Company:</strong> ${customOrderData.company || 'N/A'}</p>
-          <p><strong>Product:</strong> ${productDetails ? productDetails.name : customOrderData.selectedProduct}</p>
-          <p><strong>Total Quantity:</strong> ${totalQuantity}</p>
-          <p><strong>Size Breakdown:</strong></p>
-          <ul>
-            ${Object.entries(customOrderData.sizeQuantities).map(([color, colorQuantities]: [string, any]) => 
-              `<li><strong>${color}:</strong> ${Object.entries(colorQuantities).map(([size, qty]: [string, any]) => qty > 0 ? `${size}: ${qty}` : '').filter(Boolean).join(', ') || 'No quantities specified'}</li>`      
-            ).join('')}
-          </ul>
-          <p><strong>Colors:</strong> ${customOrderData.selectedColors.join(', ')}</p>
-          <p><strong>Printing Type:</strong> ${customOrderData.printingType}</p>
-          <p><strong>Printing Surface:</strong> ${customOrderData.printingSurface}</p>
-          <p><strong>Design Location:</strong> ${customOrderData.designLocation}</p>
-          <p><strong>Print Size:</strong> ${customOrderData.printSize}</p>
-          <p><strong>Design Assistance:</strong> ${customOrderData.needsDesignAssistance ? 'Yes' : 'No'}</p>
-          <p><strong>Design Files:</strong> ${designFiles.length > 0 ? designFiles.map(f => f.name).join(', ') : 'No files uploaded'}</p>
-          <p><strong>Notes:</strong> ${customOrderData.notes || 'No additional notes'}</p>
-          <p><strong>Submitted:</strong> ${customOrderData.submittedAt.toLocaleString()}</p>
-        `
+      const adminEmail = process.env.ADMIN_EMAIL || 'admin@mrshirtpersonalisation.co.uk';
+      const productImageUrl =
+        productDetails?.images?.[0]?.url ||
+        productDetails?.colors?.find((c: any) => c.imageUrl)?.imageUrl ||
+        undefined;
+
+      await sendCustomOrderAdminNotificationEmail({
+        to: adminEmail,
+        orderId: String(result.insertedId),
+        submittedAt: customOrderData.submittedAt,
+        customer: {
+          firstName: customOrderData.firstName,
+          lastName: customOrderData.lastName,
+          email: customOrderData.email,
+          phone: customOrderData.phone,
+          company: customOrderData.company,
+          address: customOrderData.address,
+          city: customOrderData.city,
+          province: customOrderData.province,
+          postalCode: customOrderData.postalCode,
+          preferredContact: customOrderData.preferredContact,
+        },
+        product: {
+          name: productDetails ? productDetails.name : customOrderData.selectedProduct,
+          category: productDetails?.category,
+          gender: productDetails?.gender,
+          imageUrl: productImageUrl,
+        },
+        paperSize: customOrderData.paperSize,
+        printSize: customOrderData.printSize,
+        printingType: customOrderData.printingType,
+        printingSurface: customOrderData.printingSurface,
+        designLocation: customOrderData.designLocation,
+        needsDesignAssistance: customOrderData.needsDesignAssistance,
+        notes: customOrderData.notes,
+        selectedColors: customOrderData.selectedColors,
+        sizeQuantities: customOrderData.sizeQuantities,
+        designFiles: designFiles.map((f) => ({ name: f.name, url: f.url })),
       });
     } catch (emailError) {
       console.error('Failed to send admin notification email:', emailError);
@@ -288,45 +298,27 @@ export async function POST(request: NextRequest) {
 
     // Send confirmation email to customer
     try {
-      await sendEmail({
+      const productImageUrl =
+        productDetails?.images?.[0]?.url ||
+        productDetails?.colors?.find((c: any) => c.imageUrl)?.imageUrl ||
+        undefined;
+
+      await sendCustomOrderCustomerConfirmationEmail({
         to: customOrderData.email,
-        subject: 'Custom Order Confirmation - MR SHIRT PERSONALISATION LTD',
-        html: `
-          <h2>Thank you for your custom order!</h2>
-          <p>Dear ${customOrderData.firstName} ${customOrderData.lastName},</p>
-          <p>We have received your custom order request and will contact you within 2 working days to arrange all the details to create the perfect customization for you.</p>
-          
-          <h3>Order Details:</h3>
-          <ul>
-            <li><strong>Order ID:</strong> ${result.insertedId}</li>
-            <li><strong>Product:</strong> ${productDetails ? productDetails.name : customOrderData.selectedProduct}</li>
-            <li><strong>Total Quantity:</strong> ${totalQuantity}</li>
-            <li><strong>Size Breakdown:</strong>
-              <ul>
-                ${Object.entries(customOrderData.sizeQuantities).map(([color, colorQuantities]: [string, any]) => 
-                  `<li><strong>${color}:</strong> ${Object.entries(colorQuantities).map(([size, qty]: [string, any]) => qty > 0 ? `${size}: ${qty}` : '').filter(Boolean).join(', ') || 'No quantities specified'}</li>`  
-                ).join('')}
-              </ul>
-            </li>
-            <li><strong>Colors:</strong> ${customOrderData.selectedColors.join(', ')}</li>
-            <li><strong>Printing Type:</strong> ${customOrderData.printingType}</li>
-            <li><strong>Printing Surface:</strong> ${customOrderData.printingSurface}</li>
-            <li><strong>Design Location:</strong> ${customOrderData.designLocation}</li>
-            <li><strong>Print Size:</strong> ${customOrderData.printSize}</li>
-            <li><strong>Design Assistance:</strong> ${customOrderData.needsDesignAssistance ? 'Yes' : 'No'}</li>
-            <li><strong>Design Files:</strong> ${designFiles.length > 0 ? designFiles.map(f => f.name).join(', ') : 'No files uploaded'}</li>
-            <li><strong>Notes:</strong> ${customOrderData.notes || 'No additional notes'}</li>
-          </ul>
-          
-          <p>If you have any questions, please don't hesitate to contact us:</p>
-          <ul>
-            <li>Email: admin@mrshirtpersonalisation.co.uk</li>
-            <li>Phone: +447902870824</li>
-            <li>Hours: Monday - Friday 9h-12h and 13h30-16h30</li>
-          </ul>
-          
-          <p>Best regards,<br>The MR SHIRT PERSONALISATION LTD Team</p>
-        `
+        orderId: String(result.insertedId),
+        submittedAt: customOrderData.submittedAt,
+        firstName: customOrderData.firstName,
+        product: {
+          name: productDetails ? productDetails.name : customOrderData.selectedProduct,
+          imageUrl: productImageUrl,
+        },
+        paperSize: customOrderData.paperSize,
+        printSize: customOrderData.printSize,
+        sizeQuantities: customOrderData.sizeQuantities,
+        printingSurface: customOrderData.printingSurface,
+        designLocation: customOrderData.designLocation,
+        notes: customOrderData.notes,
+        designFiles: designFiles.map((f) => ({ name: f.name, url: f.url })),
       });
     } catch (emailError) {
       console.error('Failed to send customer confirmation email:', emailError);

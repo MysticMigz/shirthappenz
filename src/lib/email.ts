@@ -129,6 +129,59 @@ interface OrderItem {
   };
 }
 
+function escapeHtml(value: unknown): string {
+  const str = String(value ?? '');
+  return str
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function renderBrandedEmail(params: {
+  heading: string;
+  subheading?: string;
+  bodyHtml: string;
+  cta?: { label: string; href: string };
+}) {
+  const heading = escapeHtml(params.heading);
+  const subheading = params.subheading ? escapeHtml(params.subheading) : '';
+  const logoUrl = 'https://res.cloudinary.com/dfjgvffou/image/upload/v1753210261/logo_yqmosx.png';
+  const siteUrl = 'https://mrshirtpersonalisation.co.uk';
+  return `
+    <div style="font-family: Arial, sans-serif; background: #f9fafb; padding: 0; margin: 0;">
+      <div style="max-width: 600px; margin: 0 auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px #e5e7eb;">
+        <div style="padding: 32px 32px 0 32px; text-align: center;">
+          <a href="${siteUrl}" target="_blank" rel="noopener noreferrer">
+            <img src="${logoUrl}" alt="Mr Shirt Personalisation Logo" style="max-width: 180px; margin: 0 auto 24px auto; display: block;" />
+          </a>
+          <h1 style="font-size: 28px; font-weight: bold; color: #1f2937; margin-bottom: 8px;">${heading}</h1>
+          ${subheading ? `<p style="color: #4b5563; font-size: 16px; margin-bottom: 0;">${subheading}</p>` : ''}
+        </div>
+        <div style="padding: 0 32px 32px 32px;">
+          ${params.bodyHtml}
+          ${
+            params.cta
+              ? `
+            <div style="margin-top: 28px; text-align: center;">
+              <a href="${escapeHtml(params.cta.href)}" style="display: inline-block; background: #6366f1; color: #fff; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: 600;">
+                ${escapeHtml(params.cta.label)}
+              </a>
+            </div>
+          `
+              : ''
+          }
+          <div style="margin-top: 28px; border-top: 1px solid #e5e7eb; padding-top: 16px; color: #6b7280; font-size: 12px; text-align: center;">
+            <div>MR SHIRT PERSONALISATION LTD</div>
+            <div style="margin-top: 6px;">If you need help, reply to this email or contact <a href="mailto:admin@mrshirtpersonalisation.co.uk" style="color:#6366f1;">admin@mrshirtpersonalisation.co.uk</a>.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 export async function sendOrderConfirmationEmail(
   orderReference: string,
   items: OrderItem[],
@@ -324,6 +377,256 @@ export async function sendOrderConfirmationEmail(
   } catch (error) {
     console.error('Failed to send order confirmation email:', error);
   }
+}
+
+type CustomOrderDesignFile = { name: string; url: string };
+
+export async function sendCustomOrderAdminNotificationEmail(params: {
+  to: string;
+  orderId: string;
+  submittedAt: Date | string;
+  customer: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    company?: string;
+    address: string;
+    city: string;
+    province: string;
+    postalCode: string;
+    preferredContact?: string;
+  };
+  product: { name: string; category?: string; gender?: string; imageUrl?: string };
+  paperSize?: string;
+  printSize?: string;
+  printingType?: string;
+  printingSurface: string[];
+  designLocation: string[];
+  needsDesignAssistance?: boolean;
+  notes?: string;
+  selectedColors: string[];
+  sizeQuantities: Record<string, Record<string, unknown>>;
+  designFiles: CustomOrderDesignFile[];
+}) {
+  const totalQuantity = Object.values(params.sizeQuantities || {}).reduce((sum, colorQuantities) => {
+    return (
+      sum +
+      Object.values(colorQuantities || {}).reduce((sizeSum, qty) => sizeSum + (Number(qty) || 0), 0)
+    );
+  }, 0);
+
+  const sizeBreakdownHtml = Object.entries(params.sizeQuantities || {})
+    .map(([color, quantities]) => {
+      const parts = Object.entries(quantities || {})
+        .filter(([_, qty]) => (Number(qty) || 0) > 0)
+        .map(([size, qty]) => `${escapeHtml(size)}×${escapeHtml(qty)}`);
+      return `
+        <div style="border-bottom: 1px solid #e5e7eb; padding: 10px 0;">
+          <div style="font-weight: 600; color: #111827;">${escapeHtml(color)}</div>
+          <div style="color:#6b7280; font-size: 13px; margin-top: 4px;">
+            ${parts.length ? parts.join(', ') : '<span style="color:#9ca3af;">No quantities specified</span>'}
+          </div>
+        </div>
+      `;
+    })
+    .join('');
+
+  const designFilesHtml =
+    params.designFiles.length > 0
+      ? `
+        <ul style="margin: 8px 0 0 18px; padding: 0; color:#374151;">
+          ${params.designFiles
+            .map(
+              (f) =>
+                `<li style="margin: 6px 0;"><a href="${escapeHtml(f.url)}" target="_blank" rel="noopener noreferrer" style="color:#6366f1; text-decoration: underline;">${escapeHtml(f.name)}</a></li>`
+            )
+            .join('')}
+        </ul>
+      `
+      : `<p style="margin: 8px 0 0 0; color:#6b7280;">No files uploaded.</p>`;
+
+  const bodyHtml = `
+    <h2 style="font-size: 20px; font-weight: 600; color: #1f2937; margin: 20px 0 12px 0;">Custom Order Submitted</h2>
+    <table style="width: 100%; margin-bottom: 18px;">
+      <tr><td style="color:#6b7280;">Order ID:</td><td style="font-weight: 600; text-align:right;">${escapeHtml(params.orderId)}</td></tr>
+      <tr><td style="color:#6b7280;">Submitted:</td><td style="font-weight: 500; text-align:right;">${escapeHtml(
+        typeof params.submittedAt === 'string' ? params.submittedAt : params.submittedAt.toLocaleString('en-GB')
+      )}</td></tr>
+      <tr><td style="color:#6b7280;">Product:</td><td style="font-weight: 500; text-align:right;">${escapeHtml(params.product.name)}</td></tr>
+      <tr><td style="color:#6b7280;">Total Units:</td><td style="font-weight: 600; text-align:right;">${escapeHtml(totalQuantity)}</td></tr>
+      <tr><td style="color:#6b7280;">Paper Size:</td><td style="font-weight: 500; text-align:right;">${escapeHtml(params.paperSize || 'A4')}</td></tr>
+      ${params.printSize ? `<tr><td style="color:#6b7280;">Print Size:</td><td style="font-weight: 500; text-align:right;">${escapeHtml(params.printSize)}</td></tr>` : ''}
+    </table>
+
+    <div style="background-color:#f9fafb; border-radius:8px; padding: 16px; margin: 18px 0;">
+      <h3 style="margin:0 0 10px 0; font-size: 16px; color:#111827;">Customer</h3>
+      <div style="color:#374151; font-size: 14px;">
+        <div><strong>${escapeHtml(params.customer.firstName)} ${escapeHtml(params.customer.lastName)}</strong></div>
+        <div>Email: ${escapeHtml(params.customer.email)}</div>
+        <div>Phone: ${escapeHtml(params.customer.phone)}</div>
+        ${params.customer.company ? `<div>Company: ${escapeHtml(params.customer.company)}</div>` : ''}
+        <div style="margin-top: 8px;">
+          ${escapeHtml(params.customer.address)}, ${escapeHtml(params.customer.city)}, ${escapeHtml(params.customer.province)} ${escapeHtml(params.customer.postalCode)}
+        </div>
+      </div>
+    </div>
+
+    <div style="background-color:#f9fafb; border-radius:8px; padding: 16px; margin: 18px 0;">
+      <h3 style="margin:0 0 10px 0; font-size: 16px; color:#111827;">Printing</h3>
+      <table style="width:100%;">
+        <tr><td style="color:#6b7280;">Type:</td><td style="text-align:right; font-weight:500;">${escapeHtml(params.printingType || 'DTF')}</td></tr>
+        <tr><td style="color:#6b7280;">Surface:</td><td style="text-align:right; font-weight:500;">${escapeHtml(params.printingSurface.join(', ') || 'N/A')}</td></tr>
+        <tr><td style="color:#6b7280;">Location:</td><td style="text-align:right; font-weight:500;">${escapeHtml(params.designLocation.join(', ') || 'N/A')}</td></tr>
+        <tr><td style="color:#6b7280;">Design assistance:</td><td style="text-align:right; font-weight:500;">${params.needsDesignAssistance ? 'Yes' : 'No'}</td></tr>
+      </table>
+    </div>
+
+    <div style="margin: 18px 0;">
+      <h3 style="margin:0 0 10px 0; font-size: 16px; color:#111827;">Size breakdown</h3>
+      ${sizeBreakdownHtml || `<p style="margin:0; color:#6b7280;">No size quantities provided.</p>`}
+    </div>
+
+    <div style="margin: 18px 0;">
+      <h3 style="margin:0 0 10px 0; font-size: 16px; color:#111827;">Design files</h3>
+      ${designFilesHtml}
+    </div>
+
+    <div style="margin: 18px 0;">
+      <h3 style="margin:0 0 10px 0; font-size: 16px; color:#111827;">Notes</h3>
+      <div style="background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding: 12px; color:#374151; font-size:14px;">
+        ${params.notes ? escapeHtml(params.notes) : '<span style="color:#9ca3af;">No notes</span>'}
+      </div>
+    </div>
+  `;
+
+  await sendEmail({
+    to: params.to,
+    subject: `New Custom Order - ${params.orderId} | Mr Shirt Personalisation`,
+    html: renderBrandedEmail({
+      heading: 'New Custom Order Submitted',
+      subheading: `${params.product.name} • ${totalQuantity} unit${totalQuantity === 1 ? '' : 's'}`,
+      bodyHtml,
+      cta: { label: 'Open Admin Dashboard', href: 'https://mrshirtpersonalisation.co.uk/admin/custom-orders' },
+    })
+  });
+}
+
+export async function sendCustomOrderCustomerConfirmationEmail(params: {
+  to: string;
+  orderId: string;
+  submittedAt: Date | string;
+  firstName: string;
+  product: { name: string; imageUrl?: string };
+  paperSize?: string;
+  printSize?: string;
+  sizeQuantities: Record<string, Record<string, unknown>>;
+  printingSurface: string[];
+  designLocation: string[];
+  notes?: string;
+  designFiles: CustomOrderDesignFile[];
+}) {
+  const totalQuantity = Object.values(params.sizeQuantities || {}).reduce((sum, colorQuantities) => {
+    return (
+      sum +
+      Object.values(colorQuantities || {}).reduce((sizeSum, qty) => sizeSum + (Number(qty) || 0), 0)
+    );
+  }, 0);
+
+  const sizeBreakdownHtml = Object.entries(params.sizeQuantities || {})
+    .map(([color, quantities]) => {
+      const parts = Object.entries(quantities || {})
+        .filter(([_, qty]) => (Number(qty) || 0) > 0)
+        .map(([size, qty]) => `${escapeHtml(size)}×${escapeHtml(qty)}`);
+      return `
+        <div style="border-bottom: 1px solid #e5e7eb; padding: 10px 0;">
+          <div style="font-weight: 600; color: #111827;">${escapeHtml(color)}</div>
+          <div style="color:#6b7280; font-size: 13px; margin-top: 4px;">
+            ${parts.length ? parts.join(', ') : '<span style="color:#9ca3af;">No quantities specified</span>'}
+          </div>
+        </div>
+      `;
+    })
+    .join('');
+
+  const designFilesHtml =
+    params.designFiles.length > 0
+      ? `
+        <p style="margin: 8px 0 0 0; color:#374151; font-size: 14px;">
+          We received ${escapeHtml(params.designFiles.length)} file${params.designFiles.length === 1 ? '' : 's'} with your request.
+        </p>
+      `
+      : `<p style="margin: 8px 0 0 0; color:#6b7280;">No files were attached.</p>`;
+
+  const productImageHtml = params.product.imageUrl
+    ? `
+      <div style="text-align:center; margin: 18px 0;">
+        <img src="${escapeHtml(params.product.imageUrl)}" alt="${escapeHtml(params.product.name)}" style="max-width: 100%; width: 240px; height: auto; border-radius: 10px; border: 1px solid #e5e7eb;" />
+      </div>
+    `
+    : '';
+
+  const bodyHtml = `
+    <p style="font-size: 16px; color: #374151; margin-top: 20px;">
+      Hi ${escapeHtml(params.firstName)},<br/>
+      Thanks for your custom order request — we’ve received it and will contact you within <strong>2 working days</strong>.
+    </p>
+    ${productImageHtml}
+    <h2 style="font-size: 20px; font-weight: 600; color: #1f2937; margin: 20px 0 12px 0;">Request summary</h2>
+    <table style="width: 100%; margin-bottom: 18px;">
+      <tr><td style="color:#6b7280;">Order ID:</td><td style="font-weight: 600; text-align:right;">${escapeHtml(params.orderId)}</td></tr>
+      <tr><td style="color:#6b7280;">Submitted:</td><td style="font-weight: 500; text-align:right;">${escapeHtml(
+        typeof params.submittedAt === 'string' ? params.submittedAt : params.submittedAt.toLocaleString('en-GB')
+      )}</td></tr>
+      <tr><td style="color:#6b7280;">Product:</td><td style="font-weight: 500; text-align:right;">${escapeHtml(params.product.name)}</td></tr>
+      <tr><td style="color:#6b7280;">Total Units:</td><td style="font-weight: 600; text-align:right;">${escapeHtml(totalQuantity)}</td></tr>
+      <tr><td style="color:#6b7280;">Paper Size:</td><td style="font-weight: 500; text-align:right;">${escapeHtml(params.paperSize || 'A4')}</td></tr>
+      ${params.printSize ? `<tr><td style="color:#6b7280;">Print Size:</td><td style="font-weight: 500; text-align:right;">${escapeHtml(params.printSize)}</td></tr>` : ''}
+    </table>
+
+    <div style="background-color:#f9fafb; border-radius:8px; padding: 16px; margin: 18px 0;">
+      <h3 style="margin:0 0 10px 0; font-size: 16px; color:#111827;">Printing preferences</h3>
+      <table style="width:100%;">
+        <tr><td style="color:#6b7280;">Surface:</td><td style="text-align:right; font-weight:500;">${escapeHtml(params.printingSurface.join(', ') || 'N/A')}</td></tr>
+        <tr><td style="color:#6b7280;">Location:</td><td style="text-align:right; font-weight:500;">${escapeHtml(params.designLocation.join(', ') || 'N/A')}</td></tr>
+      </table>
+    </div>
+
+    <div style="margin: 18px 0;">
+      <h3 style="margin:0 0 10px 0; font-size: 16px; color:#111827;">Size breakdown</h3>
+      ${sizeBreakdownHtml || `<p style="margin:0; color:#6b7280;">No size quantities provided.</p>`}
+    </div>
+
+    <div style="margin: 18px 0;">
+      <h3 style="margin:0 0 10px 0; font-size: 16px; color:#111827;">Design files</h3>
+      ${designFilesHtml}
+    </div>
+
+    <div style="margin: 18px 0;">
+      <h3 style="margin:0 0 10px 0; font-size: 16px; color:#111827;">Your notes</h3>
+      <div style="background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding: 12px; color:#374151; font-size:14px;">
+        ${params.notes ? escapeHtml(params.notes) : '<span style="color:#9ca3af;">No notes</span>'}
+      </div>
+    </div>
+
+    <div style="background-color:#f0f9ff; border: 1px solid #bae6fd; border-radius:8px; padding: 16px; margin: 18px 0;">
+      <div style="font-weight: 600; color:#0369a1; margin-bottom: 6px;">What happens next?</div>
+      <div style="color:#374151; font-size: 14px;">
+        We’ll review your request and reply with pricing and a timeline. If anything is unclear, we’ll contact you for details.
+      </div>
+    </div>
+  `;
+
+  await sendEmail({
+    to: params.to,
+    subject: `Custom Order Received - ${params.orderId} | Mr Shirt Personalisation`,
+    html: renderBrandedEmail({
+      heading: 'We received your custom order',
+      subheading: `${params.product.name} • ${totalQuantity} unit${totalQuantity === 1 ? '' : 's'}`,
+      bodyHtml,
+      cta: { label: 'Contact Us', href: 'https://mrshirtpersonalisation.co.uk/contact' },
+    })
+  });
 }
 
 export async function sendPaymentConfirmationEmail(

@@ -104,3 +104,40 @@ export async function GET(
     );
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const mongoose = await connectToDatabase();
+    const db = mongoose.connection.db;
+    if (!db) {
+      return NextResponse.json(
+        { error: 'Database connection failed' },
+        { status: 500 }
+      );
+    }
+
+    const customOrdersCollection = db.collection('customOrders');
+
+    const result = await customOrdersCollection.deleteOne({
+      _id: new mongoose.Types.ObjectId(params.id)
+    });
+
+    if (result.deletedCount === 0) {
+      return NextResponse.json(
+        { error: 'Order not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting custom order:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete order' },
+      { status: 500 }
+    );
+  }
+}
