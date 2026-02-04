@@ -39,6 +39,7 @@ export default function CategoryVisibilityPage() {
   // Default category definitions
   const defaultCategories: CategoryDisplay[] = [
     { key: 'tshirts', label: 'T-Shirts', icon: '👕', defaultVisible: true },
+    { key: 'poloshirts', label: 'Polo Shirts', icon: '👔', defaultVisible: true },
     { key: 'jerseys', label: 'Jerseys', icon: '🏈', defaultVisible: true },
     { key: 'tanktops', label: 'Tank Tops', icon: '🎽', defaultVisible: true },
     { key: 'longsleeve', label: 'Long Sleeve', icon: '👔', defaultVisible: true },

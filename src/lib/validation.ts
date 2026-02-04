@@ -223,7 +223,7 @@ export const productSchema = z.object({
   productDetails: z.string().optional().default(''),
   price: z.number().min(0.01, 'Price must be greater than 0'),
   basePrice: z.number().min(0.01, 'Base price must be greater than 0'),
-  category: z.enum(['tshirts', 'jerseys', 'tanktops', 'longsleeve', 'hoodies', 'sweatshirts', 'sweatpants', 'accessories', 'shortsleeve', 'crewneck']),
+  category: z.enum(['tshirts', 'poloshirts', 'jerseys', 'tanktops', 'longsleeve', 'hoodies', 'sweatshirts', 'sweatpants', 'accessories', 'shortsleeve', 'crewneck']),
   gender: z.enum(['men', 'women', 'unisex', 'kids']),
   sizes: z.array(z.string()).min(1, 'At least one size is required'),
   colors: z.array(z.object({

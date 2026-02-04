@@ -263,7 +263,8 @@ export default function AdminProducts() {
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             >
               <option value="">All Categories</option>
-              <option value="t-shirts">T-Shirts</option>
+              <option value="tshirts">T-Shirts</option>
+              <option value="poloshirts">Polo Shirts</option>
               <option value="hoodies">Hoodies</option>
               <option value="sweatshirts">Sweatshirts</option>
               <option value="jerseys">Jerseys</option>

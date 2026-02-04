@@ -1,6 +1,8 @@
 const CATEGORY_DISPLAY_MAP: Record<string, string> = {
   tshirts: 'T-Shirts',
   't-shirts': 'T-Shirts',
+  poloshirts: 'Polo Shirts',
+  'polo shirts': 'Polo Shirts',
   hoodies: 'Hoodies',
   sweatshirts: 'Sweatshirts',
   jerseys: 'Jerseys',
