@@ -386,6 +386,10 @@ export default function CustomOrdersPage() {
 
   const generatePaymentLink = async () => {
     if (!selectedOrder || !invoiceData) return;
+    if ((selectedOrder as any).paymentStatus === 'completed' || selectedOrder.status === 'paid') {
+      alert('This order is already paid. A new payment link cannot be generated.');
+      return;
+    }
 
     console.log('Generating payment link for:', {
       orderId: selectedOrder._id,
@@ -416,6 +420,10 @@ export default function CustomOrdersPage() {
 
       const data = await response.json();
       console.log('Payment link generated:', data);
+      if (data?.stripeMode && data.stripeMode !== 'live') {
+        console.warn('Payment link generated in non-live mode:', data.stripeMode);
+        alert(`Warning: This payment link was generated in ${data.stripeMode.toUpperCase()} mode. Live payments require live Stripe keys in your production environment.`);
+      }
       setPaymentLink(data.paymentLink);
       setPaymentLinkAmount(invoiceData.pricing.total);
 
@@ -1545,6 +1553,11 @@ export default function CustomOrdersPage() {
 
                         {paymentLink && (
                           <div className="mt-3">
+                            {(((selectedOrder as any)?.paymentStatus === 'completed') || selectedOrder.status === 'paid') && (
+                              <div className="mb-3 p-3 rounded border border-green-200 bg-green-50 text-green-900 text-sm">
+                                Payment is completed. This payment link will be deactivated to prevent duplicate payments.
+                              </div>
+                            )}
                             <div className="flex items-center space-x-2">
                               <input
                                 type="text"

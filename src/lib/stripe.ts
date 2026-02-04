@@ -1,11 +1,30 @@
 import { loadStripe } from '@stripe/stripe-js';
 import Stripe from 'stripe';
 
+type StripeMode = 'live' | 'test' | 'unknown';
+
+function getStripeModeFromSecretKey(secretKey?: string | null): StripeMode {
+  if (!secretKey) return 'unknown';
+  if (secretKey.startsWith('sk_live_')) return 'live';
+  if (secretKey.startsWith('sk_test_')) return 'test';
+  return 'unknown';
+}
+
+function assertNotTestModeInProduction(secretKey?: string | null) {
+  const mode = getStripeModeFromSecretKey(secretKey);
+  if (process.env.NODE_ENV === 'production' && mode === 'test') {
+    throw new Error(
+      'Stripe is configured with a TEST secret key in production. Set STRIPE_SECRET_KEY to a live key (sk_live_...) in Vercel before generating live payment links.'
+    );
+  }
+}
+
 // Debug environment variables
 if (typeof window === 'undefined') {  // Only log on server-side
   console.log('Checking Stripe environment:', {
     hasSecretKey: !!process.env.STRIPE_SECRET_KEY,
     hasPublishableKey: !!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
+    stripeMode: getStripeModeFromSecretKey(process.env.STRIPE_SECRET_KEY),
   });
 }
 
@@ -45,6 +64,8 @@ export async function createPaymentIntent({
   if (!stripe) {
     throw new Error('Stripe has not been initialized. This method can only be called from the server.');
   }
+
+  assertNotTestModeInProduction(process.env.STRIPE_SECRET_KEY);
 
   try {
     // Validate amount
@@ -96,6 +117,8 @@ export async function createPaymentLink({
     throw new Error('Stripe has not been initialized. This method can only be called from the server.');
   }
 
+  assertNotTestModeInProduction(process.env.STRIPE_SECRET_KEY);
+
   try {
     console.log('Creating payment link with:', { amount, currency, description, metadata });
     
@@ -133,6 +156,7 @@ export async function createPaymentLink({
     return {
       url: paymentLink.url,
       paymentLinkId: paymentLink.id,
+      stripeMode: getStripeModeFromSecretKey(process.env.STRIPE_SECRET_KEY),
     };
   } catch (error) {
     console.error('Error creating payment link:', error);

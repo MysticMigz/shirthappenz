@@ -139,8 +139,12 @@ export async function GET(request: Request) {
             co?.productDetails?.imageUrl ||
             null;
 
+          const paperSize = (co?.paperSize || co?.invoiceData?.paperSize || 'A4') as string;
+          const printSize = (co?.printSize || co?.invoiceData?.printSize || '') as string;
+          const sizeLabel = [paperSize, printSize].filter(Boolean).join(' ');
+
           const itemName = co?.productDetails?.name
-            ? `Custom ${co.productDetails.name} Order`
+            ? `Custom ${co.productDetails.name} Order${sizeLabel ? ` (${sizeLabel})` : ''}`
             : 'Custom Order';
 
           return {
@@ -154,7 +158,7 @@ export async function GET(request: Request) {
                 name: itemName,
                 price: Number.isFinite(unitPrice) ? unitPrice : 0,
                 quantity: totalQuantity || 1,
-                size: 'Custom',
+                size: sizeLabel || 'Custom',
                 color: (co?.selectedColors?.[0] as string) || undefined,
                 image: firstImage || undefined,
               },

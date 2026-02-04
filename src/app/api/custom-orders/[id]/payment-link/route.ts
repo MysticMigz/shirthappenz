@@ -42,6 +42,14 @@ export async function POST(
       );
     }
 
+    // Don't allow generating a new payment link if the order is already paid
+    if ((order as any).paymentStatus === 'completed' || (order as any).status === 'paid') {
+      return NextResponse.json(
+        { error: 'This order has already been paid. A new payment link cannot be generated.' },
+        { status: 400 }
+      );
+    }
+
     // Create payment link
     const paymentLink = await createPaymentLink({
       amount,
@@ -58,6 +66,7 @@ export async function POST(
     return NextResponse.json({
       paymentLink: paymentLink.url,
       paymentLinkId: paymentLink.paymentLinkId,
+      stripeMode: (paymentLink as any).stripeMode || 'unknown',
     });
   } catch (error) {
     console.error('Error creating payment link:', error);

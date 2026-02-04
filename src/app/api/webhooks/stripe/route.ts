@@ -53,6 +53,11 @@ async function markCustomOrderPaid(params: {
 
   const customOrdersCollection = db.collection('customOrders');
 
+  const existing = await customOrdersCollection.findOne(
+    { _id: new mongoose.Types.ObjectId(params.orderId) },
+    { projection: { paymentLinkId: 1, paymentStatus: 1, status: 1 } }
+  );
+
   const update: any = {
     status: 'paid',
     paymentStatus: 'completed',
@@ -73,6 +78,31 @@ async function markCustomOrderPaid(params: {
 
   if (result.matchedCount === 0) {
     throw new Error(`Custom order not found: ${params.orderId}`);
+  }
+
+  // Deactivate the payment link to prevent duplicate payments.
+  // Prefer the ID from Stripe session; otherwise use the one stored on the order.
+  const paymentLinkIdToDeactivate =
+    params.paymentLinkId || (existing as any)?.paymentLinkId || null;
+
+  if (paymentLinkIdToDeactivate) {
+    try {
+      await stripe.paymentLinks.update(paymentLinkIdToDeactivate, { active: false });
+      await customOrdersCollection.updateOne(
+        { _id: new mongoose.Types.ObjectId(params.orderId) },
+        {
+          $set: {
+            paymentLinkActive: false,
+            paymentLinkDeactivatedAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        }
+      );
+      console.log('Payment link deactivated:', paymentLinkIdToDeactivate);
+    } catch (err) {
+      // Don't fail the webhook if deactivation fails; log for follow-up.
+      console.warn('Failed to deactivate payment link:', paymentLinkIdToDeactivate, err);
+    }
   }
 }
 

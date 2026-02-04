@@ -104,6 +104,23 @@ export async function POST(
       }
     );
 
+    // Deactivate the payment link to prevent accidental double payment
+    try {
+      await stripe.paymentLinks.update(paymentLinkId, { active: false });
+      await customOrdersCollection.updateOne(
+        { _id: new mongoose.Types.ObjectId(params.id) },
+        {
+          $set: {
+            paymentLinkActive: false,
+            paymentLinkDeactivatedAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        }
+      );
+    } catch (err) {
+      console.warn('Failed to deactivate payment link after verification:', paymentLinkId, err);
+    }
+
     return NextResponse.json({
       paid: true,
       status: 'paid',
