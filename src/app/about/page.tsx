@@ -47,9 +47,6 @@ const AboutPage = () => (
           <h3 className="text-xl font-semibold mb-2">Ready to Create Something Amazing?</h3>
           <p className="mb-4">Join thousands of satisfied customers who have brought their visions to life with MR Shirt Personalisation.</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <a href="/design" className="bg-white text-purple-600 px-6 py-2 rounded-md font-medium hover:bg-gray-100 transition-colors">
-              Start Designing
-            </a>
             <a href="/contact" className="border-2 border-white text-white px-6 py-2 rounded-md font-medium hover:bg-white hover:text-purple-600 transition-colors">
               Get a Quote
             </a>

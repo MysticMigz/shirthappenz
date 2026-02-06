@@ -602,13 +602,13 @@ export default function CustomOrdersPage() {
                       className="w-full text-left"
                       aria-label={`Preview ${product.name}`}
                     >
-                      <div className="relative aspect-square bg-gray-100">
+                      <div className="relative aspect-square bg-white">
                         {coverImage ? (
                           <Image
                             src={coverImage.url}
                             alt={coverImage.alt || product.name}
                             fill
-                            className="object-cover"
+                            className="object-contain p-3"
                             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                           />
                         ) : (
