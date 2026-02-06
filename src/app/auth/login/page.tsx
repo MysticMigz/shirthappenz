@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { signIn } from 'next-auth/react';
 import { useUser } from '@/context/UserContext';
@@ -10,6 +10,7 @@ import SecurityHeaders from '@/components/SecurityHeaders';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { setUser } = useUser();
   const [formData, setFormData] = useState({
     email: '',
@@ -19,8 +20,28 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  useEffect(() => {
+    const errorParam = searchParams.get('error');
+    if (!errorParam) return;
+
+    // NextAuth common errors: https://next-auth.js.org/configuration/pages#sign-in-page
+    const message =
+      errorParam === 'CredentialsSignin'
+        ? 'Incorrect email or password.'
+        : errorParam === 'AccessDenied'
+        ? 'Access denied. Please contact support if you believe this is a mistake.'
+        : errorParam === 'OAuthAccountNotLinked'
+        ? 'This email is already associated with a different sign-in method.'
+        : errorParam === 'Configuration'
+        ? 'Sign in is temporarily unavailable. Please try again later.'
+        : 'Sign in failed. Please try again.';
+
+    setError(message);
+  }, [searchParams]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+    if (error) setError('');
     setFormData(prev => ({
       ...prev,
       [name]: value
