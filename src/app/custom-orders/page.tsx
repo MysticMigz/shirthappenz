@@ -346,7 +346,9 @@ export default function CustomOrdersPage() {
               >
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
                   <div className="min-w-0">
-                    <h3 className="font-semibold text-gray-900 truncate">{previewProduct.name}</h3>
+                    <h3 className="font-semibold text-gray-900 whitespace-normal break-words leading-snug">
+                      {previewProduct.name}
+                    </h3>
                     <p className="text-xs text-gray-500">
                       {previewProduct.colors?.length || 0} colours • {previewProduct.images?.length || 0} images
                     </p>
@@ -625,7 +627,9 @@ export default function CustomOrdersPage() {
                     <div className="p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <h3 className="font-semibold text-gray-900 truncate">{product.name}</h3>
+                          <h3 className="font-semibold text-gray-900 whitespace-normal break-words leading-snug">
+                            {product.name}
+                          </h3>
                           <p className="text-xs text-gray-500 mt-1">
                             {product.colors?.length || 0} colours • {product.sizes?.length || 0} sizes
                           </p>
