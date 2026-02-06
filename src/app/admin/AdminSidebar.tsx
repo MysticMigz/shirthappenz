@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
+import { signOut } from 'next-auth/react';
 import { FaHome, FaBox, FaShoppingCart, FaUsers, FaTachometerAlt, FaBoxes, FaBell, FaTruck, FaClipboardList, FaChartLine, FaIndustry, FaShippingFast, FaTicketAlt, FaEye, FaStore, FaEdit, FaFolder, FaBars, FaTimes } from 'react-icons/fa';
 import { FaBarcode } from 'react-icons/fa';
 import { useAdminSidebar } from '@/context/AdminSidebarContext';
@@ -11,6 +12,7 @@ import { useAdminSidebar } from '@/context/AdminSidebarContext';
 export default function AdminSidebar() {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed } = useAdminSidebar();
 
   // Close mobile menu when route changes
@@ -40,6 +42,19 @@ export default function AdminSidebar() {
       document.body.style.overflow = '';
     };
   }, [isMobileMenuOpen]);
+
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    try {
+      // Redirect to home after session is cleared
+      await signOut({ callbackUrl: '/' });
+    } catch (error) {
+      console.error('Logout failed:', error);
+      // If signOut fails, still try to navigate away from admin
+      window.location.href = '/';
+    }
+  };
 
   const menuItems = [
     {
@@ -189,8 +204,14 @@ export default function AdminSidebar() {
               >
                 View Site
               </Link>
-              <button className="text-xs md:text-sm text-red-600 hover:text-red-800 font-medium">
-                Logout
+              <button
+                type="button"
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className="text-xs md:text-sm text-red-600 hover:text-red-800 font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+                aria-label="Logout"
+              >
+                {isLoggingOut ? 'Logging out…' : 'Logout'}
               </button>
             </div>
           </div>
