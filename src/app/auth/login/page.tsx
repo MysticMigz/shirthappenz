@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { signIn } from 'next-auth/react';
 import { useUser } from '@/context/UserContext';
@@ -10,7 +10,6 @@ import SecurityHeaders from '@/components/SecurityHeaders';
 
 export default function LoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { setUser } = useUser();
   const [formData, setFormData] = useState({
     email: '',
@@ -21,7 +20,11 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
-    const errorParam = searchParams.get('error');
+    // Read NextAuth error codes from the URL (client-side only).
+    // Avoid `useSearchParams()` here because it forces a CSR bailout that must be wrapped in Suspense
+    // and can break prerendering during `next build`.
+    const urlParams = new URLSearchParams(window.location.search);
+    const errorParam = urlParams.get('error');
     if (!errorParam) return;
 
     // NextAuth common errors: https://next-auth.js.org/configuration/pages#sign-in-page
@@ -37,7 +40,7 @@ export default function LoginPage() {
         : 'Sign in failed. Please try again.';
 
     setError(message);
-  }, [searchParams]);
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;

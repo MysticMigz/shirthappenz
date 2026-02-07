@@ -5,6 +5,9 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   images: {
+    // Avoid requiring the Next.js Image Optimization API in environments
+    // that rely on static export or CDN-only deployments.
+    unoptimized: true,
     domains: [
       'm.media-amazon.com',
       'images-na.ssl-images-amazon.com',

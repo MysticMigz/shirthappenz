@@ -7,6 +7,10 @@ import AdminSessionDebugger from '@/components/AdminSessionDebugger';
 import { AdminSidebarProvider } from '@/context/AdminSidebarContext';
 import AdminMainContent from '@/app/admin/AdminMainContent';
 
+// getServerSession() reads request headers/cookies, so this layout cannot be statically rendered.
+// Force Next.js to treat the entire /admin segment as dynamic.
+export const dynamic = 'force-dynamic';
+
 interface AdminLayoutProps {
   children: ReactNode;
 }
