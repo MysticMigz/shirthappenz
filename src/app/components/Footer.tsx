@@ -92,6 +92,11 @@ const Footer = () => {
                 </Link>
               </li>
               <li>
+                <Link href="/our-work" className="text-gray-300 hover:text-purple-400 transition-colors">
+                  Our Work
+                </Link>
+              </li>
+              <li>
                 <Link href="/accessories/swing-tags" className="text-gray-300 hover:text-purple-400 transition-colors">
                   Personalised Swing Tags
                 </Link>

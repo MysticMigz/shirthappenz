@@ -20,20 +20,23 @@ interface CarouselBackground {
   createdAt: string;
 }
 
+const defaultEditForm = {
+  title: '',
+  subtitle: '',
+  description: '',
+  buttonText: '',
+  buttonLink: '',
+  bgGradient: '',
+  textColor: '',
+  buttonColor: '',
+  order: 0
+};
+
 export default function FrontOfShopPage() {
   const [backgrounds, setBackgrounds] = useState<CarouselBackground[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ 
-    title: '', 
-    subtitle: '', 
-    description: '', 
-    buttonText: '', 
-    buttonLink: '',
-    bgGradient: '',
-    textColor: '',
-    buttonColor: ''
-  });
+  const [editForm, setEditForm] = useState(defaultEditForm);
   const [selectedSlide, setSelectedSlide] = useState<number | null>(null);
   const [showSlideSelector, setShowSlideSelector] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -188,6 +191,7 @@ export default function FrontOfShopPage() {
       bgGradient: background.bgGradient,
       textColor: background.textColor,
       buttonColor: background.buttonColor || 'bg-white text-gray-900',
+      order: background.order ?? background.slideId ?? 0,
     });
     setReplacementImage(null);
     setReplacementImagePreview(null);
@@ -216,6 +220,7 @@ export default function FrontOfShopPage() {
         formData.append('bgGradient', editForm.bgGradient);
         formData.append('textColor', editForm.textColor);
         formData.append('buttonColor', editForm.buttonColor);
+        formData.append('order', String(editForm.order));
 
         response = await fetch(`/api/admin/carousel-backgrounds/${editingId}`, {
           method: 'PATCH',
@@ -235,16 +240,7 @@ export default function FrontOfShopPage() {
       if (response.ok) {
         await loadBackgrounds();
         setEditingId(null);
-        setEditForm({ 
-          title: '', 
-          subtitle: '', 
-          description: '', 
-          buttonText: '', 
-          buttonLink: '',
-          bgGradient: '',
-          textColor: '',
-          buttonColor: ''
-        });
+        setEditForm(defaultEditForm);
         setReplacementImage(null);
         setReplacementImagePreview(null);
         alert('Background updated successfully!');
@@ -260,16 +256,7 @@ export default function FrontOfShopPage() {
 
   const handleCancelEdit = () => {
     setEditingId(null);
-    setEditForm({
-      title: '', 
-      subtitle: '', 
-      description: '', 
-      buttonText: '', 
-      buttonLink: '',
-      bgGradient: '',
-      textColor: '',
-      buttonColor: ''
-    });
+    setEditForm(defaultEditForm);
     setReplacementImage(null);
     setReplacementImagePreview(null);
   };
@@ -297,11 +284,16 @@ export default function FrontOfShopPage() {
 
   return (
     <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Front of Shop Management</h1>
-        <p className="text-gray-600">
-          Manage carousel backgrounds for your homepage. Upload custom images to replace the default gradient backgrounds.
-        </p>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Front of Shop (Homepage Carousel)</h1>
+          <p className="text-gray-600 max-w-2xl">
+            Manage the carousel on the <strong>homepage hero</strong> only. Upload images, set titles and buttons, reorder slides, and activate or deactivate each one. For the Our Work page carousel, use <strong>Our Work Carousel</strong> in the sidebar.
+          </p>
+        </div>
+        <a href="/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+          View Homepage
+        </a>
       </div>
 
       {/* Slide Selection and Upload Section */}
@@ -313,13 +305,7 @@ export default function FrontOfShopPage() {
           <h3 className="text-md font-medium text-gray-900 mb-3">Select Slide to Edit</h3>
           <div className="grid grid-cols-5 gap-4">
             {[1, 2, 3, 4, 5].map((slideNumber) => {
-              console.log(`🎨 Checking slide ${slideNumber}:`, backgrounds.map(bg => ({
-                slideId: bg.slideId,
-                title: bg.title,
-                isActive: bg.isActive
-              })));
               const slideData = backgrounds.find(bg => bg.slideId === slideNumber);
-              console.log(`🎨 Found slide data for ${slideNumber}:`, slideData);
               return (
                 <div
                   key={slideNumber}
@@ -527,6 +513,17 @@ export default function FrontOfShopPage() {
                             placeholder="Subtitle"
                           />
                         </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Display order</label>
+                          <input
+                            type="number"
+                            min={0}
+                            value={editForm.order}
+                            onChange={(e) => setEditForm({ ...editForm, order: parseInt(e.target.value, 10) || 0 })}
+                            className="w-24 px-3 py-2 border border-gray-300 rounded-md text-sm"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">Lower numbers appear first on Home and Our Work.</p>
+                        </div>
                         <textarea
                           value={editForm.description}
                           onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
@@ -661,10 +658,11 @@ export default function FrontOfShopPage() {
                       </div>
                     ) : (
                       <div>
-                        <div className="mb-2">
+                        <div className="mb-2 flex items-center gap-2 flex-wrap">
                           <span className="text-xs font-medium text-purple-600 bg-purple-100 px-2 py-1 rounded">
                             Slide {background.slideId}
                           </span>
+                          <span className="text-xs text-gray-500">Order: {background.order ?? background.slideId}</span>
                         </div>
                         <h3 className="font-medium text-gray-900 mb-1">{background.title}</h3>
                         <p className="text-sm text-gray-700 font-medium mb-1">{background.subtitle}</p>

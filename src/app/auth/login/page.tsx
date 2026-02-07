@@ -63,34 +63,38 @@ export default function LoginPage() {
     console.log('🔍 [Login] Starting login process for:', formData.email);
 
     try {
-      // Get callback URL from query params
+      // Get callback URL from query params (e.g. from middleware or protected route)
       const urlParams = new URLSearchParams(window.location.search);
-      const callbackUrl = urlParams.get('callbackUrl') || (formData.email.includes('admin') || formData.email.includes('@') ? '/admin/dashboard' : '/');
-      
-      console.log('🔍 [Login] Callback URL:', callbackUrl);
-      console.log('🔍 [Login] Using redirect: true to ensure cookie is set...');
-      
-      // IMPORTANT: Use redirect: true instead of false
-      // When redirect: false, NextAuth doesn't set the cookie via Set-Cookie headers
-      // Using redirect: true ensures the cookie is properly set in the browser
+      const fromUrl = urlParams.get('callbackUrl');
+      const callbackUrl =
+        fromUrl && fromUrl.startsWith('/') && !fromUrl.startsWith('//')
+          ? fromUrl
+          : '/';
+
       const result = await signIn('credentials', {
-        redirect: true,
+        redirect: false,
         email: formData.email,
         password: formData.password,
-        callbackUrl: callbackUrl,
+        callbackUrl,
       });
 
-      // If we get here, redirect was successful and cookie should be set
-      // The redirect will happen automatically, so we don't need to handle it
-      console.log('✅ [Login] signIn called with redirect - cookie should be set');
-      
+      if (result?.ok) {
+        await router.push(callbackUrl);
+        router.refresh();
+        return;
+      }
+
+      if (result?.error) {
+        setError(result.error === 'CredentialsSignin' ? 'Incorrect email or password.' : result.error);
+      } else {
+        setError('Sign in failed. Please try again.');
+      }
     } catch (err) {
-      console.error('❌ [Login] Login error:', err);
+      console.error('Login error:', err);
       setError(err instanceof Error ? err.message : 'Login failed');
+    } finally {
       setLoading(false);
     }
-    // Note: We don't set loading to false here because the redirect will happen
-    // If there's an error, it will be caught above
   };
 
   return (

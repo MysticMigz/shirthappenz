@@ -95,6 +95,7 @@ export async function PATCH(
       }
 
       // Extract form fields
+      const orderVal = formData.get('order');
       updateData = {
         title: formData.get('title') as string,
         subtitle: formData.get('subtitle') as string,
@@ -106,6 +107,10 @@ export async function PATCH(
         buttonColor: (formData.get('buttonColor') as string) || 'bg-white text-gray-900',
         updatedAt: new Date()
       };
+      if (orderVal !== null && orderVal !== undefined && orderVal !== '') {
+        const n = parseInt(String(orderVal), 10);
+        if (!isNaN(n)) updateData.order = n;
+      }
 
       // Only update imageUrl if a new image was uploaded
       if (imageUrl) {

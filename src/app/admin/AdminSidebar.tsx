@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { signOut } from 'next-auth/react';
-import { FaHome, FaBox, FaShoppingCart, FaUsers, FaTachometerAlt, FaBoxes, FaBell, FaTruck, FaClipboardList, FaChartLine, FaIndustry, FaShippingFast, FaTicketAlt, FaEye, FaStore, FaEdit, FaFolder, FaBars, FaTimes } from 'react-icons/fa';
+import { FaHome, FaBox, FaShoppingCart, FaUsers, FaTachometerAlt, FaBoxes, FaBell, FaTruck, FaClipboardList, FaChartLine, FaIndustry, FaShippingFast, FaTicketAlt, FaEye, FaStore, FaEdit, FaFolder, FaBars, FaTimes, FaImages } from 'react-icons/fa';
 import { FaBarcode } from 'react-icons/fa';
 import { useAdminSidebar } from '@/context/AdminSidebarContext';
 
@@ -146,6 +146,11 @@ export default function AdminSidebar() {
       href: '/admin/front-of-shop',
       icon: FaStore,
       text: 'Front of Shop'
+    },
+    {
+      href: '/admin/our-work-carousel',
+      icon: FaImages,
+      text: 'Our Work Carousel'
     },
     {
       href: '/admin/site-settings',
