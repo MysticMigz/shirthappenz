@@ -76,7 +76,7 @@ export default function OurWorkPage() {
       <main className="flex-1">
         <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
           <div className="text-center mb-10">
-            <h1 className="text-4xl font-bold text-gray-900">Our Work</h1>
+            <h1 className="text-4xl font-bold text-gray-900">Customer Creations</h1>
             <p className="mt-3 text-lg text-gray-600 max-w-2xl mx-auto">
               A selection of the custom apparel and personalised printing we&apos;ve created for our customers.
             </p>
