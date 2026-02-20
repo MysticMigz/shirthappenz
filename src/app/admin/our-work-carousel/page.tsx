@@ -65,6 +65,12 @@ export default function OurWorkCarouselPage() {
     loadSlides();
   }, []);
 
+  useEffect(() => {
+    if (activeSlides.length > 0 && previewIndex >= activeSlides.length) {
+      setPreviewIndex(0);
+    }
+  }, [activeSlides.length, previewIndex]);
+
   const handleAddSlide = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!addImage) {
