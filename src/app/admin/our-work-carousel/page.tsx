@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import { FaUpload, FaTrash, FaEye, FaEdit, FaSave, FaTimes } from 'react-icons/fa';
 import Link from 'next/link';
 
@@ -35,6 +36,16 @@ export default function OurWorkCarouselPage() {
   const [addImage, setAddImage] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  // Carousel preview state (matches public page)
+  const [previewIndex, setPreviewIndex] = useState(0);
+  const activeSlides = slides.filter((s) => s.isActive).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const goTo = useCallback((index: number) => {
+    if (activeSlides.length === 0) return;
+    setPreviewIndex((index + activeSlides.length) % activeSlides.length);
+  }, [activeSlides.length]);
+  const next = useCallback(() => goTo(previewIndex + 1), [previewIndex, goTo]);
+  const prev = useCallback(() => goTo(previewIndex - 1), [previewIndex, goTo]);
 
   const loadSlides = async () => {
     try {
@@ -237,6 +248,78 @@ export default function OurWorkCarouselPage() {
         <p className="text-xs text-gray-500 mt-2">Recommended: 1920×1080 or larger. JPG, PNG, WebP. Max 10MB.</p>
       </div>
 
+      {/* Carousel preview (matches public Our Work page) */}
+      {!loading && activeSlides.length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">Preview (as on Customer Creations page)</h2>
+          <p className="text-sm text-gray-600 mb-4">Same width and aspect ratio as the live page.</p>
+          <div className="relative w-full max-w-2xl mx-auto">
+            <div className="relative aspect-video w-full overflow-hidden rounded-2xl shadow-2xl bg-gray-100">
+              {activeSlides.map((slide, index) => {
+                const isActive = index === previewIndex % activeSlides.length;
+                return (
+                  <div
+                    key={slide.id}
+                    className={`absolute inset-0 transition-opacity duration-300 ${
+                      isActive ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'
+                    }`}
+                  >
+                    <Image
+                      src={slide.imageUrl}
+                      alt={slide.title || `Slide ${index + 1}`}
+                      fill
+                      className="object-contain"
+                      sizes="672px"
+                    />
+                    {(slide.title || slide.subtitle) && (
+                      <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent text-white text-sm">
+                        {slide.title && <p className="font-semibold">{slide.title}</p>}
+                        {slide.subtitle && <p className="opacity-90 mt-0.5">{slide.subtitle}</p>}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {activeSlides.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={prev}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white/90 shadow flex items-center justify-center text-gray-800 hover:bg-white"
+                    aria-label="Previous"
+                  >
+                    <span className="text-lg">‹</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={next}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white/90 shadow flex items-center justify-center text-gray-800 hover:bg-white"
+                    aria-label="Next"
+                  >
+                    <span className="text-lg">›</span>
+                  </button>
+                </>
+              )}
+            </div>
+            {activeSlides.length > 1 && (
+              <div className="flex justify-center gap-1.5 mt-3">
+                {activeSlides.map((_, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => setPreviewIndex(index)}
+                    className={`w-2 h-2 rounded-full transition-all ${
+                      index === previewIndex % activeSlides.length ? 'bg-purple-600 scale-125' : 'bg-gray-300'
+                    }`}
+                    aria-label={`Go to slide ${index + 1}`}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* List */}
       <div className="bg-white rounded-lg shadow-sm">
         <div className="p-6 border-b border-gray-200">
@@ -263,8 +346,14 @@ export default function OurWorkCarouselPage() {
                 key={slide.id}
                 className={`border rounded-lg overflow-hidden ${slide.isActive ? 'border-green-500 bg-green-50' : 'border-gray-200'}`}
               >
-                <div className="relative">
-                  <img src={slide.imageUrl} alt={slide.title || 'Slide'} className="w-full h-48 object-cover" />
+                <div className="relative aspect-video w-full max-w-md mx-auto bg-gray-100">
+                  <Image
+                    src={slide.imageUrl}
+                    alt={slide.title || 'Slide'}
+                    fill
+                    className="object-contain"
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                  />
                   <div className="absolute top-2 right-2 flex gap-2">
                     <button
                       type="button"
@@ -309,7 +398,9 @@ export default function OurWorkCarouselPage() {
                           className="block w-full text-sm text-gray-500"
                         />
                         {replacementPreview && (
-                          <img src={replacementPreview} alt="New" className="mt-2 w-full h-24 object-cover rounded border" />
+                          <div className="mt-2 relative aspect-video w-full max-w-xs rounded border overflow-hidden bg-gray-100">
+                            <img src={replacementPreview} alt="New" className="w-full h-full object-contain" />
+                          </div>
                         )}
                       </div>
                       <input
@@ -368,8 +459,10 @@ export default function OurWorkCarouselPage() {
       </div>
 
       {previewImage && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50" onClick={() => setPreviewImage(null)}>
-          <img src={previewImage} alt="Preview" className="max-w-full max-h-[90vh] object-contain" onClick={(e) => e.stopPropagation()} />
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4" onClick={() => setPreviewImage(null)}>
+          <div className="relative w-full max-w-2xl max-h-[90vh] flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+            <img src={previewImage} alt="Preview" className="max-w-full max-h-[90vh] object-contain" />
+          </div>
         </div>
       )}
     </div>
