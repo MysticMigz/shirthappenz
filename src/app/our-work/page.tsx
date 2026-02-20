@@ -12,7 +12,6 @@ interface ShowcaseSlide {
   subtitle?: string;
 }
 
-// Fallback images when no carousel slides are configured (showcase-style placeholders)
 const FALLBACK_SLIDES: ShowcaseSlide[] = [
   { id: '1', imageUrl: 'https://res.cloudinary.com/dfjgvffou/image/upload/v1753210261/logo_yqmosx.png', title: 'Custom apparel', subtitle: 'Quality printing' },
   { id: '2', imageUrl: 'https://images.unsplash.com/photo-1558769132-cb1aea913ec4?w=1200', title: 'T-shirts & garments', subtitle: 'DTF & sublimation' },
@@ -25,6 +24,7 @@ export default function OurWorkPage() {
   const [slides, setSlides] = useState<ShowcaseSlide[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [lightboxSlide, setLightboxSlide] = useState<ShowcaseSlide | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -68,13 +68,12 @@ export default function OurWorkPage() {
   }, [slides.length, currentIndex, next]);
 
   const displaySlides = slides.length > 0 ? slides : FALLBACK_SLIDES;
-  const current = displaySlides[currentIndex % displaySlides.length];
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Header />
       <main className="flex-1">
-        <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <section className="w-full px-4 sm:px-6 lg:px-8 py-10">
           <div className="text-center mb-10">
             <h1 className="text-4xl font-bold text-gray-900">Customer Creations</h1>
             <p className="mt-3 text-lg text-gray-600 max-w-2xl mx-auto">
@@ -83,14 +82,13 @@ export default function OurWorkPage() {
           </div>
 
           {loading ? (
-            <div className="aspect-video max-w-5xl mx-auto rounded-2xl bg-gray-200 flex items-center justify-center">
+            <div className="aspect-video w-full rounded-2xl bg-gray-200 flex items-center justify-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600" />
             </div>
           ) : (
-            <div className="relative max-w-5xl mx-auto">
-              {/* Carousel */}
+            <div className="relative w-full max-w-2xl mx-auto">
               <div
-                className="relative aspect-video w-full overflow-hidden rounded-2xl bg-gray-900 shadow-2xl"
+                className="relative aspect-video w-full overflow-hidden rounded-2xl shadow-2xl"
                 aria-roledescription="carousel"
                 aria-label="Showcase of our work"
               >
@@ -106,16 +104,23 @@ export default function OurWorkPage() {
                       role="group"
                       aria-label={`Slide ${index + 1} of ${displaySlides.length}`}
                     >
-                      <Image
-                        src={slide.imageUrl}
-                        alt={slide.title || `Showcase ${index + 1}`}
-                        fill
-                        className="object-cover"
-                        sizes="(max-width: 1024px) 100vw, 1024px"
-                        priority={index === 0}
-                      />
+                      <button
+                        type="button"
+                        onClick={() => isActive && setLightboxSlide(slide)}
+                        className="absolute inset-0 w-full h-full cursor-pointer focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-inset rounded-2xl"
+                        aria-label={`View full size: ${slide.title || `Image ${index + 1}`}`}
+                      >
+                        <Image
+                          src={slide.imageUrl}
+                          alt={slide.title || `Showcase ${index + 1}`}
+                          fill
+                          className="object-contain"
+                          sizes="100vw"
+                          priority={index === 0}
+                        />
+                      </button>
                       {(slide.title || slide.subtitle) && (
-                        <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent text-white">
+                        <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent text-white pointer-events-none">
                           {slide.title && <p className="text-xl font-semibold">{slide.title}</p>}
                           {slide.subtitle && <p className="text-sm opacity-90 mt-1">{slide.subtitle}</p>}
                         </div>
@@ -124,12 +129,11 @@ export default function OurWorkPage() {
                   );
                 })}
 
-                {/* Prev / Next */}
                 {displaySlides.length > 1 && (
                   <>
                     <button
                       type="button"
-                      onClick={() => { prev(); }}
+                      onClick={(e) => { e.stopPropagation(); prev(); }}
                       className="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full bg-white/90 hover:bg-white shadow-lg flex items-center justify-center text-gray-800 transition-transform hover:scale-105"
                       aria-label="Previous slide"
                     >
@@ -139,7 +143,7 @@ export default function OurWorkPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => { next(); }}
+                      onClick={(e) => { e.stopPropagation(); next(); }}
                       className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full bg-white/90 hover:bg-white shadow-lg flex items-center justify-center text-gray-800 transition-transform hover:scale-105"
                       aria-label="Next slide"
                     >
@@ -151,7 +155,6 @@ export default function OurWorkPage() {
                 )}
               </div>
 
-              {/* Dots */}
               {displaySlides.length > 1 && (
                 <div className="flex justify-center gap-2 mt-6" role="tablist" aria-label="Slide navigation">
                   {displaySlides.map((_, index) => (
@@ -182,6 +185,41 @@ export default function OurWorkPage() {
         </section>
       </main>
       <Footer />
+
+      {/* Lightbox */}
+      {lightboxSlide && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Full size image"
+          onClick={() => setLightboxSlide(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setLightboxSlide(null)}
+            className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+            aria-label="Close"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <div
+            className="relative w-[95vw] h-[95vh] max-w-7xl max-h-[95vh] flex items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Image
+              src={lightboxSlide.imageUrl}
+              alt={lightboxSlide.title || 'Full size'}
+              fill
+              className="object-contain"
+              sizes="95vw"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

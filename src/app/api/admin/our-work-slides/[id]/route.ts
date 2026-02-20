@@ -65,8 +65,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
           cloudinary.uploader.upload_stream(
             {
               folder: FOLDER,
-              public_id: `slide-${id}-${Date.now()}`,
-              transformation: [{ width: 1920, height: 1080, crop: 'fill', quality: 'auto' }]
+              public_id: `slide-${id}-${Date.now()}`
             },
             (err, result) => (err ? reject(err) : resolve(result))
           ).end(buffer);
