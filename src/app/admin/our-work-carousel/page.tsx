@@ -354,7 +354,7 @@ export default function OurWorkCarouselPage() {
                     className="object-contain"
                     sizes="(max-width: 768px) 100vw, 33vw"
                   />
-                  <div className="absolute top-2 right-2 flex gap-2">
+                  <div className="absolute top-2 right-2 flex gap-2 z-10">
                     <button
                       type="button"
                       onClick={() => setPreviewImage(slide.imageUrl)}
@@ -373,7 +373,7 @@ export default function OurWorkCarouselPage() {
                     </button>
                   </div>
                   {slide.isActive && (
-                    <div className="absolute top-2 left-2 bg-green-500 text-white px-2 py-1 rounded text-xs font-medium">
+                    <div className="absolute top-2 left-2 z-10 bg-green-500 text-white px-2 py-1 rounded text-xs font-medium">
                       ACTIVE
                     </div>
                   )}
