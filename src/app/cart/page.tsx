@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -13,6 +13,26 @@ export default function CartPage() {
   const router = useRouter();
   const { items, removeItem, updateQuantity, getTotal, clearCart } = useCart();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [productsEnabled, setProductsEnabled] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const check = async () => {
+      try {
+        const res = await fetch('/api/site-settings?key=productsEnabled');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.value === false) {
+            router.replace('/');
+            return;
+          }
+        }
+        setProductsEnabled(true);
+      } catch {
+        setProductsEnabled(true);
+      }
+    };
+    check();
+  }, [router]);
 
   const handleQuantityChange = (productId: string, size: string, newQuantity: number, customization?: { name?: string; number?: string }) => {
     if (newQuantity >= 0 && newQuantity <= 10) {
@@ -30,6 +50,18 @@ export default function CartPage() {
       setIsProcessing(false);
     }
   };
+
+  if (productsEnabled === null) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-grow bg-gray-50 py-12 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600" />
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col">

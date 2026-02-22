@@ -7,6 +7,7 @@ import StripeProvider from '../components/StripeProvider';
 import PaymentForm from './PaymentForm';
 import ShippingForm, { ShippingDetails } from './ShippingForm';
 import Header from '../components/Header';
+import Footer from '../components/Footer';
 import Image from 'next/image';
 import { useVisitorId } from '../providers';
 import { useUser } from '@/context/UserContext';
@@ -58,6 +59,26 @@ export default function CheckoutPage() {
   const [voucherError, setVoucherError] = useState<string | null>(null);
   const visitorId = useVisitorId();
   const { user } = useUser();
+  const [productsEnabled, setProductsEnabled] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const check = async () => {
+      try {
+        const res = await fetch('/api/site-settings?key=productsEnabled');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.value === false) {
+            router.replace('/');
+            return;
+          }
+        }
+        setProductsEnabled(true);
+      } catch {
+        setProductsEnabled(true);
+      }
+    };
+    check();
+  }, [router]);
 
   useEffect(() => {
     // Only redirect to cart if we're not in the middle of a payment process
@@ -199,6 +220,18 @@ export default function CheckoutPage() {
       setIsLoading(false);
     }
   };
+
+  if (productsEnabled === null) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-grow bg-gray-50 flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600" />
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   if (error) {
     let friendlyError = error;
