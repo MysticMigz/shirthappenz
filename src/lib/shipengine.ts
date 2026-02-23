@@ -13,6 +13,7 @@ interface ShipEngineAddress {
   postal_code: string;
   country_code: string;
   phone?: string;
+  email?: string;
   address_residential_indicator?: 'yes' | 'no';
 }
 
@@ -36,6 +37,25 @@ interface ShipEngineItem {
   weight?: ShipEngineWeight;
 }
 
+/** Customs product for international shipments (per-package product listing) */
+export interface ShipEngineCustomsProduct {
+  description: string;
+  quantity: number;
+  value: { currency: string; amount: number };
+  weight: ShipEngineWeight;
+  sku?: string;
+  harmonized_tariff_code?: string;
+  country_of_origin?: string;
+}
+
+/** Customs declaration for international shipments */
+export interface ShipEngineCustoms {
+  contents: 'gift' | 'merchandise' | 'returned_goods' | 'documents' | 'sample' | 'other';
+  contents_explanation?: string;
+  non_delivery: 'treat_as_abandoned' | 'return_to_sender';
+  declaration?: string;
+}
+
 interface CreateLabelRequest {
   carrier_id: string;
   service_code: string;
@@ -46,8 +66,10 @@ interface CreateLabelRequest {
   packages: Array<{
     weight: ShipEngineWeight;
     dimensions?: ShipEngineDimensions;
+    products?: ShipEngineCustomsProduct[];
   }>;
   items?: ShipEngineItem[];
+  customs?: ShipEngineCustoms;
   test_label?: boolean;
   label_download_type?: 'url' | 'inline';
   label_format?: 'pdf' | 'png' | 'zpl';

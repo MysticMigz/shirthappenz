@@ -5,6 +5,20 @@ import { connectToDatabase } from '@/backend/utils/database';
 import ShippingLabel from '@/backend/models/ShippingLabel';
 import ShipEngineAPI from '@/lib/shipengine';
 
+/** Normalize country name or code to ISO 3166-1 alpha-2 for ShipEngine. */
+function normalizeCountryCode(country: string): string {
+  if (!country || typeof country !== 'string') return 'GB';
+  const n = country.trim();
+  if (n.length === 2) return n.toUpperCase();
+  const map: Record<string, string> = {
+    'United Kingdom': 'GB', 'UK': 'GB', 'Great Britain': 'GB',
+    'Japan': 'JP', 'USA': 'US', 'United States': 'US', 'United States of America': 'US',
+    'Germany': 'DE', 'France': 'FR', 'Spain': 'ES', 'Italy': 'IT', 'Netherlands': 'NL',
+    'Ireland': 'IE', 'Australia': 'AU', 'Canada': 'CA', 'Mexico': 'MX'
+  };
+  return map[n] ?? map[n.replace(/\s+/g, ' ')] ?? n.substring(0, 2).toUpperCase();
+}
+
 // GET - List all custom shipping labels
 export async function GET(request: NextRequest) {
   try {
@@ -147,7 +161,9 @@ export async function POST(request: NextRequest) {
     // If EVRi method failed or we're using a different carrier, use generic createLabel
     if (!isEVRiStandard || !labelResponse) {
       // For other carriers or custom configurations, use the lower-level createLabel method
-      // Prepare ShipEngine address format
+      // Prepare ShipEngine address format (country_code must be ISO 3166-1 alpha-2)
+      const shipToCountryCode = normalizeCountryCode(shipTo.country);
+      const shipFromCountryCode = normalizeCountryCode(shipFrom.country);
       const shipToAddress = {
         name: shipTo.name,
         company: shipTo.company || '',
@@ -156,8 +172,9 @@ export async function POST(request: NextRequest) {
         city_locality: shipTo.city,
         state_province: shipTo.county,
         postal_code: shipTo.postcode,
-        country_code: shipTo.country === 'United Kingdom' ? 'GB' : shipTo.country,
+        country_code: shipToCountryCode,
         phone: shipTo.phone || '',
+        ...(shipTo.email && { email: shipTo.email }),
         address_residential_indicator: 'yes' as const
       };
 
@@ -169,26 +186,58 @@ export async function POST(request: NextRequest) {
         city_locality: shipFrom.city,
         state_province: shipFrom.county,
         postal_code: shipFrom.postcode,
-        country_code: shipFrom.country === 'United Kingdom' ? 'GB' : shipFrom.country,
+        country_code: shipFromCountryCode,
         phone: shipFrom.phone || '',
+        ...(shipFrom.email && { email: shipFrom.email }),
         address_residential_indicator: 'no' as const
       };
 
-      // Prepare packages
+      const isInternational = shipToCountryCode !== shipFromCountryCode;
+      // GlobalPost and some other international carriers require receiver email
+      if (isInternational && !shipTo.email?.trim()) {
+        return NextResponse.json(
+          { error: 'Receiver email is required for international shipping labels' },
+          { status: 400 }
+        );
+      }
+
+      // Build package payload; for international, add products (customs) per package
+      const packageWeight = {
+        value: packageData.weight.value,
+        unit: packageData.weight.unit
+      };
+      const packageDimensions = {
+        length: packageData.dimensions.length,
+        width: packageData.dimensions.width,
+        height: packageData.dimensions.height,
+        unit: packageData.dimensions.unit
+      };
+
+      const customsProducts = isInternational
+        ? items.map((item: any) => ({
+            description: (item.name || 'Item').substring(0, 100),
+            quantity: item.quantity ?? 1,
+            value: {
+              currency: 'GBP',
+              amount: Math.max(typeof item.unitPrice === 'number' ? item.unitPrice * (item.quantity ?? 1) : 10, 1)
+            },
+            weight: {
+              value: item.weight?.value ?? packageData.weight.value / Math.max(items.length, 1),
+              unit: item.weight?.unit ?? packageData.weight.unit
+            },
+            sku: (item.sku || item.name || '')?.substring(0, 20) || undefined,
+            harmonized_tariff_code: '6110', // Sweatshirts / jumpers
+            country_of_origin: shipFromCountryCode
+          }))
+        : undefined;
+
       const packages = [{
-        weight: {
-          value: packageData.weight.value,
-          unit: packageData.weight.unit
-        },
-        dimensions: {
-          length: packageData.dimensions.length,
-          width: packageData.dimensions.width,
-          height: packageData.dimensions.height,
-          unit: packageData.dimensions.unit
-        }
+        weight: packageWeight,
+        dimensions: packageDimensions,
+        ...(customsProducts && customsProducts.length > 0 ? { products: customsProducts } : {})
       }];
 
-      // Prepare items
+      // Prepare items (used for domestic; for international, products are on packages)
       const shipEngineItems = items.map((item: any) => ({
         name: item.name,
         sku: item.sku || '',
@@ -201,7 +250,7 @@ export async function POST(request: NextRequest) {
       }));
 
       // Create label request
-      const labelRequest = {
+      const labelRequest: Record<string, unknown> = {
         carrier_id: shipEngineConfig.carrierId,
         service_code: shipEngineConfig.serviceCode,
         external_shipment_id: shipEngineConfig.externalShipmentId || `custom-${Date.now()}`,
@@ -216,8 +265,16 @@ export async function POST(request: NextRequest) {
         label_layout: shipEngineConfig.labelLayout || '4x6'
       };
 
+      if (isInternational) {
+        labelRequest.customs = {
+          contents: 'merchandise',
+          non_delivery: 'return_to_sender',
+          declaration: 'I hereby certify that the information on this invoice is true and correct and the contents and value of this shipment is as stated above.'
+        };
+      }
+
       // Generate label via ShipEngine
-      labelResponse = await shipengine.createLabel(labelRequest);
+      labelResponse = await shipengine.createLabel(labelRequest as any);
     }
 
     // Save to database

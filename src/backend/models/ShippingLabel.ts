@@ -221,9 +221,7 @@ const ShippingLabelSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Indexes for faster queries
-ShippingLabelSchema.index({ trackingNumber: 1 });
-ShippingLabelSchema.index({ labelId: 1 });
+// Indexes for faster queries (trackingNumber and labelId already have unique indexes via unique: true)
 ShippingLabelSchema.index({ createdAt: -1 });
 ShippingLabelSchema.index({ status: 1 });
 

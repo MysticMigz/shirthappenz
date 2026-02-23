@@ -509,12 +509,15 @@ export default function CustomLabelsSection() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email {formData.shipTo.country && formData.shipTo.country !== 'United Kingdom' && <span className="text-amber-600">(required for international)</span>}
+                </label>
                 <input
                   type="email"
                   value={formData.shipTo.email}
                   onChange={(e) => setFormData(prev => ({ ...prev, shipTo: { ...prev.shipTo, email: e.target.value } }))}
                   className="w-full rounded-md border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500"
+                  required={formData.shipTo.country !== 'United Kingdom'}
                 />
               </div>
             </div>
@@ -891,7 +894,7 @@ export default function CustomLabelsSection() {
           <div className="flex gap-2 pt-4 border-t">
             <button
               onClick={handleGenerateLabel}
-              disabled={generating || !formData.shipTo.name || !formData.shipTo.address1 || !formData.shipTo.city || !formData.shipTo.postcode || !formData.shipEngineConfig.serviceCode}
+              disabled={generating || !formData.shipTo.name || !formData.shipTo.address1 || !formData.shipTo.city || !formData.shipTo.postcode || !formData.shipEngineConfig.serviceCode || (formData.shipTo.country !== 'United Kingdom' && !formData.shipTo.email?.trim())}
               className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400 font-medium"
             >
               {generating ? 'Generating Label...' : 'Generate Label'}
