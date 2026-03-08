@@ -63,8 +63,6 @@ const AboutPage = () => (
             <ul className="space-y-1">
               <li><strong>Business Name:</strong> MR SHIRT PERSONALISATION LTD</li>
               <li><strong>Legal Structure:</strong> Limited Company (Ltd)</li>
-              <li><strong>Trading Address:</strong> 10 Barney Close, SE7 8SS, United Kingdom</li>
-              <li><strong>Geographic Address:</strong> 10 Barney Close, SE7 8SS, United Kingdom</li>
             </ul>
           </div>
           <div>
