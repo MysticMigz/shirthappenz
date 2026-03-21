@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
     const sortBy = searchParams.get('sortBy');
     const search = searchParams.get('search');
     const customizable = searchParams.get('customizable'); // Allow filtering by customizable flag
+    const jerseyCustomOrderOnly = searchParams.get('jerseyCustomOrderOnly'); // Jersey custom order catalogue only
 
     // Build query
     const query: any = {};
@@ -53,6 +54,13 @@ export async function GET(request: NextRequest) {
     // If customizable is not specified or false, exclude customizable products (default behavior)
     if (customizable === 'true') {
       query.customizable = true;
+      // Jersey custom order form: only products marked for that flow
+      if (jerseyCustomOrderOnly === 'true') {
+        query.jerseyCustomOrderOnly = true;
+      } else {
+        // DTF / standard custom order form: exclude jersey-only catalogue rows
+        query.jerseyCustomOrderOnly = { $ne: true };
+      }
     } else {
       // Default: exclude customizable products from regular products page
       query.customizable = { $ne: true };

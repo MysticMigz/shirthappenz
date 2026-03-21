@@ -24,6 +24,7 @@ interface ProductFormData {
   colors: Array<{ name: string; hexCode: string; imageUrl?: string; stock?: { [size: string]: number } }>;
   featured: boolean;
   customizable: boolean;
+  jerseyCustomOrderOnly?: boolean;
   basePrice: number;
   stock: { [size: string]: number };
   barcode?: string;
@@ -102,6 +103,7 @@ export default function EditProduct({ params }: { params: { id: string } }) {
     colors: [],
     featured: false,
     customizable: true,
+    jerseyCustomOrderOnly: false,
     basePrice: 0,
     stock: {}
   });
@@ -258,7 +260,10 @@ export default function EditProduct({ params }: { params: { id: string } }) {
         if (!response.ok) throw new Error('Failed to fetch product');
         
         const product = await response.json();
-        setFormData(product);
+        setFormData({
+          ...product,
+          jerseyCustomOrderOnly: product.jerseyCustomOrderOnly === true,
+        });
         
         // Set mockup and design images if they exist
         if (product.mockupImage) {
@@ -341,10 +346,12 @@ export default function EditProduct({ params }: { params: { id: string } }) {
 
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: checked
-    }));
+    setFormData((prev) => {
+      if (name === 'customizable' && !checked) {
+        return { ...prev, customizable: false, jerseyCustomOrderOnly: false };
+      }
+      return { ...prev, [name]: checked };
+    });
   };
 
   const handleColorChange = (index: number, field: 'name' | 'hexCode' | 'imageUrl', value: string) => {
@@ -835,6 +842,7 @@ export default function EditProduct({ params }: { params: { id: string } }) {
         basePrice: Number(formData.basePrice),
         category: formData.category ? formData.category.toLowerCase() : '',
         gender: formData.gender ? formData.gender.toLowerCase() : '',
+        jerseyCustomOrderOnly: !!(formData.customizable && formData.jerseyCustomOrderOnly),
         mockupImage: mockupImageData,
         designImage: designImageData,
         mockupDesignCombinations: validCombinations, // Always include, even if empty array
@@ -1117,6 +1125,24 @@ export default function EditProduct({ params }: { params: { id: string } }) {
                   Customizable Product
                 </label>
               </div>
+
+              {formData.customizable && (
+                <label className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50/50 p-3">
+                  <input
+                    type="checkbox"
+                    name="jerseyCustomOrderOnly"
+                    checked={!!formData.jerseyCustomOrderOnly}
+                    onChange={handleCheckboxChange}
+                    className="mt-0.5 h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded"
+                  />
+                  <span>
+                    <span className="block text-sm font-medium text-gray-900">Jersey custom order form only</span>
+                    <span className="mt-0.5 block text-xs text-gray-600">
+                      If checked, this product appears only on the <strong>Jersey personalisation</strong> custom order form, not the DTF form.
+                    </span>
+                  </span>
+                </label>
+              )}
             </div>
 
             {/* Sizes and Stock */}

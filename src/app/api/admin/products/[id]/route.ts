@@ -3,6 +3,7 @@ import { connectToDatabase } from '@/backend/utils/database';
 import { requireAdmin } from '@/backend/utils/auth';
 import Product from '@/backend/models/Product';
 import StockAlert from '@/backend/models/StockAlert';
+import { parseBoolish } from '@/lib/validation';
 
 const LOW_STOCK_THRESHOLD = 5;
 
@@ -242,6 +243,23 @@ export async function PUT(
         count: Array.isArray(data.mockupDesignCombinations) ? data.mockupDesignCombinations.length : 0,
         combinations: data.mockupDesignCombinations
       });
+    }
+
+    // Normalize booleans (JSON sometimes sends strings; matches productSchema)
+    if ('featured' in data) data.featured = parseBoolish(data.featured, false);
+    if ('customizable' in data) {
+      data.customizable = parseBoolish(data.customizable, true);
+      if (!data.customizable) data.jerseyCustomOrderOnly = false;
+    }
+    if ('jerseyCustomOrderOnly' in data) {
+      let custom: boolean;
+      if ('customizable' in data) {
+        custom = parseBoolish(data.customizable, true);
+      } else {
+        const cur = await (Product as any).findById(params.id).select('customizable').lean();
+        custom = cur?.customizable ?? true;
+      }
+      data.jerseyCustomOrderOnly = !!(custom && parseBoolish(data.jerseyCustomOrderOnly, false));
     }
     
     const product = await (Product as any).findByIdAndUpdate(

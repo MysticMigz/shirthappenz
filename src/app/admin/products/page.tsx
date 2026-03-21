@@ -23,6 +23,7 @@ interface Product {
   stock: Map<string, Map<string, number>>;
   featured: boolean;
   customizable: boolean;
+  jerseyCustomOrderOnly?: boolean;
   basePrice: number;
   createdAt: string;
   updatedAt: string;
@@ -351,7 +352,19 @@ export default function AdminProducts() {
                           })()}
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{product.name}</div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-sm font-medium text-gray-900">{product.name}</span>
+                            {product.customizable && product.jerseyCustomOrderOnly && (
+                              <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">
+                                Jersey CO
+                              </span>
+                            )}
+                            {product.customizable && !product.jerseyCustomOrderOnly && (
+                              <span className="inline-flex items-center rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-800">
+                                DTF CO
+                              </span>
+                            )}
+                          </div>
                           <div className="text-sm text-gray-500">{product.description.substring(0, 50)}...</div>
                          {product.barcode && (
                            <div className="mt-1 flex flex-col items-start">

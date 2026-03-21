@@ -84,6 +84,13 @@ export async function POST(request: NextRequest) {
       postalCode: formData.get('postalCode') as string,
       
       // Customization Information
+      orderCategory: (formData.get('orderCategory') as string) || 'standard',
+      jerseySupply: (formData.get('jerseySupply') as string) || '',
+      jerseyPrintOption: (formData.get('jerseyPrintOption') as string) || '',
+      jerseyBackName: (formData.get('jerseyBackName') as string) || '',
+      jerseyBackNumber: (formData.get('jerseyBackNumber') as string) || '',
+      jerseyPrintColour: (formData.get('jerseyPrintColour') as string) || '',
+      jerseyBackPrintPriceGbp: parseFloat(formData.get('jerseyBackPrintPriceGbp') as string) || 0,
       selectedProduct: formData.get('selectedProduct') as string,
       quantity: parseInt(formData.get('quantity') as string) || 3,
       sizeQuantities: JSON.parse(formData.get('sizeQuantities') as string || '{}'),
@@ -115,12 +122,52 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Validate printing surface selection
-    if (!customOrderData.printingSurface || customOrderData.printingSurface.length === 0) {
-      return NextResponse.json(
-        { error: 'Please select at least one printing surface' },
-        { status: 400 }
-      );
+    if (customOrderData.orderCategory === 'jersey_personalisation') {
+      const js = customOrderData.jerseySupply;
+      if (js !== 'provide_own' && js !== 'purchase_through_us') {
+        return NextResponse.json(
+          { error: 'Please select whether you will provide the jersey or wish to purchase one through us.' },
+          { status: 400 }
+        );
+      }
+      const opt = customOrderData.jerseyPrintOption;
+      if (!['letters_only', 'numbers_only', 'both'].includes(opt)) {
+        return NextResponse.json(
+          { error: 'Please select letters only, numbers only, or both for back printing.' },
+          { status: 400 }
+        );
+      }
+      if (!String(customOrderData.jerseyPrintColour || '').trim()) {
+        return NextResponse.json(
+          { error: 'Please enter the colour for the letters and/or numbers.' },
+          { status: 400 }
+        );
+      }
+      if ((opt === 'letters_only' || opt === 'both') && !String(customOrderData.jerseyBackName || '').trim()) {
+        return NextResponse.json(
+          { error: 'Please enter the name for the back letters.' },
+          { status: 400 }
+        );
+      }
+      if ((opt === 'numbers_only' || opt === 'both') && !String(customOrderData.jerseyBackNumber || '').trim()) {
+        return NextResponse.json(
+          { error: 'Please enter the shirt number.' },
+          { status: 400 }
+        );
+      }
+      // Jersey orders are back-only
+      customOrderData.printingSurface = ['back'];
+      customOrderData.designLocation = ['center'];
+    }
+
+    // Validate printing surface selection (DTF / standard)
+    if (customOrderData.orderCategory !== 'jersey_personalisation') {
+      if (!customOrderData.printingSurface || customOrderData.printingSurface.length === 0) {
+        return NextResponse.json(
+          { error: 'Please select at least one printing surface' },
+          { status: 400 }
+        );
+      }
     }
 
     // Total quantity (for emails/admin visibility)
@@ -135,11 +182,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate design location selection
-    if (!customOrderData.designLocation || customOrderData.designLocation.length === 0) {
-      return NextResponse.json(
-        { error: 'Please select at least one design location' },
-        { status: 400 }
-      );
+    if (customOrderData.orderCategory !== 'jersey_personalisation') {
+      if (!customOrderData.designLocation || customOrderData.designLocation.length === 0) {
+        return NextResponse.json(
+          { error: 'Please select at least one design location' },
+          { status: 400 }
+        );
+      }
     }
 
     // Validate color selection
@@ -262,6 +311,13 @@ export async function POST(request: NextRequest) {
         to: adminEmail,
         orderId: String(result.insertedId),
         submittedAt: customOrderData.submittedAt,
+        orderCategory: customOrderData.orderCategory,
+        jerseySupply: customOrderData.jerseySupply,
+        jerseyPrintOption: customOrderData.jerseyPrintOption,
+        jerseyBackName: customOrderData.jerseyBackName,
+        jerseyBackNumber: customOrderData.jerseyBackNumber,
+        jerseyPrintColour: customOrderData.jerseyPrintColour,
+        jerseyBackPrintPriceGbp: customOrderData.jerseyBackPrintPriceGbp,
         customer: {
           firstName: customOrderData.firstName,
           lastName: customOrderData.lastName,
@@ -308,6 +364,13 @@ export async function POST(request: NextRequest) {
         orderId: String(result.insertedId),
         submittedAt: customOrderData.submittedAt,
         firstName: customOrderData.firstName,
+        orderCategory: customOrderData.orderCategory,
+        jerseySupply: customOrderData.jerseySupply,
+        jerseyPrintOption: customOrderData.jerseyPrintOption,
+        jerseyBackName: customOrderData.jerseyBackName,
+        jerseyBackNumber: customOrderData.jerseyBackNumber,
+        jerseyPrintColour: customOrderData.jerseyPrintColour,
+        jerseyBackPrintPriceGbp: customOrderData.jerseyBackPrintPriceGbp,
         product: {
           name: productDetails ? productDetails.name : customOrderData.selectedProduct,
           imageUrl: productImageUrl,

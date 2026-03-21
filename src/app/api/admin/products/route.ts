@@ -22,6 +22,7 @@ interface ProductData {
   stock: { [key: string]: number };
   featured?: boolean;
   customizable?: boolean;
+  jerseyCustomOrderOnly?: boolean;
   gender: string;
 }
 
@@ -206,6 +207,7 @@ export async function POST(request: NextRequest) {
         gender: formData.get('gender') as string,
         featured: formData.get('featured') === 'true',
         customizable: formData.get('customizable') === 'true',
+        jerseyCustomOrderOnly: formData.get('jerseyCustomOrderOnly') === 'true',
         sizes: JSON.parse(formData.get('sizes') as string || '[]'),
         colors: JSON.parse(colorsData || '[]'),
         stock: JSON.parse(formData.get('stock') as string || '{}')
@@ -467,7 +469,7 @@ export async function POST(request: NextRequest) {
     // Combine uploaded images and URL images
     const allImages = [...uploadedImageUrls, ...urlImages];
 
-    // Create product with validated data
+    // Create product with validated data (jerseyCustomOrderOnly already normalized in productSchema transform)
     const finalProductData: any = {
       name: validatedData.name.trim(),
       description: validatedData.description.trim(),
@@ -481,7 +483,8 @@ export async function POST(request: NextRequest) {
       images: allImages,
       stock: validatedData.stock,
       featured: validatedData.featured,
-      customizable: validatedData.customizable
+      customizable: validatedData.customizable,
+      jerseyCustomOrderOnly: validatedData.jerseyCustomOrderOnly,
     };
 
     // Add mockup and design images if they exist (legacy)

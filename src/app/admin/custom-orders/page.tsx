@@ -7,6 +7,13 @@ import { generateCustomOrderInvoicePDF } from '@/lib/pdf';
 
 interface CustomOrder {
   _id: string;
+  orderCategory?: string;
+  jerseySupply?: string;
+  jerseyPrintOption?: string;
+  jerseyBackName?: string;
+  jerseyBackNumber?: string;
+  jerseyPrintColour?: string;
+  jerseyBackPrintPriceGbp?: number;
   firstName: string;
   lastName: string;
   email: string;
@@ -1249,6 +1256,52 @@ export default function CustomOrdersPage() {
                   <div>
                     <h4 className="text-md font-medium text-gray-900 mb-3">Order Details</h4>
                     <div className="grid grid-cols-2 gap-4 text-sm">
+                      {selectedOrder.orderCategory === 'jersey_personalisation' && (
+                        <>
+                          <div>
+                            <span className="font-medium">Order type:</span>{' '}
+                            <span className="text-purple-700 font-medium">Jersey personalisation</span>
+                          </div>
+                          <div>
+                            <span className="font-medium">Jersey supply:</span>{' '}
+                            {selectedOrder.jerseySupply === 'provide_own'
+                              ? 'Customer provides the jersey'
+                              : selectedOrder.jerseySupply === 'purchase_through_us'
+                                ? 'Purchase jersey through us'
+                                : '—'}
+                          </div>
+                          <div>
+                            <span className="font-medium">Back print:</span>{' '}
+                            {selectedOrder.jerseyPrintOption === 'letters_only'
+                              ? 'Letters only'
+                              : selectedOrder.jerseyPrintOption === 'numbers_only'
+                                ? 'Numbers only'
+                                : selectedOrder.jerseyPrintOption === 'both'
+                                  ? 'Name + number'
+                                  : '—'}
+                          </div>
+                          {selectedOrder.jerseyBackName && (
+                            <div>
+                              <span className="font-medium">Name (back):</span> {selectedOrder.jerseyBackName}
+                            </div>
+                          )}
+                          {selectedOrder.jerseyBackNumber && (
+                            <div>
+                              <span className="font-medium">Number:</span> {selectedOrder.jerseyBackNumber}
+                            </div>
+                          )}
+                          <div>
+                            <span className="font-medium">Print colour:</span>{' '}
+                            {selectedOrder.jerseyPrintColour || '—'}
+                          </div>
+                          {typeof selectedOrder.jerseyBackPrintPriceGbp === 'number' && (
+                            <div>
+                              <span className="font-medium">Back print add-on:</span> £
+                              {selectedOrder.jerseyBackPrintPriceGbp} per garment
+                            </div>
+                          )}
+                        </>
+                      )}
                       <div>
                         <span className="font-medium">Product:</span> {selectedOrder.productDetails ? selectedOrder.productDetails.name : selectedOrder.selectedProduct}
                       </div>
@@ -1300,21 +1353,29 @@ export default function CustomOrdersPage() {
                       <div>
                         <span className="font-medium">Colors:</span> {Array.isArray(selectedOrder.selectedColors) ? selectedOrder.selectedColors.join(', ') : selectedOrder.selectedColors}
                       </div>
-                      <div>
-                        <span className="font-medium">Printing Type:</span> {selectedOrder.printingType}
-                      </div>
-                      <div>
-                        <span className="font-medium">Printing Surface:</span> {Array.isArray(selectedOrder.printingSurface) ? selectedOrder.printingSurface.join(', ') : selectedOrder.printingSurface}
-                      </div>
-                      <div>
-                        <span className="font-medium">Design Location:</span> {Array.isArray(selectedOrder.designLocation) ? selectedOrder.designLocation.join(', ') : selectedOrder.designLocation}
-                      </div>
-                      <div>
-                        <span className="font-medium">Paper Size:</span> {selectedOrder.paperSize || 'N/A'}
-                      </div>
-                      <div>
-                        <span className="font-medium">Custom Print Size:</span> {selectedOrder.printSize || 'N/A'}
-                      </div>
+                      {selectedOrder.orderCategory === 'jersey_personalisation' ? (
+                        <div>
+                          <span className="font-medium">Printing:</span> Back only (fixed placement)
+                        </div>
+                      ) : (
+                        <>
+                          <div>
+                            <span className="font-medium">Printing Type:</span> {selectedOrder.printingType}
+                          </div>
+                          <div>
+                            <span className="font-medium">Printing Surface:</span> {Array.isArray(selectedOrder.printingSurface) ? selectedOrder.printingSurface.join(', ') : selectedOrder.printingSurface}
+                          </div>
+                          <div>
+                            <span className="font-medium">Design Location:</span> {Array.isArray(selectedOrder.designLocation) ? selectedOrder.designLocation.join(', ') : selectedOrder.designLocation}
+                          </div>
+                          <div>
+                            <span className="font-medium">Paper Size:</span> {selectedOrder.paperSize || 'N/A'}
+                          </div>
+                          <div>
+                            <span className="font-medium">Custom Print Size:</span> {selectedOrder.printSize || 'N/A'}
+                          </div>
+                        </>
+                      )}
                       <div>
                         <span className="font-medium">Design Assistance:</span> {selectedOrder.needsDesignAssistance ? 'Yes' : 'No'}
                       </div>

@@ -20,6 +20,8 @@ interface ProductFormData {
   colors: Array<{ name: string; hexCode: string; imageUrl?: string; stock?: { [size: string]: number } }>;
   featured: boolean;
   customizable: boolean;
+  /** When true with customizable, product only appears on Jersey custom order form */
+  jerseyCustomOrderOnly: boolean;
   basePrice: string;
   stock: { [size: string]: number };
 }
@@ -101,6 +103,7 @@ export default function NewProduct() {
     colors: [],
     featured: false,
     customizable: true,
+    jerseyCustomOrderOnly: false,
     basePrice: '',
     stock: {}
   });
@@ -283,10 +286,12 @@ export default function NewProduct() {
 
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: checked
-    }));
+    setFormData((prev) => {
+      if (name === 'customizable' && !checked) {
+        return { ...prev, customizable: false, jerseyCustomOrderOnly: false };
+      }
+      return { ...prev, [name]: checked };
+    });
   };
 
   const handleColorChange = (index: number, field: 'name' | 'hexCode' | 'imageUrl', value: string) => {
@@ -797,6 +802,10 @@ export default function NewProduct() {
       formDataToSend.append('gender', formData.gender);
       formDataToSend.append('featured', formData.featured.toString());
       formDataToSend.append('customizable', formData.customizable.toString());
+      formDataToSend.append(
+        'jerseyCustomOrderOnly',
+        (formData.customizable && formData.jerseyCustomOrderOnly).toString()
+      );
       formDataToSend.append('sizes', JSON.stringify(formData.sizes));
       console.log('Form data colors being sent:', formData.colors);
       formDataToSend.append('colors', JSON.stringify(formData.colors));
@@ -2010,6 +2019,23 @@ export default function NewProduct() {
                     <span className="ml-2 text-sm text-gray-700">Customizable Product</span>
                   </label>
                 </div>
+                {formData.customizable && (
+                  <label className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50/50 p-3">
+                    <input
+                      type="checkbox"
+                      name="jerseyCustomOrderOnly"
+                      checked={formData.jerseyCustomOrderOnly}
+                      onChange={handleCheckboxChange}
+                      className="mt-0.5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <span>
+                      <span className="block text-sm font-medium text-gray-900">Jersey custom order form only</span>
+                      <span className="mt-0.5 block text-xs text-gray-600">
+                        If checked, this product appears only on the <strong>Jersey personalisation</strong> custom order form, not the DTF form. Leave unchecked for standard DTF custom orders.
+                      </span>
+                    </span>
+                  </label>
+                )}
               </div>
             </div>
 

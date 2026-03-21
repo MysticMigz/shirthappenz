@@ -127,6 +127,11 @@ const productSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  /** When true, product appears only on the Jersey custom order form (not DTF). Requires customizable. */
+  jerseyCustomOrderOnly: {
+    type: Boolean,
+    default: false
+  },
   basePrice: {
     type: Number,
     required: [true, 'Base price is required for customizable products']

@@ -1,10 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import {
+  useState,
+  useEffect,
+  type ChangeEvent,
+  type ChangeEventHandler,
+  type FormEvent,
+} from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Header from '@/app/components/Header';
 import { FaPhone, FaWhatsapp } from 'react-icons/fa';
+
+/** Fixed add-on price for jersey back name/number printing (per garment × quantity) */
+const JERSEY_BACK_PRINT_PRICE_GBP = 15;
 
 interface Product {
   _id: string;
@@ -31,6 +40,16 @@ interface CustomOrderForm {
   postalCode: string;
   
   // Customization Information
+  /** Standard catalog order vs jersey-only personalisation flow */
+  orderCategory: 'standard' | 'jersey_personalisation';
+  /** When jersey_personalisation: who supplies the jersey */
+  jerseySupply: '' | 'provide_own' | 'purchase_through_us';
+  /** Back print only: letters, numbers, or both — £15 for the print add-on */
+  jerseyPrintOption: '' | 'letters_only' | 'numbers_only' | 'both';
+  jerseyBackName: string;
+  jerseyBackNumber: string;
+  /** Colour of vinyl / letters & numbers on the back */
+  jerseyPrintColour: string;
   selectedProduct: string;
   quantity: number;
   sizeQuantities: { [color: string]: { [size: string]: number } };
@@ -45,17 +64,8 @@ interface CustomOrderForm {
   notes: string;
 }
 
-export default function CustomOrdersPage() {
-  const router = useRouter();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [previewProduct, setPreviewProduct] = useState<Product | null>(null);
-  const [previewColor, setPreviewColor] = useState<string>('');
-  const [previewImageIndex, setPreviewImageIndex] = useState<number>(0);
-
-  const [formData, setFormData] = useState<CustomOrderForm>({
+function getInitialFormData(): CustomOrderForm {
+  return {
     firstName: '',
     lastName: '',
     email: '',
@@ -66,6 +76,12 @@ export default function CustomOrdersPage() {
     city: '',
     province: '',
     postalCode: '',
+    orderCategory: 'standard',
+    jerseySupply: '',
+    jerseyPrintOption: '',
+    jerseyBackName: '',
+    jerseyBackNumber: '',
+    jerseyPrintColour: '',
     selectedProduct: '',
     quantity: 1,
     sizeQuantities: {},
@@ -77,11 +93,228 @@ export default function CustomOrdersPage() {
     paperSize: 'A4',
     designFiles: [],
     needsDesignAssistance: false,
-    notes: ''
-  });
+    notes: '',
+  };
+}
+
+type ActiveCustomOrderForm = 'dtf' | 'jersey' | null;
+
+type ContactInputChange = ChangeEventHandler<
+  HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+>;
+
+function ContactInformationSection({
+  formData,
+  handleInputChange,
+  variant = 'dtf',
+}: {
+  formData: CustomOrderForm;
+  handleInputChange: ContactInputChange;
+  variant?: 'dtf' | 'jersey';
+}) {
+  const ring =
+    variant === 'jersey'
+      ? 'focus:ring-emerald-500 focus:border-emerald-500/30'
+      : 'focus:ring-purple-500 focus:border-transparent';
+  const inputClass = `w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ${ring}`;
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm p-6">
+      <h2 className="text-2xl font-semibold text-gray-900 mb-6">Contact Information</h2>
+      <p className="text-gray-600 mb-6">
+        Please introduce yourself. We will contact you within 2 working days to arrange all the details to create the
+        perfect customization for you.
+      </p>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
+            First Name *
+          </label>
+          <input
+            type="text"
+            id="firstName"
+            name="firstName"
+            required
+            value={formData.firstName}
+            onChange={handleInputChange}
+            className={inputClass}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
+            Last Name *
+          </label>
+          <input
+            type="text"
+            id="lastName"
+            name="lastName"
+            required
+            value={formData.lastName}
+            onChange={handleInputChange}
+            className={inputClass}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+            Email *
+          </label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            required
+            value={formData.email}
+            onChange={handleInputChange}
+            className={inputClass}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+            Phone *
+          </label>
+          <input
+            type="tel"
+            id="phone"
+            name="phone"
+            required
+            value={formData.phone}
+            onChange={handleInputChange}
+            className={inputClass}
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Preferred Contact Method</label>
+          <div className="flex space-x-4">
+            <label className="flex items-center">
+              <input
+                type="radio"
+                name="preferredContact"
+                value="email"
+                checked={formData.preferredContact === 'email'}
+                onChange={handleInputChange}
+                className="mr-2"
+              />
+              Email
+            </label>
+            <label className="flex items-center">
+              <input
+                type="radio"
+                name="preferredContact"
+                value="phone"
+                checked={formData.preferredContact === 'phone'}
+                onChange={handleInputChange}
+                className="mr-2"
+              />
+              Phone
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-2">
+            Company
+          </label>
+          <input
+            type="text"
+            id="company"
+            name="company"
+            value={formData.company}
+            onChange={handleInputChange}
+            className={inputClass}
+          />
+        </div>
+
+        <div className="md:col-span-2">
+          <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
+            Address *
+          </label>
+          <input
+            type="text"
+            id="address"
+            name="address"
+            required
+            value={formData.address}
+            onChange={handleInputChange}
+            className={inputClass}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-2">
+            City *
+          </label>
+          <input
+            type="text"
+            id="city"
+            name="city"
+            required
+            value={formData.city}
+            onChange={handleInputChange}
+            className={inputClass}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="province" className="block text-sm font-medium text-gray-700 mb-2">
+            Province *
+          </label>
+          <input
+            type="text"
+            id="province"
+            name="province"
+            required
+            value={formData.province}
+            onChange={handleInputChange}
+            className={inputClass}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="postalCode" className="block text-sm font-medium text-gray-700 mb-2">
+            Postal Code *
+          </label>
+          <input
+            type="text"
+            id="postalCode"
+            name="postalCode"
+            required
+            value={formData.postalCode}
+            onChange={handleInputChange}
+            className={inputClass}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function CustomOrdersPage() {
+  const router = useRouter();
+  /** DTF custom order catalogue (excludes jersey-only rows) */
+  const [dtfProducts, setDtfProducts] = useState<Product[]>([]);
+  /** Jersey custom order catalogue (admin-uploaded jersey form products only) */
+  const [jerseyProducts, setJerseyProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [previewProduct, setPreviewProduct] = useState<Product | null>(null);
+  const [previewColor, setPreviewColor] = useState<string>('');
+  const [previewImageIndex, setPreviewImageIndex] = useState<number>(0);
+
+  /** null = show DTF vs Jersey chooser; set when user picks a form */
+  const [activeForm, setActiveForm] = useState<ActiveCustomOrderForm>(null);
+
+  const [formData, setFormData] = useState<CustomOrderForm>(() => getInitialFormData());
 
   const [selectedProductData, setSelectedProductData] = useState<Product | null>(null);
   const [dtfUnitPrices, setDtfUnitPrices] = useState<{ a4: number; a3: number } | null>(null);
+
+  const catalogProducts = activeForm === 'jersey' ? jerseyProducts : dtfProducts;
 
   const openPreview = (product: Product) => {
     setPreviewProduct(product);
@@ -132,13 +365,57 @@ export default function CustomOrdersPage() {
     }
   }, [message]);
 
+  const startDtfForm = () => {
+    setFormData({
+      ...getInitialFormData(),
+      orderCategory: 'standard',
+      jerseySupply: '',
+      jerseyPrintOption: '',
+      jerseyBackName: '',
+      jerseyBackNumber: '',
+      jerseyPrintColour: '',
+    });
+    setSelectedProductData(null);
+    setActiveForm('dtf');
+  };
+
+  const startJerseyForm = () => {
+    setFormData({
+      ...getInitialFormData(),
+      orderCategory: 'jersey_personalisation',
+      jerseySupply: '',
+      jerseyPrintOption: '',
+      jerseyBackName: '',
+      jerseyBackNumber: '',
+      jerseyPrintColour: '',
+      printingSurface: ['back'],
+      designLocation: ['center'],
+    });
+    setSelectedProductData(null);
+    setActiveForm('jersey');
+  };
+
+  const backToFormChooser = () => {
+    setFormData(getInitialFormData());
+    setSelectedProductData(null);
+    setActiveForm(null);
+    setMessage(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const fetchProducts = async () => {
     try {
-      // Only fetch customizable products for custom orders page
-      const response = await fetch('/api/products?customizable=true');
-      if (response.ok) {
-        const data = await response.json();
-        setProducts(data.products || []);
+      const [dtfRes, jerseyRes] = await Promise.all([
+        fetch('/api/products?customizable=true'),
+        fetch('/api/products?customizable=true&jerseyCustomOrderOnly=true'),
+      ]);
+      if (dtfRes.ok) {
+        const data = await dtfRes.json();
+        setDtfProducts(data.products || []);
+      }
+      if (jerseyRes.ok) {
+        const data = await jerseyRes.json();
+        setJerseyProducts(data.products || []);
       }
     } catch (error) {
       console.error('Error fetching products:', error);
@@ -147,8 +424,24 @@ export default function CustomOrdersPage() {
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
+
+    if (name === 'jerseySupply') {
+      setFormData((prev) => ({
+        ...prev,
+        jerseySupply: value as 'provide_own' | 'purchase_through_us',
+      }));
+      return;
+    }
+
+    if (name === 'jerseyPrintOption') {
+      setFormData((prev) => ({
+        ...prev,
+        jerseyPrintOption: value as CustomOrderForm['jerseyPrintOption'],
+      }));
+      return;
+    }
     
     if (type === 'checkbox') {
       const checked = (e.target as HTMLInputElement).checked;
@@ -162,7 +455,7 @@ export default function CustomOrdersPage() {
   };
 
   const handleProductChange = (productId: string) => {
-    const product = products.find(p => p._id === productId);
+    const product = catalogProducts.find((p) => p._id === productId);
     setSelectedProductData(product || null);
     
     // Initialize size quantities (will be set when colors are selected)
@@ -214,16 +507,72 @@ export default function CustomOrdersPage() {
     });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     setMessage(null);
 
+    if (formData.orderCategory === 'jersey_personalisation') {
+      if (!formData.jerseySupply || (formData.jerseySupply !== 'provide_own' && formData.jerseySupply !== 'purchase_through_us')) {
+        setMessage({
+          type: 'error',
+          text: 'Please choose whether you will provide the jersey or would like to purchase one through us.',
+        });
+        setSubmitting(false);
+        return;
+      }
+      const opt = formData.jerseyPrintOption;
+      if (!opt || !['letters_only', 'numbers_only', 'both'].includes(opt)) {
+        setMessage({
+          type: 'error',
+          text: 'Please choose whether you want letters only, numbers only, or both on the back.',
+        });
+        setSubmitting(false);
+        return;
+      }
+      if (!formData.jerseyPrintColour.trim()) {
+        setMessage({
+          type: 'error',
+          text: 'Please enter the colour for the letters and/or numbers.',
+        });
+        setSubmitting(false);
+        return;
+      }
+      if ((opt === 'letters_only' || opt === 'both') && !formData.jerseyBackName.trim()) {
+        setMessage({
+          type: 'error',
+          text: 'Please enter the name for the back letters.',
+        });
+        setSubmitting(false);
+        return;
+      }
+      if ((opt === 'numbers_only' || opt === 'both') && !formData.jerseyBackNumber.trim()) {
+        setMessage({
+          type: 'error',
+          text: 'Please enter the shirt number.',
+        });
+        setSubmitting(false);
+        return;
+      }
+    }
+
     try {
       const formDataToSend = new FormData();
-      
+
+      const payload: CustomOrderForm & { jerseyBackPrintPriceGbp?: number } = {
+        ...formData,
+        ...(formData.orderCategory === 'jersey_personalisation'
+          ? {
+              printingSurface: ['back'],
+              designLocation: ['center'],
+              jerseyBackPrintPriceGbp: JERSEY_BACK_PRINT_PRICE_GBP,
+              needsDesignAssistance: false,
+            }
+          : {}),
+      };
+
       // Add all form fields
-      Object.entries(formData).forEach(([key, value]) => {
+      Object.entries(payload).forEach(([key, value]) => {
         if (value !== null && value !== undefined) {
           if (key === 'designFiles' && Array.isArray(value)) {
             // Handle multiple files
@@ -260,33 +609,15 @@ export default function CustomOrdersPage() {
         // Scroll to top of page
         window.scrollTo({ top: 0, behavior: 'smooth' });
         
-        setFormData({
-          firstName: '',
-          lastName: '',
-          email: '',
-          phone: '',
-          preferredContact: 'email',
-          company: '',
-          address: '',
-          city: '',
-          province: '',
-          postalCode: '',
-          selectedProduct: '',
-          quantity: 1,
-          sizeQuantities: {},
-          selectedColors: [],
-          printingType: 'dtf',
-          printingSurface: [],
-          designLocation: [],
-          printSize: '',
-          paperSize: 'A4',
-          designFiles: [],
-          needsDesignAssistance: false,
-          notes: ''
-        });
+        setFormData(getInitialFormData());
+        setSelectedProductData(null);
+        setActiveForm(null);
       } else {
         const error = await response.json();
-        setMessage({ type: 'error', text: error.message || 'Failed to submit custom order. Please try again.' });
+        setMessage({
+          type: 'error',
+          text: error.error || error.message || 'Failed to submit custom order. Please try again.',
+        });
       }
     } catch (error) {
       console.error('Error submitting custom order:', error);
@@ -524,7 +855,63 @@ export default function CustomOrdersPage() {
           </div>
         </div>
 
-        {/* Pricing Information */}
+        {/* Sticky form switcher — both options always visible; click to open or switch */}
+        <div className="sticky top-20 z-30 -mx-4 px-4 py-3 mb-6 border-b border-gray-200/80 bg-gray-50/95 backdrop-blur-sm shadow-sm sm:mx-0 sm:rounded-xl sm:border sm:border-gray-200 sm:top-24">
+          <p className="text-center text-xs font-medium text-gray-500 mb-2 sm:hidden">Choose order type</p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch sm:justify-center sm:gap-4 max-w-4xl mx-auto">
+            <button
+              type="button"
+              onClick={startDtfForm}
+              aria-pressed={activeForm === 'dtf'}
+              className={`flex flex-1 flex-col rounded-xl border-2 p-3 text-left transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 sm:min-h-[88px] sm:max-w-md ${
+                activeForm === 'dtf'
+                  ? 'border-purple-500 bg-purple-50 shadow-md ring-2 ring-purple-400/40 focus:ring-purple-500'
+                  : 'border-gray-200 bg-white hover:border-purple-300 hover:bg-purple-50/50 focus:ring-purple-500'
+              }`}
+            >
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-purple-600">Catalog &amp; DTF</span>
+              <span className="text-base font-bold text-gray-900">DTF custom order</span>
+              <span className="mt-1 text-xs text-gray-600 line-clamp-2 sm:line-clamp-none">
+                Garments from our range — t-shirts, hoodies, workwear &amp; DTF print details.
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={startJerseyForm}
+              aria-pressed={activeForm === 'jersey'}
+              className={`flex flex-1 flex-col rounded-xl border-2 p-3 text-left transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 sm:min-h-[88px] sm:max-w-md ${
+                activeForm === 'jersey'
+                  ? 'border-emerald-500 bg-emerald-50 shadow-md ring-2 ring-emerald-400/40 focus:ring-emerald-500'
+                  : 'border-gray-200 bg-white hover:border-emerald-300 hover:bg-emerald-50/50 focus:ring-emerald-500'
+              }`}
+            >
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700">Sports kits</span>
+              <span className="text-base font-bold text-gray-900">Jersey personalisation</span>
+              <span className="mt-1 text-xs text-gray-600 line-clamp-2 sm:line-clamp-none">
+                Back print only — name, number &amp; colour (£15/item). Letters and/or numbers. You supply the shirt or we can source it.
+              </span>
+            </button>
+          </div>
+          {!activeForm && (
+            <p className="text-center text-sm text-gray-600 mt-3 max-w-xl mx-auto">
+              Select <strong>DTF</strong> or <strong>Jersey</strong> above to load the right form. You can switch any time — your current entries will be cleared when you switch.
+            </p>
+          )}
+          {activeForm && (
+            <div className="flex justify-center mt-3">
+              <button
+                type="button"
+                onClick={backToFormChooser}
+                className="text-sm text-gray-500 hover:text-gray-800 underline underline-offset-2"
+              >
+                Clear form and hide options
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Pricing Information — DTF form only */}
+        {activeForm === 'dtf' && (
         <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
           <h2 className="text-2xl font-semibold text-gray-900 mb-6">DTF Printing Pricing</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -567,19 +954,34 @@ export default function CustomOrdersPage() {
             </ul>
           </div>
         </div>
+        )}
 
-        {/* Customizable Products Preview */}
-        {products.length > 0 && (
+        {/* Jersey intro — Jersey form only */}
+        {activeForm === 'jersey' && (
+          <div className="bg-white rounded-lg shadow-sm border border-emerald-100 p-6 mb-8">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-2">Jersey back printing</h2>
+            <p className="text-gray-600">
+              <strong>Back only</strong> — choose letters only, numbers only, or both. Add the name, number, and vinyl colour. Back print add-on is <strong>£{JERSEY_BACK_PRINT_PRICE_GBP} per garment</strong> (plus your jersey). Tell us if you&apos;ll supply the shirt or want us to supply it in the form below.
+            </p>
+          </div>
+        )}
+
+        {/* Customizable Products Preview — after a form is chosen */}
+        {activeForm && catalogProducts.length > 0 && (
           <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
             <div className="mb-6">
-              <h2 className="text-2xl font-semibold text-gray-900">Customizable Products</h2>
+              <h2 className="text-2xl font-semibold text-gray-900">
+                {activeForm === 'jersey' ? 'Jersey catalogue' : 'Customizable Products'}
+              </h2>
               <p className="text-gray-600 mt-2">
-                Click a product image to preview available colours and photos.
+                {activeForm === 'jersey'
+                  ? 'Pick a jersey style from our catalogue, then enter your back name, number, and print colour in the form.'
+                  : 'Click a product image to preview available colours and photos.'}
               </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {products.map((product) => {
+              {catalogProducts.map((product) => {
                 const hasDiscount =
                   typeof product.basePrice === 'number' &&
                   typeof product.price === 'number' &&
@@ -695,6 +1097,21 @@ export default function CustomOrdersPage() {
           </div>
         )}
 
+        {activeForm && catalogProducts.length === 0 && (
+          <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-6 text-amber-900">
+            <p className="font-medium">
+              {activeForm === 'jersey'
+                ? 'No jersey catalogue products are available yet.'
+                : 'No DTF catalogue products are available yet.'}
+            </p>
+            <p className="mt-2 text-sm text-amber-800">
+              {activeForm === 'jersey'
+                ? 'We’re still adding jersey options. Please contact us by phone or email, or try again soon.'
+                : 'Please contact us if you need help placing a custom order.'}
+            </p>
+          </div>
+        )}
+
         {/* Message Display */}
         {message && (
           <div className={`mb-6 p-6 rounded-lg shadow-lg border-2 ${
@@ -747,183 +1164,178 @@ export default function CustomOrdersPage() {
           </div>
         )}
 
+        {activeForm && (
+        <>
         <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Contact Information Section */}
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-6">Contact Information</h2>
-            <p className="text-gray-600 mb-6">Please introduce yourself. We will contact you within 2 working days to arrange all the details to create the perfect customization for you.</p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
-                  First Name *
-                </label>
-                <input
-                  type="text"
-                  id="firstName"
-                  name="firstName"
-                  required
-                  value={formData.firstName}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
-                  Last Name *
-                </label>
-                <input
-                  type="text"
-                  id="lastName"
-                  name="lastName"
-                  required
-                  value={formData.lastName}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                  Email *
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  required
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone *
-                </label>
-                <input
-                  type="tel"
-                  id="phone"
-                  name="phone"
-                  required
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Preferred Contact Method
-                </label>
-                <div className="flex space-x-4">
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      name="preferredContact"
-                      value="email"
-                      checked={formData.preferredContact === 'email'}
-                      onChange={handleInputChange}
-                      className="mr-2"
-                    />
-                    Email
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      name="preferredContact"
-                      value="phone"
-                      checked={formData.preferredContact === 'phone'}
-                      onChange={handleInputChange}
-                      className="mr-2"
-                    />
-                    Phone
-                  </label>
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-2">
-                  Company
-                </label>
-                <input
-                  type="text"
-                  id="company"
-                  name="company"
-                  value={formData.company}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-2">
-                  Address *
-                </label>
-                <input
-                  type="text"
-                  id="address"
-                  name="address"
-                  required
-                  value={formData.address}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-2">
-                  City *
-                </label>
-                <input
-                  type="text"
-                  id="city"
-                  name="city"
-                  required
-                  value={formData.city}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="province" className="block text-sm font-medium text-gray-700 mb-2">
-                  Province *
-                </label>
-                <input
-                  type="text"
-                  id="province"
-                  name="province"
-                  required
-                  value={formData.province}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="postalCode" className="block text-sm font-medium text-gray-700 mb-2">
-                  Postal Code *
-                </label>
-                <input
-                  type="text"
-                  id="postalCode"
-                  name="postalCode"
-                  required
-                  value={formData.postalCode}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-          </div>
+          {/* Contact first for DTF; for Jersey this block is at the bottom of the form */}
+          {activeForm !== 'jersey' && (
+            <ContactInformationSection formData={formData} handleInputChange={handleInputChange} variant="dtf" />
+          )}
 
           {/* Customization Information Section */}
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h2 className="text-2xl font-semibold text-gray-900 mb-6">Customization Information</h2>
-            <p className="text-gray-600 mb-6">Now, tell us more about your design, the more the better</p>
+            <p className="text-gray-600 mb-6">
+              {activeForm === 'jersey'
+                ? 'Choose your jersey, then tell us the back name, number, and colour. DTF options below are hidden — this order is back printing only.'
+                : 'Now, tell us more about your design, the more the better'}
+            </p>
+
+            {/* Jersey form only: who supplies the jersey */}
+            {activeForm === 'jersey' && (
+              <div className="mb-8 rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50/80 to-white p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900 mb-1">Who supplies the jersey?</h3>
+                <p className="text-sm text-gray-600 mb-4">Choose one option — we&apos;ll confirm details when we contact you.</p>
+                <div className="space-y-3">
+                  <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 bg-white p-4 transition-colors hover:border-emerald-300">
+                    <input
+                      type="radio"
+                      name="jerseySupply"
+                      value="provide_own"
+                      checked={formData.jerseySupply === 'provide_own'}
+                      onChange={handleInputChange}
+                      className="mt-1 h-4 w-4 text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <span>
+                      <span className="font-medium text-gray-900">I will provide the jersey</span>
+                      <span className="mt-1 block text-sm text-gray-600">
+                        You&apos;ll send or bring your own jersey(s) for us to personalise.
+                      </span>
+                    </span>
+                  </label>
+                  <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 bg-white p-4 transition-colors hover:border-emerald-300">
+                    <input
+                      type="radio"
+                      name="jerseySupply"
+                      value="purchase_through_us"
+                      checked={formData.jerseySupply === 'purchase_through_us'}
+                      onChange={handleInputChange}
+                      className="mt-1 h-4 w-4 text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <span>
+                      <span className="font-medium text-gray-900">I want to buy a jersey through you</span>
+                      <span className="mt-1 block text-sm text-gray-600">
+                        We&apos;ll help you choose and supply the garment(s), then add your personalisation.
+                      </span>
+                    </span>
+                  </label>
+                </div>
+              </div>
+            )}
+
+            {/* Jersey: back printing only — name / number / colour */}
+            {activeForm === 'jersey' && (
+              <div className="mb-8 rounded-xl border-2 border-emerald-300 bg-white p-6 shadow-sm">
+                <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2 border-b border-emerald-100 pb-3">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Back printing</h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      <strong>Back printing only.</strong> Choose letters only, numbers only, or both. The add-on is{' '}
+                      <strong>£{JERSEY_BACK_PRINT_PRICE_GBP} per garment</strong> (multiplied by your quantities below — plus jersey cost).
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-emerald-100 px-3 py-1 text-sm font-bold text-emerald-800">
+                    £{JERSEY_BACK_PRINT_PRICE_GBP} / item
+                  </span>
+                </div>
+
+                <p className="text-sm font-medium text-gray-900 mb-3">What do you need on the back? *</p>
+                <div className="space-y-3 mb-6">
+                  <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 p-3 hover:bg-emerald-50/50">
+                    <input
+                      type="radio"
+                      name="jerseyPrintOption"
+                      value="letters_only"
+                      checked={formData.jerseyPrintOption === 'letters_only'}
+                      onChange={handleInputChange}
+                      className="mt-1 h-4 w-4 text-emerald-600"
+                    />
+                    <span>
+                      <span className="font-medium text-gray-900">Letters only</span>
+                      <span className="block text-sm text-gray-600">Name or wording on the back only</span>
+                    </span>
+                  </label>
+                  <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 p-3 hover:bg-emerald-50/50">
+                    <input
+                      type="radio"
+                      name="jerseyPrintOption"
+                      value="numbers_only"
+                      checked={formData.jerseyPrintOption === 'numbers_only'}
+                      onChange={handleInputChange}
+                      className="mt-1 h-4 w-4 text-emerald-600"
+                    />
+                    <span>
+                      <span className="font-medium text-gray-900">Numbers only</span>
+                      <span className="block text-sm text-gray-600">Shirt number on the back only</span>
+                    </span>
+                  </label>
+                  <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 p-3 hover:bg-emerald-50/50">
+                    <input
+                      type="radio"
+                      name="jerseyPrintOption"
+                      value="both"
+                      checked={formData.jerseyPrintOption === 'both'}
+                      onChange={handleInputChange}
+                      className="mt-1 h-4 w-4 text-emerald-600"
+                    />
+                    <span>
+                      <span className="font-medium text-gray-900">Name and number</span>
+                      <span className="block text-sm text-gray-600">Name and number together on the back</span>
+                    </span>
+                  </label>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {(formData.jerseyPrintOption === 'letters_only' || formData.jerseyPrintOption === 'both') && (
+                    <div className="md:col-span-2">
+                      <label htmlFor="jerseyBackName" className="block text-sm font-medium text-gray-700 mb-2">
+                        Name (back letters) *
+                      </label>
+                      <input
+                        id="jerseyBackName"
+                        name="jerseyBackName"
+                        type="text"
+                        value={formData.jerseyBackName}
+                        onChange={handleInputChange}
+                        placeholder="e.g. SMITH"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+                  )}
+                  {(formData.jerseyPrintOption === 'numbers_only' || formData.jerseyPrintOption === 'both') && (
+                    <div className="md:col-span-2">
+                      <label htmlFor="jerseyBackNumber" className="block text-sm font-medium text-gray-700 mb-2">
+                        Number *
+                      </label>
+                      <input
+                        id="jerseyBackNumber"
+                        name="jerseyBackNumber"
+                        type="text"
+                        value={formData.jerseyBackNumber}
+                        onChange={handleInputChange}
+                        placeholder="e.g. 10"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                    </div>
+                  )}
+                  <div className="md:col-span-2">
+                    <label htmlFor="jerseyPrintColour" className="block text-sm font-medium text-gray-700 mb-2">
+                      Colour (letters &amp; numbers) *
+                    </label>
+                    <input
+                      id="jerseyPrintColour"
+                      name="jerseyPrintColour"
+                      type="text"
+                      value={formData.jerseyPrintColour}
+                      onChange={handleInputChange}
+                      placeholder="e.g. White vinyl, gold, navy"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Colour of the vinyl / print for the back.</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Product Selection */}
             <div className="mb-6">
@@ -933,13 +1345,14 @@ export default function CustomOrdersPage() {
               <select
                 id="selectedProduct"
                 name="selectedProduct"
-                required
+                required={catalogProducts.length > 0}
+                disabled={catalogProducts.length === 0}
                 value={formData.selectedProduct}
                 onChange={(e) => handleProductChange(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               >
                 <option value="">Choose a product...</option>
-                {products.map((product) => (
+                {catalogProducts.map((product) => (
                   <option key={product._id} value={product._id}>
                     {product.name} - £{product.price}
                   </option>
@@ -1080,10 +1493,36 @@ export default function CustomOrdersPage() {
                   </p>
                   <p className="text-xs text-blue-600 mt-1">No minimum order quantity.</p>
                 </div>
+                {activeForm === 'jersey' && (
+                  <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+                    <p className="text-sm font-medium text-emerald-900">
+                      Back print add-on: £{JERSEY_BACK_PRINT_PRICE_GBP} ×{' '}
+                      {Object.values(formData.sizeQuantities).reduce((colorSum, colorQuantities) => {
+                        return (
+                          colorSum +
+                          Object.values(colorQuantities).reduce((sizeSum, qty) => sizeSum + (Number(qty) || 0), 0)
+                        );
+                      }, 0)}{' '}
+                      garment(s) = £
+                      {(
+                        JERSEY_BACK_PRINT_PRICE_GBP *
+                        Object.values(formData.sizeQuantities).reduce((colorSum, colorQuantities) => {
+                          return (
+                            colorSum +
+                            Object.values(colorQuantities).reduce((sizeSum, qty) => sizeSum + (Number(qty) || 0), 0)
+                          );
+                        }, 0)
+                      ).toFixed(2)}{' '}
+                      <span className="text-xs font-normal text-emerald-800">(plus garment cost — we&apos;ll confirm)</span>
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
 
+            {activeForm !== 'jersey' && (
+            <>
             {/* Printing Type */}
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-3">
@@ -1306,18 +1745,27 @@ export default function CustomOrdersPage() {
                 Specify custom dimensions if your design is smaller than the selected paper size
               </p>
             </div>
+            </>
+            )}
 
+            {activeForm === 'jersey' && (
+              <div className="mb-6 rounded-lg border border-emerald-100 bg-emerald-50/50 p-4">
+                <p className="text-sm text-emerald-900">
+                  <strong>Printing:</strong> Back only (fixed). Surface and placement are set automatically — no DTF paper options apply to this jersey order.
+                </p>
+              </div>
+            )}
 
             {/* File Upload */}
             <div className="mb-6">
               <label htmlFor="designFiles" className="block text-sm font-medium text-gray-700 mb-2">
-                Upload Your Design Files *
+                {activeForm === 'jersey' ? 'Upload reference files (optional)' : 'Upload Your Design Files *'}
               </label>
               <input
                 type="file"
                 id="designFiles"
                 name="designFiles"
-                required
+                required={activeForm !== 'jersey'}
                 multiple
                 accept=".jpg,.jpeg,.png,.pdf,.ai,.eps,.svg"
                 onChange={(e) => {
@@ -1348,21 +1796,23 @@ export default function CustomOrdersPage() {
               )}
             </div>
 
-            {/* Design Assistance */}
-            <div className="mb-6">
-              <label className="flex items-center space-x-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  name="needsDesignAssistance"
-                  checked={formData.needsDesignAssistance}
-                  onChange={handleInputChange}
-                  className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                />
-                <span className="text-sm font-medium text-gray-700">
-                  Will you need design assistance? This service will have an additional fee.
-                </span>
-              </label>
-            </div>
+            {/* Design Assistance — not offered on Jersey back-printing flow */}
+            {activeForm !== 'jersey' && (
+              <div className="mb-6">
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="needsDesignAssistance"
+                    checked={formData.needsDesignAssistance}
+                    onChange={handleInputChange}
+                    className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Will you need design assistance? This service will have an additional fee.
+                  </span>
+                </label>
+              </div>
+            )}
 
             {/* Notes */}
             <div className="mb-6">
@@ -1381,57 +1831,72 @@ export default function CustomOrdersPage() {
             </div>
           </div>
 
+          {/* Jersey: contact details at bottom (after customization, before Need Help) */}
+          {activeForm === 'jersey' && (
+            <ContactInformationSection formData={formData} handleInputChange={handleInputChange} variant="jersey" />
+          )}
+
+          {/* Need help — business contact (inside form, before submit) */}
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h3 className="text-xl font-semibold text-gray-900 mb-4">Need Help?</h3>
+            <p className="text-gray-600 mb-8">
+              We will be more than happy to assist you to fill this form. Please contact one of our customer service agents.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="text-center">
+                <h4 className="font-medium text-gray-900 mb-3">Customer Service</h4>
+                <p className="text-sm text-gray-600 break-words px-4">customer.service@mrshirtpersonalisation.co.uk</p>
+              </div>
+              <div className="text-center">
+                <h4 className="font-medium text-gray-900 mb-3">Sales</h4>
+                <p className="text-sm text-gray-600 break-words px-4">customer.service@mrshirtpersonalisation.co.uk</p>
+              </div>
+              <div className="text-center">
+                <h4 className="font-medium text-gray-900 mb-3">Phone</h4>
+                <p className="text-sm text-gray-600 mb-3">07902 870 824</p>
+                <div className="flex justify-center gap-4">
+                  <a
+                    href="https://wa.me/447902870824"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-green-600 hover:text-green-700 transition-colors"
+                    aria-label="Contact us on WhatsApp"
+                  >
+                    <FaWhatsapp className="w-6 h-6" />
+                  </a>
+                  <a
+                    href="tel:07902870824"
+                    className="inline-flex items-center gap-2 text-gray-700 hover:text-gray-900 transition-colors"
+                    aria-label="Call us"
+                  >
+                    <FaPhone className="w-5 h-5" />
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Submit Button */}
           <div className="flex justify-center">
             <button
               type="submit"
-              disabled={submitting}
-              className="bg-purple-600 text-white px-8 py-3 rounded-lg font-medium hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={submitting || catalogProducts.length === 0}
+              className={`px-8 py-3 rounded-lg font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                activeForm === 'jersey'
+                  ? 'bg-emerald-600 text-white hover:bg-emerald-700 focus:ring-emerald-500'
+                  : 'bg-purple-600 text-white hover:bg-purple-700 focus:ring-purple-500'
+              }`}
             >
-              {submitting ? 'Submitting...' : 'Submit Custom Order'}
+              {submitting
+                ? 'Submitting...'
+                : activeForm === 'jersey'
+                  ? 'Submit jersey personalisation request'
+                  : 'Submit DTF custom order'}
             </button>
           </div>
         </form>
-
-        {/* Contact Information */}
-        <div className="mt-12 bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-xl font-semibold text-gray-900 mb-4">Need Help?</h3>
-          <p className="text-gray-600 mb-8">
-            We will be more than happy to assist you to fill this form. Please contact one of our customer service agents.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-center">
-              <h4 className="font-medium text-gray-900 mb-3">Customer Service</h4>
-              <p className="text-sm text-gray-600 break-words px-4">customer.service@mrshirtpersonalisation.co.uk</p>
-            </div>
-            <div className="text-center">
-              <h4 className="font-medium text-gray-900 mb-3">Sales</h4>
-              <p className="text-sm text-gray-600 break-words px-4">customer.service@mrshirtpersonalisation.co.uk</p>
-            </div>
-            <div className="text-center">
-              <h4 className="font-medium text-gray-900 mb-3">Phone</h4>
-              <p className="text-sm text-gray-600 mb-3">07902 870 824</p>
-              <div className="flex justify-center gap-4">
-                <a
-                  href="https://wa.me/447902870824"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 text-green-600 hover:text-green-700 transition-colors"
-                  aria-label="Contact us on WhatsApp"
-                >
-                  <FaWhatsapp className="w-6 h-6" />
-                </a>
-                <a
-                  href="tel:07902870824"
-                  className="inline-flex items-center gap-2 text-gray-700 hover:text-gray-900 transition-colors"
-                  aria-label="Call us"
-                >
-                  <FaPhone className="w-5 h-5" />
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
+        </>
+        )}
         </div>
       </div>
     </div>

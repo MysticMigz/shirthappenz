@@ -381,10 +381,30 @@ export async function sendOrderConfirmationEmail(
 
 type CustomOrderDesignFile = { name: string; url: string };
 
+function formatJerseySupplyLabel(jerseySupply?: string): string {
+  if (jerseySupply === 'provide_own') return 'Customer provides the jersey';
+  if (jerseySupply === 'purchase_through_us') return 'Purchase jersey through us';
+  return '—';
+}
+
+function formatJerseyPrintOption(opt?: string): string {
+  if (opt === 'letters_only') return 'Letters only';
+  if (opt === 'numbers_only') return 'Numbers only';
+  if (opt === 'both') return 'Name and number';
+  return '—';
+}
+
 export async function sendCustomOrderAdminNotificationEmail(params: {
   to: string;
   orderId: string;
   submittedAt: Date | string;
+  orderCategory?: string;
+  jerseySupply?: string;
+  jerseyPrintOption?: string;
+  jerseyBackName?: string;
+  jerseyBackNumber?: string;
+  jerseyPrintColour?: string;
+  jerseyBackPrintPriceGbp?: number;
   customer: {
     firstName: string;
     lastName: string;
@@ -452,6 +472,19 @@ export async function sendCustomOrderAdminNotificationEmail(params: {
       `
       : `<p style="margin: 8px 0 0 0; color:#6b7280;">No files uploaded.</p>`;
 
+  const jerseyRows =
+    params.orderCategory === 'jersey_personalisation'
+      ? `
+      <tr><td style="color:#6b7280;">Order type:</td><td style="font-weight: 600; text-align:right;">Jersey — back printing only</td></tr>
+      <tr><td style="color:#6b7280;">Jersey supply:</td><td style="font-weight: 500; text-align:right;">${escapeHtml(formatJerseySupplyLabel(params.jerseySupply))}</td></tr>
+      <tr><td style="color:#6b7280;">Back print option:</td><td style="font-weight: 500; text-align:right;">${escapeHtml(formatJerseyPrintOption(params.jerseyPrintOption))}</td></tr>
+      ${params.jerseyBackName ? `<tr><td style="color:#6b7280;">Name (letters):</td><td style="font-weight: 500; text-align:right;">${escapeHtml(params.jerseyBackName)}</td></tr>` : ''}
+      ${params.jerseyBackNumber ? `<tr><td style="color:#6b7280;">Number:</td><td style="font-weight: 500; text-align:right;">${escapeHtml(params.jerseyBackNumber)}</td></tr>` : ''}
+      <tr><td style="color:#6b7280;">Print colour:</td><td style="font-weight: 500; text-align:right;">${escapeHtml(params.jerseyPrintColour || '—')}</td></tr>
+      ${typeof params.jerseyBackPrintPriceGbp === 'number' ? `<tr><td style="color:#6b7280;">Back print rate:</td><td style="font-weight: 500; text-align:right;">£${escapeHtml(String(params.jerseyBackPrintPriceGbp))} per garment</td></tr>` : ''}
+    `
+      : '';
+
   const bodyHtml = `
     <h2 style="font-size: 20px; font-weight: 600; color: #1f2937; margin: 20px 0 12px 0;">Custom Order Submitted</h2>
     <table style="width: 100%; margin-bottom: 18px;">
@@ -459,10 +492,11 @@ export async function sendCustomOrderAdminNotificationEmail(params: {
       <tr><td style="color:#6b7280;">Submitted:</td><td style="font-weight: 500; text-align:right;">${escapeHtml(
         typeof params.submittedAt === 'string' ? params.submittedAt : params.submittedAt.toLocaleString('en-GB')
       )}</td></tr>
+      ${jerseyRows}
       <tr><td style="color:#6b7280;">Product:</td><td style="font-weight: 500; text-align:right;">${escapeHtml(params.product.name)}</td></tr>
       <tr><td style="color:#6b7280;">Total Units:</td><td style="font-weight: 600; text-align:right;">${escapeHtml(totalQuantity)}</td></tr>
-      <tr><td style="color:#6b7280;">Paper Size:</td><td style="font-weight: 500; text-align:right;">${escapeHtml(params.paperSize || 'A4')}</td></tr>
-      ${params.printSize ? `<tr><td style="color:#6b7280;">Print Size:</td><td style="font-weight: 500; text-align:right;">${escapeHtml(params.printSize)}</td></tr>` : ''}
+      ${params.orderCategory === 'jersey_personalisation' ? '' : `<tr><td style="color:#6b7280;">Paper Size:</td><td style="font-weight: 500; text-align:right;">${escapeHtml(params.paperSize || 'A4')}</td></tr>`}
+      ${params.orderCategory !== 'jersey_personalisation' && params.printSize ? `<tr><td style="color:#6b7280;">Print Size:</td><td style="font-weight: 500; text-align:right;">${escapeHtml(params.printSize)}</td></tr>` : ''}
     </table>
 
     <div style="background-color:#f9fafb; border-radius:8px; padding: 16px; margin: 18px 0;">
@@ -481,10 +515,17 @@ export async function sendCustomOrderAdminNotificationEmail(params: {
     <div style="background-color:#f9fafb; border-radius:8px; padding: 16px; margin: 18px 0;">
       <h3 style="margin:0 0 10px 0; font-size: 16px; color:#111827;">Printing</h3>
       <table style="width:100%;">
+        ${params.orderCategory === 'jersey_personalisation'
+          ? `
+        <tr><td style="color:#6b7280;">Placement:</td><td style="text-align:right; font-weight:500;">Back only (fixed)</td></tr>
+        <tr><td style="color:#6b7280;">Surface:</td><td style="text-align:right; font-weight:500;">Back</td></tr>
+        `
+          : `
         <tr><td style="color:#6b7280;">Type:</td><td style="text-align:right; font-weight:500;">${escapeHtml(params.printingType || 'DTF')}</td></tr>
         <tr><td style="color:#6b7280;">Surface:</td><td style="text-align:right; font-weight:500;">${escapeHtml(params.printingSurface.join(', ') || 'N/A')}</td></tr>
         <tr><td style="color:#6b7280;">Location:</td><td style="text-align:right; font-weight:500;">${escapeHtml(params.designLocation.join(', ') || 'N/A')}</td></tr>
         <tr><td style="color:#6b7280;">Design assistance:</td><td style="text-align:right; font-weight:500;">${params.needsDesignAssistance ? 'Yes' : 'No'}</td></tr>
+        `}
       </table>
     </div>
 
@@ -523,6 +564,13 @@ export async function sendCustomOrderCustomerConfirmationEmail(params: {
   orderId: string;
   submittedAt: Date | string;
   firstName: string;
+  orderCategory?: string;
+  jerseySupply?: string;
+  jerseyPrintOption?: string;
+  jerseyBackName?: string;
+  jerseyBackNumber?: string;
+  jerseyPrintColour?: string;
+  jerseyBackPrintPriceGbp?: number;
   product: { name: string; imageUrl?: string };
   paperSize?: string;
   printSize?: string;
@@ -578,6 +626,19 @@ export async function sendCustomOrderCustomerConfirmationEmail(params: {
     `
     : '';
 
+  const customerJerseyRows =
+    params.orderCategory === 'jersey_personalisation'
+      ? `
+      <tr><td style="color:#6b7280;">Order type:</td><td style="font-weight: 600; text-align:right;">Jersey — back printing</td></tr>
+      <tr><td style="color:#6b7280;">Jersey supply:</td><td style="font-weight: 500; text-align:right;">${escapeHtml(formatJerseySupplyLabel(params.jerseySupply))}</td></tr>
+      <tr><td style="color:#6b7280;">Back print type:</td><td style="font-weight: 500; text-align:right;">${escapeHtml(formatJerseyPrintOption(params.jerseyPrintOption))}</td></tr>
+      ${params.jerseyBackName ? `<tr><td style="color:#6b7280;">Name:</td><td style="font-weight: 500; text-align:right;">${escapeHtml(params.jerseyBackName)}</td></tr>` : ''}
+      ${params.jerseyBackNumber ? `<tr><td style="color:#6b7280;">Number:</td><td style="font-weight: 500; text-align:right;">${escapeHtml(params.jerseyBackNumber)}</td></tr>` : ''}
+      <tr><td style="color:#6b7280;">Print colour:</td><td style="font-weight: 500; text-align:right;">${escapeHtml(params.jerseyPrintColour || '—')}</td></tr>
+      ${typeof params.jerseyBackPrintPriceGbp === 'number' ? `<tr><td style="color:#6b7280;">Add-on price:</td><td style="font-weight: 500; text-align:right;">£${escapeHtml(String(params.jerseyBackPrintPriceGbp))} per garment</td></tr>` : ''}
+    `
+      : '';
+
   const bodyHtml = `
     <p style="font-size: 16px; color: #374151; margin-top: 20px;">
       Hi ${escapeHtml(params.firstName)},<br/>
@@ -590,17 +651,24 @@ export async function sendCustomOrderCustomerConfirmationEmail(params: {
       <tr><td style="color:#6b7280;">Submitted:</td><td style="font-weight: 500; text-align:right;">${escapeHtml(
         typeof params.submittedAt === 'string' ? params.submittedAt : params.submittedAt.toLocaleString('en-GB')
       )}</td></tr>
+      ${customerJerseyRows}
       <tr><td style="color:#6b7280;">Product:</td><td style="font-weight: 500; text-align:right;">${escapeHtml(params.product.name)}</td></tr>
       <tr><td style="color:#6b7280;">Total Units:</td><td style="font-weight: 600; text-align:right;">${escapeHtml(totalQuantity)}</td></tr>
-      <tr><td style="color:#6b7280;">Paper Size:</td><td style="font-weight: 500; text-align:right;">${escapeHtml(params.paperSize || 'A4')}</td></tr>
-      ${params.printSize ? `<tr><td style="color:#6b7280;">Print Size:</td><td style="font-weight: 500; text-align:right;">${escapeHtml(params.printSize)}</td></tr>` : ''}
+      ${params.orderCategory === 'jersey_personalisation' ? '' : `<tr><td style="color:#6b7280;">Paper Size:</td><td style="font-weight: 500; text-align:right;">${escapeHtml(params.paperSize || 'A4')}</td></tr>`}
+      ${params.orderCategory !== 'jersey_personalisation' && params.printSize ? `<tr><td style="color:#6b7280;">Print Size:</td><td style="font-weight: 500; text-align:right;">${escapeHtml(params.printSize)}</td></tr>` : ''}
     </table>
 
     <div style="background-color:#f9fafb; border-radius:8px; padding: 16px; margin: 18px 0;">
       <h3 style="margin:0 0 10px 0; font-size: 16px; color:#111827;">Printing preferences</h3>
       <table style="width:100%;">
+        ${params.orderCategory === 'jersey_personalisation'
+          ? `
+        <tr><td style="color:#6b7280;">Placement:</td><td style="text-align:right; font-weight:500;">Back only</td></tr>
+        `
+          : `
         <tr><td style="color:#6b7280;">Surface:</td><td style="text-align:right; font-weight:500;">${escapeHtml(params.printingSurface.join(', ') || 'N/A')}</td></tr>
         <tr><td style="color:#6b7280;">Location:</td><td style="text-align:right; font-weight:500;">${escapeHtml(params.designLocation.join(', ') || 'N/A')}</td></tr>
+        `}
       </table>
     </div>
 

@@ -216,6 +216,14 @@ export const orderSchema = z.object({
   orderSource: z.string().optional()
 });
 
+/** FormData / JSON often send booleans as strings; avoid Boolean("false") === true */
+export function parseBoolish(val: unknown, defaultVal = false): boolean {
+  if (val === true || val === 'true') return true;
+  if (val === false || val === 'false') return false;
+  if (val === undefined || val === null || val === '') return defaultVal;
+  return Boolean(val);
+}
+
 // Product validation schema
 export const productSchema = z.object({
   name: z.string().min(1, 'Product name is required').max(200),
@@ -240,9 +248,14 @@ export const productSchema = z.object({
     color: z.string().optional()
   })).optional().default([]),
   stock: z.record(z.string(), z.number().int().min(0)),
-  featured: z.boolean().default(false),
-  customizable: z.boolean().default(true)
-});
+  featured: z.preprocess((v) => parseBoolish(v, false), z.boolean()),
+  customizable: z.preprocess((v) => parseBoolish(v, true), z.boolean()),
+  jerseyCustomOrderOnly: z.preprocess((v) => parseBoolish(v, false), z.boolean())
+}).transform((data) => ({
+  ...data,
+  /** Jersey-only flag only applies when product is customizable (matches API + UI) */
+  jerseyCustomOrderOnly: !!(data.jerseyCustomOrderOnly && data.customizable),
+}));
 
 // Validate and sanitize input
 export function validateAndSanitize<T>(

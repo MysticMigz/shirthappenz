@@ -102,8 +102,8 @@ const Header = () => {
                 alt="MR SHIRT PERSONALISATION Logo"
                 width={600}
                 height={240}
-                sizes="(max-width: 640px) 140px, (max-width: 768px) 180px, (max-width: 1024px) 220px, 260px"
-                className="w-[140px] sm:w-[180px] md:w-[220px] lg:w-[260px] h-auto object-contain brightness-110 transition-transform duration-300 ease-in-out group-hover:scale-110"
+                sizes="(max-width: 640px) 88px, (max-width: 768px) 112px, (max-width: 1024px) 136px, 160px"
+                className="w-[88px] sm:w-[112px] md:w-[136px] lg:w-[160px] h-auto object-contain brightness-110 transition-transform duration-300 ease-in-out group-hover:scale-110"
                 style={{ border: 'none', outline: 'none', boxShadow: 'none', background: 'transparent' }}
                 priority
               />
