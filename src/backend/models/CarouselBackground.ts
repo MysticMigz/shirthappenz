@@ -12,6 +12,8 @@ export interface ICarouselBackground {
   bgGradient: string; // Fallback gradient
   textColor: string;
   buttonColor: string;
+  /** Extra px margin above the CTA button (pushes button lower) */
+  buttonMarginTop?: number;
   isActive: boolean;
   order: number;
   createdAt: Date;
@@ -75,6 +77,12 @@ const CarouselBackgroundSchema = new mongoose.Schema<ICarouselBackground>({
     required: false,
     default: 'bg-white text-gray-900',
     trim: true
+  },
+  buttonMarginTop: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 600
   },
   isActive: {
     type: Boolean,

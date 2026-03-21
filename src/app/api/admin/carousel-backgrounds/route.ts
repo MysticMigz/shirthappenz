@@ -102,8 +102,9 @@ export async function POST(request: NextRequest) {
         { 
           folder: 'carousel-backgrounds',
           public_id: `carousel-${slideId}-${Date.now()}`,
+          // limit = scale to fit within max width; no crop (fill was cutting top/bottom of wide banners)
           transformation: [
-            { width: 1920, height: 1080, crop: 'fill', quality: 'auto' }
+            { width: 1920, crop: 'limit', quality: 'auto' }
           ]
         },
         (error, result) => {
@@ -142,6 +143,7 @@ export async function POST(request: NextRequest) {
       bgGradient: bgGradient || 'from-gray-800 to-gray-900',
       textColor: textColor || 'text-white',
       buttonColor: buttonColor || 'bg-white text-gray-900',
+      buttonMarginTop: 0,
       isActive: true,
       order: slideId
     });

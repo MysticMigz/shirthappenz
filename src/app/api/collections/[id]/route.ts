@@ -114,8 +114,9 @@ export async function PUT(
             { 
               folder: 'collections',
               public_id: `collection-${params.id}-${Date.now()}`,
+              // limit = fit inside box, preserve aspect ratio (no crop)
               transformation: [
-                { width: 800, height: 800, crop: 'fill', quality: 'auto' }
+                { width: 800, height: 800, crop: 'limit', quality: 'auto' }
               ]
             },
             (error, result) => {
@@ -166,7 +167,7 @@ export async function PUT(
               folder: 'collections',
               public_id: `collection-banner-${params.id}-${Date.now()}`,
               transformation: [
-                { width: 1920, height: 600, crop: 'fill', quality: 'auto' }
+                { width: 1920, crop: 'limit', quality: 'auto' }
               ]
             },
             (error, result) => {

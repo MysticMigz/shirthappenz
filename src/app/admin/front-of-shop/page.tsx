@@ -1,7 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { FaUpload, FaTrash, FaEye, FaEdit, FaSave, FaTimes } from 'react-icons/fa';
+import HeroSection from '@/app/components/HeroSection';
+import type { CarouselBackground as HeroCarouselBg } from '@/app/components/HeroSection';
 
 interface CarouselBackground {
   id: string;
@@ -15,6 +17,7 @@ interface CarouselBackground {
   bgGradient: string;
   textColor: string;
   buttonColor: string;
+  buttonMarginTop?: number;
   isActive: boolean;
   order: number;
   createdAt: string;
@@ -29,7 +32,8 @@ const defaultEditForm = {
   bgGradient: '',
   textColor: '',
   buttonColor: '',
-  order: 0
+  order: 0,
+  buttonMarginTop: 0,
 };
 
 export default function FrontOfShopPage() {
@@ -42,6 +46,59 @@ export default function FrontOfShopPage() {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [replacementImage, setReplacementImage] = useState<File | null>(null);
   const [replacementImagePreview, setReplacementImagePreview] = useState<string | null>(null);
+  const [siteProductsEnabled, setSiteProductsEnabled] = useState(true);
+
+  // Match homepage button labels (EXPLORE vs CUSTOM ORDERS)
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const response = await fetch('/api/site-settings?key=productsEnabled');
+        if (response.ok) {
+          const data = await response.json();
+          setSiteProductsEnabled(data.value !== false);
+        }
+      } catch {
+        setSiteProductsEnabled(true);
+      }
+    };
+    load();
+  }, []);
+
+  /** Value snapshot so any field change recomputes preview (not just object identity) */
+  const editFormSnapshot = useMemo(() => JSON.stringify(editForm), [editForm]);
+
+  /** Live preview data: active slides + unsaved edits while editing */
+  const previewSlides: HeroCarouselBg[] = useMemo(() => {
+    return backgrounds
+      .filter((bg) => bg.isActive && bg.imageUrl)
+      .sort((a, b) => a.order - b.order)
+      .map((bg) => {
+        const matchesEdit =
+          editingId != null &&
+          (bg.id === editingId || String(bg.id) === String(editingId));
+        if (matchesEdit) {
+          return {
+            ...bg,
+            title: editForm.title,
+            subtitle: editForm.subtitle,
+            description: editForm.description,
+            buttonText: editForm.buttonText,
+            buttonLink: editForm.buttonLink,
+            bgGradient: editForm.bgGradient,
+            textColor: editForm.textColor,
+            buttonColor: editForm.buttonColor,
+            buttonMarginTop: editForm.buttonMarginTop ?? 0,
+            order: editForm.order,
+            imageUrl: replacementImagePreview || bg.imageUrl,
+          };
+        }
+        return {
+          ...bg,
+          buttonMarginTop:
+            typeof bg.buttonMarginTop === 'number' ? bg.buttonMarginTop : 0,
+        };
+      });
+  }, [backgrounds, editingId, editFormSnapshot, replacementImagePreview]);
 
   // Load backgrounds on component mount
   useEffect(() => {
@@ -192,6 +249,10 @@ export default function FrontOfShopPage() {
       textColor: background.textColor,
       buttonColor: background.buttonColor || 'bg-white text-gray-900',
       order: background.order ?? background.slideId ?? 0,
+      buttonMarginTop:
+        typeof background.buttonMarginTop === 'number'
+          ? background.buttonMarginTop
+          : 0,
     });
     setReplacementImage(null);
     setReplacementImagePreview(null);
@@ -221,19 +282,32 @@ export default function FrontOfShopPage() {
         formData.append('textColor', editForm.textColor);
         formData.append('buttonColor', editForm.buttonColor);
         formData.append('order', String(editForm.order));
+        formData.append('buttonMarginTop', String(editForm.buttonMarginTop ?? 0));
 
         response = await fetch(`/api/admin/carousel-backgrounds/${editingId}`, {
           method: 'PATCH',
           body: formData,
         });
       } else {
-        // Otherwise, use JSON
+        // Explicit payload so buttonMarginTop is always sent (JSON.stringify drops undefined keys)
+        const savePayload = {
+          title: editForm.title,
+          subtitle: editForm.subtitle,
+          description: editForm.description,
+          buttonText: editForm.buttonText,
+          buttonLink: editForm.buttonLink,
+          bgGradient: editForm.bgGradient,
+          textColor: editForm.textColor,
+          buttonColor: editForm.buttonColor,
+          order: editForm.order,
+          buttonMarginTop: Number(editForm.buttonMarginTop) || 0,
+        };
         response = await fetch(`/api/admin/carousel-backgrounds/${editingId}`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(editForm),
+          body: JSON.stringify(savePayload),
         });
       }
 
@@ -294,6 +368,26 @@ export default function FrontOfShopPage() {
         <a href="/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
           View Homepage
         </a>
+      </div>
+
+      {/* Live preview — matches homepage hero (card, object-cover, CTA) */}
+      <div className="mb-8 rounded-xl border border-gray-200 bg-gray-100 p-4 shadow-inner">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Live homepage carousel preview</h2>
+            <p className="text-sm text-gray-600">
+              Updates as you edit slides below. Uses the same layout as the public homepage (including products on/off:{' '}
+              <span className="font-medium">{siteProductsEnabled ? 'products enabled' : 'custom orders only'}</span>).
+            </p>
+          </div>
+        </div>
+        <div className="overflow-hidden rounded-lg bg-white ring-1 ring-gray-200">
+          <HeroSection
+            previewMode
+            previewSlides={previewSlides}
+            previewProductsEnabled={siteProductsEnabled}
+          />
+        </div>
       </div>
 
       {/* Slide Selection and Upload Section */}
@@ -601,6 +695,45 @@ export default function FrontOfShopPage() {
                           </div>
                         </div>
                         
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Button vertical offset (px)
+                          </label>
+                          <span className="mb-2 flex flex-wrap items-center gap-3 text-sm text-gray-600">
+                            <input
+                              type="range"
+                              min={0}
+                              max={600}
+                              step={4}
+                              value={editForm.buttonMarginTop ?? 0}
+                              onChange={(e) =>
+                                setEditForm({
+                                  ...editForm,
+                                  buttonMarginTop: parseInt(e.target.value, 10) || 0,
+                                })
+                              }
+                              className="inline-block h-2 w-48 max-w-full cursor-pointer accent-purple-600"
+                            />
+                            <input
+                              type="number"
+                              min={0}
+                              max={600}
+                              value={editForm.buttonMarginTop ?? 0}
+                              onChange={(e) =>
+                                setEditForm({
+                                  ...editForm,
+                                  buttonMarginTop: Math.min(
+                                    600,
+                                    Math.max(0, parseInt(e.target.value, 10) || 0)
+                                  ),
+                                })
+                              }
+                              className="w-20 rounded border border-gray-300 px-2 py-1 text-sm"
+                            />
+                            <span className="text-xs text-gray-500">Pushes the CTA below title/subtitle/description.</span>
+                          </span>
+                        </div>
+
                         {/* Button Color Selector */}
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">

@@ -73,7 +73,7 @@ export async function PATCH(
               folder: 'carousel-backgrounds',
               public_id: `carousel-${id}-${Date.now()}`,
               transformation: [
-                { width: 1920, height: 1080, crop: 'fill', quality: 'auto' }
+                { width: 1920, crop: 'limit', quality: 'auto' }
               ]
             },
             (error, result) => {
@@ -112,18 +112,52 @@ export async function PATCH(
         if (!isNaN(n)) updateData.order = n;
       }
 
+      const buttonMarginTopRaw = formData.get('buttonMarginTop');
+      if (buttonMarginTopRaw !== null && buttonMarginTopRaw !== '') {
+        const n = parseInt(String(buttonMarginTopRaw), 10);
+        if (!isNaN(n)) updateData.buttonMarginTop = Math.min(600, Math.max(0, n));
+      }
+
       // Only update imageUrl if a new image was uploaded
       if (imageUrl) {
         updateData.imageUrl = imageUrl;
       }
     } else {
-      // Handle JSON (no image)
+      // Handle JSON — partial updates (e.g. isActive-only toggle) + full save from admin form
       const body = await request.json();
-      updateData = {
-        ...body,
-        buttonColor: body.buttonColor || 'bg-white text-gray-900',
-        updatedAt: new Date()
-      };
+      updateData = { updatedAt: new Date() } as Record<string, unknown>;
+
+      if (body.title !== undefined) updateData.title = body.title;
+      if (body.subtitle !== undefined) updateData.subtitle = body.subtitle;
+      if (body.description !== undefined) updateData.description = body.description;
+      if (body.buttonText !== undefined) updateData.buttonText = body.buttonText;
+      if (body.buttonLink !== undefined) updateData.buttonLink = body.buttonLink;
+      if (body.bgGradient !== undefined) updateData.bgGradient = body.bgGradient;
+      if (body.textColor !== undefined) updateData.textColor = body.textColor;
+      if (body.buttonColor !== undefined) {
+        updateData.buttonColor = body.buttonColor || 'bg-white text-gray-900';
+      }
+      if (body.order !== undefined) {
+        const orderNum =
+          typeof body.order === 'number' && !Number.isNaN(body.order)
+            ? body.order
+            : parseInt(String(body.order ?? 0), 10);
+        updateData.order = Number.isNaN(orderNum) ? 0 : orderNum;
+      }
+      if (body.buttonMarginTop !== undefined && body.buttonMarginTop !== null) {
+        const marginRaw = body.buttonMarginTop;
+        const marginNum =
+          typeof marginRaw === 'number' && !Number.isNaN(marginRaw)
+            ? marginRaw
+            : parseInt(String(marginRaw), 10);
+        updateData.buttonMarginTop = Math.min(
+          600,
+          Math.max(0, Number.isNaN(marginNum) ? 0 : marginNum)
+        );
+      }
+      if (typeof body.isActive === 'boolean') {
+        updateData.isActive = body.isActive;
+      }
     }
 
     console.log('🔧 PATCH request received:', { id, updateData });

@@ -13,6 +13,9 @@ const AboutPage = () => (
         Welcome to <strong>MR Shirt Personalisation</strong>! We're your premier destination for high-quality custom apparel that brings your vision to life. Whether you're building a brand, celebrating a team, or expressing your personal style, we transform your ideas into wearable art that stands out.
       </p>
       <p className="text-lg mb-4 text-gray-700">
+        Our business is based in <strong>Charlton, SE7</strong>, serving customers across the UK with the same care and attention wherever you are.
+      </p>
+      <p className="text-lg mb-4 text-gray-700">
         <strong>What does the &ldquo;MR&rdquo; stand for?</strong> It represents <strong>Mastery</strong> and <strong>Reliability</strong> – the two pillars that define everything we do. We believe that exceptional custom apparel should be accessible to everyone, from individual creators to large organizations, without compromising on quality or service.
       </p>
       <p className="text-lg mb-4 text-gray-700">
@@ -63,6 +66,7 @@ const AboutPage = () => (
             <ul className="space-y-1">
               <li><strong>Business Name:</strong> MR SHIRT PERSONALISATION LTD</li>
               <li><strong>Legal Structure:</strong> Limited Company (Ltd)</li>
+              <li><strong>Location:</strong> Based in Charlton, SE7, United Kingdom</li>
             </ul>
           </div>
           <div>
