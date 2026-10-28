@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { NextRequest } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import User from '@/backend/models/User';
+import SiteSettings from '@/backend/models/SiteSettings';
 import { userRegistrationSchema, validateAndSanitize, sanitizeUserInput } from '@/lib/validation';
 import { sendRegistrationConfirmationEmail } from '@/lib/email';
 import { registrationRateLimiter } from '@/lib/rate-limit';
@@ -23,6 +24,16 @@ export async function POST(request: NextRequest) {
     }
 
     await connectToDatabase();
+
+    const registrationSetting = await (SiteSettings as any).findOne({ key: 'registrationEnabled' });
+    const registrationEnabled = registrationSetting ? registrationSetting.value !== false : true;
+    if (!registrationEnabled) {
+      return NextResponse.json(
+        { error: 'Registration is currently disabled' },
+        { status: 403 }
+      );
+    }
+
     const data = await request.json();
 
     // Validate and sanitize input using Zod

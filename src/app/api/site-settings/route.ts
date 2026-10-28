@@ -12,6 +12,9 @@ export async function GET(request: NextRequest) {
 
     const defaults: Record<string, any> = {
       productsEnabled: true,
+      registrationEnabled: true,
+      promoBannersEnabled: true,
+      checkoutEnabled: true,
     };
     
     if (key) {
@@ -42,6 +45,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ 
       settings: [
         { key: 'productsEnabled', value: true },
+        { key: 'registrationEnabled', value: true },
+        { key: 'promoBannersEnabled', value: true },
+        { key: 'checkoutEnabled', value: true },
       ]
     });
   }

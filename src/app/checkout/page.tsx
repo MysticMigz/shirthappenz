@@ -60,20 +60,31 @@ export default function CheckoutPage() {
   const visitorId = useVisitorId();
   const { user } = useUser();
   const [productsEnabled, setProductsEnabled] = useState<boolean | null>(null);
+  const [checkoutEnabled, setCheckoutEnabled] = useState<boolean | null>(null);
 
   useEffect(() => {
     const check = async () => {
       try {
-        const res = await fetch('/api/site-settings?key=productsEnabled');
+        const res = await fetch('/api/site-settings');
         if (res.ok) {
           const data = await res.json();
-          if (data.value === false) {
+          const map = Object.fromEntries(
+            (data.settings || []).map((s: { key: string; value: unknown }) => [s.key, s.value])
+          );
+          if (map.productsEnabled === false) {
             router.replace('/');
             return;
           }
+          if (map.checkoutEnabled === false) {
+            setCheckoutEnabled(false);
+            setProductsEnabled(true);
+            return;
+          }
         }
+        setCheckoutEnabled(true);
         setProductsEnabled(true);
       } catch {
+        setCheckoutEnabled(true);
         setProductsEnabled(true);
       }
     };
@@ -221,12 +232,35 @@ export default function CheckoutPage() {
     }
   };
 
-  if (productsEnabled === null) {
+  if (productsEnabled === null || checkoutEnabled === null) {
     return (
       <div className="min-h-screen flex flex-col">
         <Header />
         <main className="flex-grow bg-gray-50 flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600" />
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (!checkoutEnabled) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-grow bg-gray-50 flex items-center justify-center py-12 px-4">
+          <div className="bg-white p-8 rounded-xl shadow-lg max-w-md w-full text-center">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-3">Checkout unavailable</h2>
+            <p className="text-gray-600 mb-6">
+              Checkout is currently disabled. Please check back later or contact us if you need help with an order.
+            </p>
+            <button
+              onClick={() => router.push('/cart')}
+              className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+            >
+              Return to Cart
+            </button>
+          </div>
         </main>
         <Footer />
       </div>

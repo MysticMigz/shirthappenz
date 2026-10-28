@@ -41,20 +41,38 @@ export default function SiteSettingsPage() {
       }
       const data = await response.json();
       setSettings(data.settings || []);
-      
-      // If productsEnabled doesn't exist, create it with default value
-      if (!data.settings || !data.settings.find((s: SiteSetting) => s.key === 'productsEnabled')) {
-        await initializeProductsEnabled();
+      const existingKeys = new Set((data.settings || []).map((s: SiteSetting) => s.key));
+
+      const booleanDefaults = [
+        { key: 'productsEnabled', value: true, description: 'Enable or disable the products section for customers' },
+        { key: 'registrationEnabled', value: true, description: 'Enable or disable customer account registration' },
+        { key: 'promoBannersEnabled', value: true, description: 'Enable or disable animated promotional banners at the top of the site' },
+        { key: 'checkoutEnabled', value: true, description: 'Enable or disable customer checkout' },
+      ];
+
+      let created = false;
+      for (const setting of booleanDefaults) {
+        if (!existingKeys.has(setting.key)) {
+          await initializeSetting(setting.key, setting.value, setting.description);
+          created = true;
+        }
       }
 
-      // Initialize DTF pricing settings if missing
-      const hasA4 = data.settings?.some((s: SiteSetting) => s.key === 'dtfA4UnitPrice');
-      const hasA3 = data.settings?.some((s: SiteSetting) => s.key === 'dtfA3UnitPrice');
-      if (!hasA4) {
-        await initializeNumberSetting('dtfA4UnitPrice', 10, 'DTF unit price for A4 print size');
+      if (!existingKeys.has('dtfA4UnitPrice')) {
+        await initializeSetting('dtfA4UnitPrice', 10, 'DTF unit price for A4 print size');
+        created = true;
       }
-      if (!hasA3) {
-        await initializeNumberSetting('dtfA3UnitPrice', 12.5, 'DTF unit price for A3 print size');
+      if (!existingKeys.has('dtfA3UnitPrice')) {
+        await initializeSetting('dtfA3UnitPrice', 12.5, 'DTF unit price for A3 print size');
+        created = true;
+      }
+
+      if (created) {
+        const refreshed = await fetch('/api/admin/site-settings');
+        if (refreshed.ok) {
+          const refreshedData = await refreshed.json();
+          setSettings(refreshedData.settings || []);
+        }
       }
     } catch (err: any) {
       setError(err.message);
@@ -63,35 +81,20 @@ export default function SiteSettingsPage() {
     }
   };
 
-  const initializeProductsEnabled = async () => {
-    try {
-      const response = await fetch('/api/admin/site-settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          key: 'productsEnabled',
-          value: true,
-          description: 'Enable or disable the products section for customers'
-        })
-      });
-      if (response.ok) {
-        await fetchSettings();
-      }
-    } catch (err) {
-      console.error('Error initializing productsEnabled setting:', err);
-    }
+  const SETTING_DESCRIPTIONS: Record<string, string> = {
+    productsEnabled: 'Enable or disable the products section for customers',
+    registrationEnabled: 'Enable or disable customer account registration',
+    promoBannersEnabled: 'Enable or disable animated promotional banners at the top of the site',
+    checkoutEnabled: 'Enable or disable customer checkout',
   };
 
-  const initializeNumberSetting = async (key: string, value: number, description: string) => {
+  const initializeSetting = async (key: string, value: boolean | number, description: string) => {
     try {
-      const response = await fetch('/api/admin/site-settings', {
+      await fetch('/api/admin/site-settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key, value, description })
       });
-      if (response.ok) {
-        await fetchSettings();
-      }
     } catch (err) {
       console.error(`Error initializing ${key} setting:`, err);
     }
@@ -109,9 +112,7 @@ export default function SiteSettingsPage() {
         body: JSON.stringify({
           key,
           value,
-          description: key === 'productsEnabled' 
-            ? 'Enable or disable the products section for customers'
-            : ''
+          description: SETTING_DESCRIPTIONS[key] || ''
         })
       });
 
@@ -131,7 +132,7 @@ export default function SiteSettingsPage() {
         }
       });
 
-      setSuccess(`Setting updated successfully! Products are now ${value ? 'enabled' : 'disabled'} for customers.`);
+      setSuccess(`Setting updated successfully. This feature is now ${value ? 'enabled' : 'disabled'}.`);
       setTimeout(() => setSuccess(null), 5000);
     } catch (err: any) {
       setError(err.message);
@@ -203,6 +204,9 @@ export default function SiteSettingsPage() {
   }
 
   const productsEnabled = getSettingValue('productsEnabled');
+  const registrationEnabled = getSettingValue('registrationEnabled');
+  const promoBannersEnabled = getSettingValue('promoBannersEnabled');
+  const checkoutEnabled = getSettingValue('checkoutEnabled');
   const dtfA4UnitPrice = getNumberSettingValue('dtfA4UnitPrice', 10);
   const dtfA3UnitPrice = getNumberSettingValue('dtfA3UnitPrice', 12.5);
 
@@ -266,6 +270,119 @@ export default function SiteSettingsPage() {
               <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <p className="text-sm text-yellow-800">
                   <strong>Note:</strong> Products are currently disabled. Customers will see a "Coming Soon" message when trying to access product pages.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Registration Toggle */}
+          <div className="mb-8 p-6 border border-gray-200 rounded-lg">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                  Customer Registration
+                </h2>
+                <p className="text-gray-600 text-sm">
+                  Control whether new customers can create an account. Existing users can still log in when this is disabled.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between mt-6 p-4 bg-gray-50 rounded-lg">
+              <div>
+                <p className="font-medium text-gray-900">Registration Enabled</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  {registrationEnabled
+                    ? 'Customers can currently create new accounts'
+                    : 'New account registration is currently disabled'}
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={registrationEnabled}
+                  onChange={(e) => updateSetting('registrationEnabled', e.target.checked)}
+                  disabled={saving}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+              </label>
+            </div>
+          </div>
+
+          {/* Promo Banners Toggle */}
+          <div className="mb-8 p-6 border border-gray-200 rounded-lg">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                  Animated Banners
+                </h2>
+                <p className="text-gray-600 text-sm">
+                  Control the scrolling discount banner and the voucher announcement bar at the top of the site.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between mt-6 p-4 bg-gray-50 rounded-lg">
+              <div>
+                <p className="font-medium text-gray-900">Top Banners Enabled</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  {promoBannersEnabled
+                    ? 'Promotional banners are currently visible'
+                    : 'Promotional banners are currently hidden'}
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={promoBannersEnabled}
+                  onChange={(e) => updateSetting('promoBannersEnabled', e.target.checked)}
+                  disabled={saving}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+              </label>
+            </div>
+          </div>
+
+          {/* Checkout Toggle */}
+          <div className="mb-8 p-6 border border-gray-200 rounded-lg">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                  Checkout
+                </h2>
+                <p className="text-gray-600 text-sm">
+                  Control whether customers can complete purchases. Cart browsing can still work when checkout is disabled.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between mt-6 p-4 bg-gray-50 rounded-lg">
+              <div>
+                <p className="font-medium text-gray-900">Checkout Enabled</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  {checkoutEnabled
+                    ? 'Customers can currently complete checkout'
+                    : 'Checkout is currently disabled for customers'}
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={checkoutEnabled}
+                  onChange={(e) => updateSetting('checkoutEnabled', e.target.checked)}
+                  disabled={saving}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+              </label>
+            </div>
+
+            {!checkoutEnabled && (
+              <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-yellow-800">
+                  <strong>Note:</strong> Checkout is currently disabled. Customers will not be able to place product orders.
                 </p>
               </div>
             )}

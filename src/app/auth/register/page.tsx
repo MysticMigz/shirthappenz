@@ -35,7 +35,26 @@ export default function RegisterPage() {
   } | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [registrationEnabled, setRegistrationEnabled] = useState<boolean | null>(null);
   const visitorId = useVisitorId();
+
+  useEffect(() => {
+    const checkRegistration = async () => {
+      try {
+        const response = await fetch('/api/site-settings?key=registrationEnabled');
+        if (response.ok) {
+          const data = await response.json();
+          setRegistrationEnabled(data.value !== false);
+        } else {
+          setRegistrationEnabled(true);
+        }
+      } catch {
+        setRegistrationEnabled(true);
+      }
+    };
+
+    checkRegistration();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -145,6 +164,44 @@ export default function RegisterPage() {
       setLoading(false);
     }
   };
+
+  if (registrationEnabled === false) {
+    return (
+      <>
+        <SecurityHeaders 
+          title="Registration Disabled - Mr SHIRT PERSONALISATION"
+          description="New account registration is currently unavailable"
+        />
+        <div className="min-h-screen bg-gray-50 flex flex-col">
+          <header className="bg-white shadow-sm">
+            <div className="container mx-auto px-4 py-4">
+              <Link href="/" className="flex items-center">
+                <Image
+                  src="/images/logo.png"
+                  alt="Mr SHIRT PERSONALISATION Logo"
+                  width={300}
+                  height={120}
+                  className="h-16 w-auto brightness-110"
+                  priority
+                />
+              </Link>
+            </div>
+          </header>
+          <main className="flex-1 flex items-center justify-center py-12 px-4">
+            <div className="max-w-md w-full text-center space-y-4">
+              <h2 className="text-3xl font-extrabold text-gray-900">Registration unavailable</h2>
+              <p className="text-gray-600">
+                New account registration is currently disabled. If you already have an account, you can still sign in.
+              </p>
+              <Link href="/auth/login" className="inline-block font-medium text-purple-600 hover:text-purple-500">
+                Sign in
+              </Link>
+            </div>
+          </main>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>

@@ -14,21 +14,27 @@ export default function CartPage() {
   const { items, removeItem, updateQuantity, getTotal, clearCart } = useCart();
   const [isProcessing, setIsProcessing] = useState(false);
   const [productsEnabled, setProductsEnabled] = useState<boolean | null>(null);
+  const [checkoutEnabled, setCheckoutEnabled] = useState(true);
 
   useEffect(() => {
     const check = async () => {
       try {
-        const res = await fetch('/api/site-settings?key=productsEnabled');
+        const res = await fetch('/api/site-settings');
         if (res.ok) {
           const data = await res.json();
-          if (data.value === false) {
+          const map = Object.fromEntries(
+            (data.settings || []).map((s: { key: string; value: unknown }) => [s.key, s.value])
+          );
+          if (map.productsEnabled === false) {
             router.replace('/');
             return;
           }
+          setCheckoutEnabled(map.checkoutEnabled !== false);
         }
         setProductsEnabled(true);
       } catch {
         setProductsEnabled(true);
+        setCheckoutEnabled(true);
       }
     };
     check();
@@ -41,6 +47,7 @@ export default function CartPage() {
   };
 
   const handleCheckout = async () => {
+    if (!checkoutEnabled) return;
     setIsProcessing(true);
     try {
       router.push('/checkout');
@@ -346,16 +353,21 @@ export default function CartPage() {
                   </div>
 
                   <div className="mt-6 space-y-3">
+                    {!checkoutEnabled && (
+                      <p className="text-sm text-yellow-800 bg-yellow-50 border border-yellow-200 rounded-md px-3 py-2">
+                        Checkout is currently unavailable. You can still review your cart.
+                      </p>
+                    )}
                     <button
                       onClick={handleCheckout}
-                      disabled={isProcessing}
+                      disabled={isProcessing || !checkoutEnabled}
                       className={`w-full py-3 px-4 rounded-md text-black font-medium
-                        ${isProcessing
+                        ${isProcessing || !checkoutEnabled
                           ? 'bg-gray-400 cursor-not-allowed'
                           : 'bg-white hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent cursor-pointer'
                         }`}
                     >
-                      {isProcessing ? 'Processing...' : 'Proceed to Checkout'}
+                      {isProcessing ? 'Processing...' : checkoutEnabled ? 'Proceed to Checkout' : 'Checkout Unavailable'}
                     </button>
                     <button
                       onClick={clearCart}

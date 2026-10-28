@@ -16,6 +16,26 @@ export default function DiscountWheel() {
   const [discountCodes, setDiscountCodes] = useState<DiscountCode[]>([]);
   const [loading, setLoading] = useState(true);
   const [isVisible, setIsVisible] = useState(true);
+  const [bannersEnabled, setBannersEnabled] = useState<boolean | null>(null); // null = still loading
+
+  useEffect(() => {
+    const checkBannersEnabled = async () => {
+      try {
+        const response = await fetch('/api/site-settings?key=promoBannersEnabled');
+        if (response.ok) {
+          const data = await response.json();
+          setBannersEnabled(data.value !== false);
+        } else {
+          setBannersEnabled(true);
+        }
+      } catch (error) {
+        console.error('Error checking promo banner setting:', error);
+        setBannersEnabled(true);
+      }
+    };
+
+    checkBannersEnabled();
+  }, []);
 
   // Fetch discount codes from API
   useEffect(() => {
@@ -71,7 +91,7 @@ export default function DiscountWheel() {
   }, [discountCodes.length]);
 
   // Don't show the wheel if loading, no valid discounts, or user closed it
-  if (loading || discountCodes.length === 0 || !isVisible) {
+  if (bannersEnabled !== true || loading || discountCodes.length === 0 || !isVisible) {
     return null;
   }
 

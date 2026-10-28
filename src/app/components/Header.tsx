@@ -27,6 +27,9 @@ const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [vouchers, setVouchers] = useState<Voucher[]>([]);
   const [productsEnabled, setProductsEnabled] = useState<boolean | null>(null); // null = checking
+  // null = still loading; keep these hidden until settings arrive so disabled items never flash on screen
+  const [registrationEnabled, setRegistrationEnabled] = useState<boolean | null>(null);
+  const [promoBannersEnabled, setPromoBannersEnabled] = useState<boolean | null>(null);
 
   // Fetch active vouchers
   useEffect(() => {
@@ -45,25 +48,32 @@ const Header = () => {
     fetchVouchers();
   }, []);
 
-  // Check if products are enabled
   useEffect(() => {
-    const checkProductsEnabled = async () => {
+    const loadSiteSettings = async () => {
       try {
-        const response = await fetch('/api/site-settings?key=productsEnabled');
+        const response = await fetch('/api/site-settings');
         if (response.ok) {
           const data = await response.json();
-          setProductsEnabled(data.value !== false); // Default to true if not set
+          const map = Object.fromEntries(
+            (data.settings || []).map((s: { key: string; value: unknown }) => [s.key, s.value])
+          );
+          setProductsEnabled(map.productsEnabled !== false);
+          setRegistrationEnabled(map.registrationEnabled !== false);
+          setPromoBannersEnabled(map.promoBannersEnabled !== false);
         } else {
-          setProductsEnabled(true); // Default to enabled on error
+          setProductsEnabled(true);
+          setRegistrationEnabled(true);
+          setPromoBannersEnabled(true);
         }
       } catch (error) {
-        console.error('Error checking products enabled status:', error);
-        // Default to enabled on error
+        console.error('Error checking site settings:', error);
         setProductsEnabled(true);
+        setRegistrationEnabled(true);
+        setPromoBannersEnabled(true);
       }
     };
 
-    checkProductsEnabled();
+    loadSiteSettings();
   }, []);
 
   const handleLogout = async () => {
@@ -77,7 +87,7 @@ const Header = () => {
   return (
     <>
       {/* Top announcement bar - now shows voucher information */}
-      {vouchers.length > 0 && (
+      {promoBannersEnabled === true && vouchers.length > 0 && (
         <div className="bg-gradient-to-r from-[var(--brand-red)] to-[var(--brand-blue)] text-white text-center py-2 px-4">
           <p className="text-xs sm:text-sm px-2">
             <strong>Special Offer:</strong> {vouchers.map((voucher, index) => (
@@ -195,12 +205,14 @@ const Header = () => {
                 </div>
               ) : (
                 <>
-                  <Link 
-                    href="/auth/register" 
-                    className="hidden md:inline-flex items-center px-4 py-2 border border-black text-black rounded-lg hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent transition-colors"
-                  >
-                    Register
-                  </Link>
+                  {registrationEnabled === true && (
+                    <Link 
+                      href="/auth/register" 
+                      className="hidden md:inline-flex items-center px-4 py-2 border border-black text-black rounded-lg hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent transition-colors"
+                    >
+                      Register
+                    </Link>
+                  )}
                   <Link 
                     href="/auth/login" 
                     className="hidden md:inline-flex items-center px-4 py-2 bg-white text-black rounded-lg hover:bg-gradient-to-r hover:from-[var(--brand-red)] hover:to-[var(--brand-blue)] hover:bg-clip-text hover:text-transparent transition-colors"
@@ -353,13 +365,15 @@ const Header = () => {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <Link 
-                    href="/auth/register" 
-                    className="block py-3 px-4 text-black hover:bg-gray-50 rounded-lg font-medium transition-colors"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Register
-                  </Link>
+                  {registrationEnabled === true && (
+                    <Link 
+                      href="/auth/register" 
+                      className="block py-3 px-4 text-black hover:bg-gray-50 rounded-lg font-medium transition-colors"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      Register
+                    </Link>
+                  )}
                   <Link 
                     href="/auth/login" 
                     className="block py-3 px-4 text-black hover:bg-gray-50 rounded-lg font-medium transition-colors"

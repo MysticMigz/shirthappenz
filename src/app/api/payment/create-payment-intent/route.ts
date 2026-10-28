@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createPaymentIntent } from '@/lib/stripe';
 import { connectToDatabase } from '@/lib/mongodb';
 import TempOrder from '@/backend/models/TempOrder';
+import SiteSettings from '@/backend/models/SiteSettings';
 
 export async function POST(request: Request) {
   if (typeof window !== 'undefined') {
@@ -25,6 +26,16 @@ export async function POST(request: Request) {
       );
     }
 
+    await connectToDatabase();
+    const checkoutSetting = await (SiteSettings as any).findOne({ key: 'checkoutEnabled' });
+    const checkoutEnabled = checkoutSetting ? checkoutSetting.value !== false : true;
+    if (!checkoutEnabled) {
+      return NextResponse.json(
+        { error: 'Checkout is currently disabled' },
+        { status: 403 }
+      );
+    }
+
     if (!process.env.STRIPE_SECRET_KEY) {
       return NextResponse.json(
         { error: 'Stripe is not properly configured' },
@@ -36,8 +47,6 @@ export async function POST(request: Request) {
     const orderDataKey = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
     try {
-      await connectToDatabase();
-      
       // Store full order data in MongoDB
       const tempOrder = new TempOrder({
         orderDataKey,

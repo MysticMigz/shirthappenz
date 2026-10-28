@@ -18,6 +18,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [registrationEnabled, setRegistrationEnabled] = useState<boolean | null>(null); // null = still loading
 
   useEffect(() => {
     // Read NextAuth error codes from the URL (client-side only).
@@ -40,6 +41,24 @@ export default function LoginPage() {
         : 'Sign in failed. Please try again.';
 
     setError(message);
+  }, []);
+
+  useEffect(() => {
+    const checkRegistration = async () => {
+      try {
+        const response = await fetch('/api/site-settings?key=registrationEnabled');
+        if (response.ok) {
+          const data = await response.json();
+          setRegistrationEnabled(data.value !== false);
+        } else {
+          setRegistrationEnabled(true);
+        }
+      } catch {
+        setRegistrationEnabled(true);
+      }
+    };
+
+    checkRegistration();
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -180,11 +199,13 @@ export default function LoginPage() {
             </button>
           </div>
 
-          <div className="text-sm text-center">
-            <Link href="/auth/register" className="font-medium text-purple-600 hover:text-purple-500">
-              Don&apos;t have an account? Sign up
-            </Link>
-          </div>
+          {registrationEnabled === true && (
+            <div className="text-sm text-center">
+              <Link href="/auth/register" className="font-medium text-purple-600 hover:text-purple-500">
+                Don&apos;t have an account? Sign up
+              </Link>
+            </div>
+          )}
         </form>
       </div>
       </div>
